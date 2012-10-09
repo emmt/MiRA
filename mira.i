@@ -21,113 +21,9 @@
  * details.
  *
  *-----------------------------------------------------------------------------
- *
- * $Author: eric $
- * $Date: 2012/06/01 12:58:38 $
- * $Revision: 0.20 $
- * $Id: mira.i,v 0.20 2012/06/01 12:58:38 eric Exp eric $
- * $Log: mira.i,v $
- * Revision 0.20  2012/06/01 12:58:38  eric
- *  - Version of MiRA used for the 2012' Beauty Contest.
- *  - Minor changes to have all graphics in a single windows.
- *
- * Revision 0.19  2011/03/29 16:53:59  eric
- *  - Fixed a bug in the computation of the active parameters when both
- *    bounds are set (tnaks to Jean-Baptiste le Bouquin).
- *
- * Revision 0.18  2009/05/14 10:43:37  eric
- *  - Some hacks to return the values of the penalty functions.
- *  - Short-circuit of op_mnb driver to remember penalties.
- *  - More informations in verbose mode (in particular the
- *    data penalty per datum and the regularization penalty).
- *
- * Revision 0.17  2008/12/09 17:18:46  eric
- *  - Fixed a bug in mira_new_fft_xform with spatial frequencies
- *    exactly equal to zero.
- *
- * Revision 0.16  2008/10/03 06:49:41  eric
- *  - Fix bug when no target is specified in mira_add_oidata.
- *  - In mira_add_oidata/mira_new, keyword cleanup_bad_data can be set
- *    to 0, 1, 2 to achieve different levels of filtering of invalid data.
- *
- * Revision 0.15  2008/09/26 11:37:39  eric
- *  - Fixed a bug when selecting a particular target.
- *
- * Revision 0.14  2008/09/26 07:57:02  eric
- *  - Remove spurious boggus line when cleanup_bad_data is on in
- *    mira_add_oidata (thanks to Stephanie Renard).
- *
- * Revision 0.13  2008/09/25 17:30:19  eric
- *  - Add the possibility to select the target in mira_new.
- *  - Warn when no data.
- *
- * Revision 0.12  2008/09/23 14:18:42  eric
- *  - Fixed a bug in _mira_build_coordinate_list which prevent to use
- *    data files with central frequency (0,0) measured.
- *  - New function mira_dirac.
- *
- * Revision 0.11  2008/09/04 10:13:34  eric
- *  - Version used for the demonstration at SPIE 2008 Conference in
- *    Marseille (France).
- *  - Add some options to choose which plots to show.
- *
- * Revision 0.10  2008/09/04 08:54:06  eric
- *  - Version used for the VLTI 2008 Summer School at Keszthely (Hungary).
- *
- * Revision 0.9  2008/03/18 17:21:06  eric
- *  - Fix bugs in mira_plot_baselines and mira_plot_frequencies
- *    (thanks to Stéphanie Renard).
- *
- * Revision 0.8  2008/01/31 15:33:02  eric
- *  - Freezed for release 0.7 of MiRA.
- *
- * Revision 0.7  2007/05/10 10:49:28  eric
- *  - Some more documentation written.
- *  - Fix to work with Yeti version 6.2.0.
- *  - Graphical windows setup.
- *
- * Revision 0.6  2007/05/01 09:16:19  eric
- *  - Fourier transform by FFT/FFTW is more efficient and
- *    post-FFT interpolation accounts for orientation of
- *    RA/DEC directions and for centering.
- *
- * Revision 0.5  2007/04/30 17:14:36  eric
- *  - Plotting of data fixed.
- *  - Computation of Fourier transform can now be done FFT
- *    (although some improvements are still needed since
- *    image center and orientation of RA-axis are not the
- *    same).
- *
- * Revision 0.4  2007/04/26 16:49:07  eric
- *  - Use symbolic links for virtual functions.
- *  - Model complex visibility is 2-by-any and such that
- *    VIS(1,..) and VIS(2,..) rae respectively real and
- *    imaginary parts.
- *  - Wavelength selection by spectral range ("gray" object).
- *  - Use opaque linear operator to compute the Fourier
- *    transform (stored in member THIS.xform).
- *  - New member THIS.pixelsize which is consistently computed
- *    once.
- *  - Added coordinates and color-bar in plotting of current
- *    image during the reconstruction.
- *  - New plotting functions: mira_plot_image, mira_color_bar.
- *  - New functions (for FFT-based transform):
- *    mira_cast_real_as_complex, mira_cast_complex_as_real,
- *    mira_make_hermitian.
- *
- * Revision 0.3  2007/04/20 06:00:10  eric
- * Third public release of MiRA.
- *
- * Revision 0.2  2007/01/11 11:48:30  eric
- * Second public release of MiRA.
- *
- * Revision 0.1  2006/02/14 08:11:47  eric
- * First public release of MiRA.
- *
- *-----------------------------------------------------------------------------
  */
 
-MIRA_VERSION = "beauty-contest-2012";
+MIRA_VERSION = "1.0.0";
 
 local MIRA_VERSION;
 local mira;
@@ -1083,6 +979,7 @@ func mira_config(this, pixelsize=, dim=, xform=)
  *   DIM       = number of pixels accross the field of view;
  *   XFORM     = method to compute the Fourier transform:
  *     "exact"    to use exact (but slow) transform;
+ *     "nfft"     to use nonequispaced FFT;
  *     "fft"      to use FFT(W) followed by linear interpolation.
  *
  *  SEE ALSO: mira_new, mira_solve.
@@ -1167,6 +1064,9 @@ func mira_update(this)
     if (this.xform_name == "exact") {
       xform =  mira_new_exact_xform(this.u, this.v,
                                     pixelsize, dim, dim);
+    } else if (this.xform_name == "nfft") {
+      xform =  mira_new_nfft_xform(this.u, this.v,
+                                   pixelsize, dim, dim);
     } else if (this.xform_name == "fft") {
       xform =  mira_new_fft_xform(this.u, this.v,
                                   pixelsize, dim, dim);
@@ -1244,6 +1144,105 @@ func mira_new_exact_xform(u, v, pixelsize, nx, ny)
 func _mira_apply_exact_xform(this, x, job)
 {
   return mvmult(this.a, x, job);
+}
+
+/*---------------------------------------------------------------------------*/
+/* NONEQUISPACED FAST FOURIER TRANSFORM */
+
+local mira_new_nfft_xform, _mira_apply_nfft_xform;
+/* DOCUMENT xform = mira_new_nfft_xform(u, v, pixelsize, nx, ny)
+ *
+ *   Creates a linear operator to compute the "exact" linear transform
+ *   between an image and the measured complex visibilities.  Arguments U
+ *   and V give the coordinates of the measured spatial frequencies,
+ *   PIXELSIZE is the pixel size in the image plane, NX and NY are the
+ *   number of pixels along the two first image dimensions.  The
+ *   coordinates U and V must be vectors of same length and
+ *   NFREQS=numberof(U)=numberof(V) is the number of measured complex
+ *   visibilities.
+ *
+ *   The returned operator can be used as follows:
+ *
+ *      vis = XFORM(img)
+ *
+ *   to compute the model visibilities VIS, such that VIS(1,..)  and
+ *   VIS(2,..) are respectively the real and imaginary parts of the complex
+ *   visibilities.  The transpose of the operator can also be applied (for
+ *   instance to compute the gradient of the likelihood):
+ *
+ *      XFORM(inp, 1)
+ *
+ *   where input array INP is a 2-by-NFREQS array, with NFREQS the number
+ *   of complex visibilities.
+ *
+ *
+ * SEE ALSO: mira_update, mira_new_exact_xform, mira_new_fft_xform.
+ */
+
+func mira_new_nfft_xform(u, v, pixelsize, nx, ny)
+{
+  if (! is_func(nfft_new)) {
+    include, "nfft.i", 1;
+  }
+  if (! is_vector(u) || ! is_vector(v) || numberof(u) != numberof(v)) {
+    error, "arguments U and V must be vectors of same length";
+  }
+
+  /* The coordinate system is slighlty different between NFFT and MiRA.
+   *
+   * In MiRA, (0,0) is at the geometrical center of the field of view (FOV):
+   *   x = pixelsize*(indgen(nx) - (nx + 1)/2.0);
+   *   y = pixelsize*(indgen(ny) - (ny + 1)/2.0);
+   *
+   * In NFFT:
+   *   x = [-nx/2, 1-nx/2, ..., nx/2-1]*pixelsize
+   *   y = [-ny/2, 1-ny/2, ..., ny/2-1]*pixelsize
+   * plus NX and NY must be even.
+   */
+  local r1, r2;
+  if (nx % 2 == 1) {
+    n1 = nx + 1;
+    r1 = 2 : nx;
+  } else {
+    n1 = nx;
+  }
+  if (ny % 2 == 1) {
+    n2 = ny + 1;
+    r2 = 2 : ny;
+  } else {
+    n2 = ny;
+  }
+  nodes = [u*pixelsize, v*pixelsize];
+  dims = [n1, n2];
+  obj = h_new(nfft = nfft_new(dims, nodes),
+              n1 = n1, r1 = r1,
+              n2 = n2, r2 = r2,
+              sub = (n1 != nx || n2 != ny));
+  h_evaluator, obj, "_mira_apply_nfft_xform";
+  return obj;
+}
+
+func _mira_apply_nfft_xform(this, x, job)
+{
+  local z;
+  if (job) {
+    /* adjoint operator */
+    z = this.nfft(mira_cast_real_as_complex(x), 1n);
+    if (this.sub) {
+      return double(z)(this.r1, this.r2);
+    } else {
+      return double(z);
+    }
+  } else {
+    /* direct operator */
+    if (this.sub) {
+      tmp = array(complex, this.n1, this.n2);
+      tmp(this.r1, this.r2) = x;
+      eq_nocopy, tmp, x;
+    }
+    reshape, z, &this.nfft(x), double, 2, this.nfft.num_nodes;
+    return z;
+  }
 }
 
 /*---------------------------------------------------------------------------*/
