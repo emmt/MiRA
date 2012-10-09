@@ -1,0 +1,140 @@
+MIRA: Multi-aperture Image Reconstruction Algorithm
+---------------------------------------------------
+
+MIRA (Multi-aperture Image Reconstruction Algorithm) is an algorithm for
+image reconstruction from interferometric data.
+
+Copyright (c) 2001-2009, Eric Thiébaut <thiebaut@obs.univ-lyon1.fr>
+
+
+Quick instructions for using MIRA
+---------------------------------
+
+You must have Yorick (at least version 2.1), Yeti (version 6.2.0
+http://www-obs.univ-lyon1.fr/labo/perso/eric.thiebaut/yeti.html) and
+OptimPack (version 1.2) installed.
+
+
+ 1. launch Yorick (note that '$' is the shell prompt and '>'
+    is Yorick prompt):
+
+    $ yorick
+
+ 2. load "mira.i" (this should also load Yeti plugin):
+
+    > include, "mira.i";
+
+ 3. Load OI-FITS data file ('db' will be your MIRA instance for this data
+    file; in the data file, you must choose one with keyword EFF_WAVE or
+    choose a spectral range with keywords EFF_WAVE and EFF_BAND):
+
+    > db = mira_new("data/data1.oifits");
+
+ 4. Configure data instance for image reconstruction parameters (keyword
+    'dim' is the number of pixels along the width and height of the
+    restored image; keyword 'pixelsize' is the size of the pixel in
+    radians; keyword 'xform' is the name of the method to approximate the
+    Fourier transform, can be "exact" or "fft", default is "exact"):
+
+    > mira_config, db, dim=50, pixelsize=0.5*MIRA_MILLIARCSECOND,
+                   xform="exact";
+
+ 5. Choose a suitable regularization method:
+
+    > rgl = rgl_new("smoothness");
+
+ 6. Attempt an image reconstruction (from scratch):
+
+    > img1 = mira_solve(db, maxeval=500, verb=1, xmin=0.0, normalization=1,
+                        regul=rgl, mu=1e6);
+
+    where IMG1 is the output image, DB is the data instance, MAXEVAL is the
+    maximum number of evaluations of the cost function, VERB is set to one
+    to display convergence information at every successful step (VERB=10 to
+    display this information every 10 steps and VERB=0 or nil to display no
+    information), XMIN=0 to enforce a positivity constraint (XMIN is the
+    minimum allowed value in the restored image, you certainly do not to
+    want to omit this option), REGUL set the regularization method, MU is
+    the global weight of regularization (the higher its value the smoother
+    the result), FTOL controls the stopping criterion of OptimPack1
+    (which to see).
+
+ 6. You can also try a reconstruction given an initial image IMG0:
+
+    > img2 = mira_solve(db, img0, maxeval=500, verb=1, xmin=0.0,
+                        normalization=1, regul=rgl, mu=1e6);
+
+    Note that if IMG0 is not of size DIM×DIM it will be resampled to that
+    size (assuming the field of view is the same).
+
+ 7. With keyword ZAP_DATA, you can just build the default image as assumed
+    by the regularization:
+
+    > img0 = mira_solve(db, maxeval=500, verb=1, xmin=0.0, normalization=1,
+                        regul=rgl, mu=1e6, zap_data=1);
+
+
+Notes:
+
+ a. *All* units are in SI (i.e. angles are in radians, wavelengths in
+    meters, etc).  A very common error in parameter settings is to use
+    completely out of range values because you assume the wrong units.  To
+    make things a little bit easier, some constants are pre-defined by MIRA
+    package, and you can use for instance: 3*MIRA_MILLIARCSECOND (instead
+    of 1.45444e-08 radians) or 5*MIRA_MICRON (instead of 5e-6 meters).
+
+ b. Positivity is a *must*, you cannot expect a good image reconstruction
+    (at least with any practical u-v coverage) without option XMIN=0 in
+    mira_solve.  If you use certain regularizations such as the entropy,
+    you must specify a strictly positive value for XMIN (choose a very
+    small value, for instance: 1e-50*NRM/NPIX where NRM is the
+    normalization level and NPIX the total number of pixels).
+
+ c. Likewise, NORMALIZATION=1 must not be omitted if your data set obeys
+    OI-FITS standard (i.e. visibilities are normalized) and has no explicit
+    measurement at frequency (0,0).
+
+ d. The cost function is highly non-quadratic and may cause difficulties
+    for OptimPack to converge.  To overcome this, it is sometimes very
+    effective to simply restart `mira_solve` with the an initial image
+    provided by a previous reconstruction (possibly after recentering by
+    `mira_recenter`).  For instance:
+
+    > img2 = mira_solve(db, img0, maxeval=500, verb=1, xmin=0.0,
+                        normalization=1, regul=rgl, mu=1e6);
+    > img2 = mira_recenter(img2);
+    > img2 = mira_solve(db, img2, maxeval=500, verb=1, xmin=0.0,
+                        normalization=1, regul=rgl, mu=1e6);
+    > img2 = mira_recenter(img2);
+    > img2 = mira_solve(db, img2, maxeval=500, verb=1, xmin=0.0,
+                        normalization=1, regul=rgl, mu=1e6);
+    > ...
+
+ e. It is usually better to work with a purposely too high regularization
+    level. And to lower the value of MU as the image reconstruction
+    converges.
+
+
+Guidelines
+----------
+
+The pixel size must not be too small:
+
+   pixel size < (1/2) wavelength / max(baseline)
+
+The field of view must not be too small otherwise:
+
+ - oversmoothing of the Fourier spectrum
+
+ - risk of field aliasing
+
+field of view must not be too large otherwise:
+
+ - undersmoothing of the Fourier spectrum w.r.t. to the (u,v) sampling and,
+   for real data, to the (u,v) smoothing due to the finite size of the
+   telescopes and to the tapering (spatial filtering by fiber optics).
+
+Typically:
+
+  FOV ~ a few times (wavelength / telescope diameter)
+

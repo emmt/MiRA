@@ -1,0 +1,36 @@
+fft_utils.i - Utility functions for working with the FFT.
+
+fits.i - Implements support for FITS files in Yorick (should be the same
+         as the fits.i file distributed with CVS Yorick).
+
+fmin.i - Minimization of an univariate function for Yorick.  The method is
+         based on original Brent's method modified to allow for different kind
+         of bounds (both, left, right or none).
+
+img.i - Routines for dealing with images (i.e. 2D arrays) in Yorick.
+
+linop.i - General linear operator class for Yeti.
+
+mira.i - MiRA algorithm.
+
+oifits.i - Support of OI-FITS file for Yorick + Yeti.
+
+plot.i - Additional routines for plotting in Yorick.
+
+rgl.i - Implement regularization operators for iterative optimization and
+         inverse problems.
+
+utils.i - General purpose utility routines for Yorick.
+
+mira-demo.i - Demonstration of MiRA at SPIE Conference (Marseille, 2008).
+
+mira-test1.i - Example of image reconstruction session with MiRA
+         (Multi-aperture Image Reconstruction Algorithm) using the first
+         dataset from the "The 2004 Optical/IR Interferometry Imaging Beauty
+         Contest" (Lawson et al., 2004).
+
+mira-test2.i - Example of image reconstruction session with MiRA
+         (Multi-aperture Image Reconstruction Algorithm) using the second
+         dataset from the "The 2004 Optical/IR Interferometry Imaging Beauty
+         Contest" (Lawson et al., 2004).
+
