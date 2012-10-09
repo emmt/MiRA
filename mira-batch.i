@@ -121,7 +121,7 @@ _MIRA_OPTIONS = opt_init\
         /* IMAGE PARAMETERS */
         _lst("pixelsize",        NULL,  "VALUE",  OPT_REAL,    "size of the pixel (milliarcseconds)"),
         _lst("dim",              NULL,  "NUMBER", OPT_INTEGER, "number of pixels per side of the image"),
-        _lst("xform",            "fft", "NAME",   OPT_STRING,  "method to compute the Fourier transform"),
+        _lst("xform",          "exact", "NAME",   OPT_STRING,  "method to compute the Fourier transform"),
         _lst("normalization",    NULL,  "VALUE",  OPT_REAL,    "flux normalization"),
         _lst("xmin",             NULL,  "VALUE",  OPT_REAL,    "minimum flux"),
         _lst("xmax",             NULL,  "VALUE",  OPT_REAL,    "maximum flux"),
