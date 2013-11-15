@@ -179,6 +179,45 @@
 
 require, "utils.i";
 
+func pl_arrow(x0, y0, x1, y1, head=, size=, width=, color=, angle=)
+/* DOCUMENT pl_arrow, x0, y0, x1, y1;
+
+     Plot an arrow starting at (X0,Y0), ending at (X1,Y1).
+
+
+   RESTRICTIONS
+     Works better with square limits.
+     
+   SEE ALSO:
+ */
+{
+  color = pl_get_color(color);
+  pldj, x0,y0,x1,y1, width=width, color=color, type=type;
+  if (head) {
+    if (is_void(angle)) angle = 50.0;
+    if (is_void(size)) size = 1.0;
+    u = x1 - x0;
+    v = y1 - y0;
+    s = size*0.01/abs(u, v);
+    alpha = angle*(pi/360.0); // half angle with respect to direction
+    sn = s*sin(alpha);
+    cs = s*cos(alpha);
+    xm = [cs*u - sn*v, 0.0, cs*u + sn*v, 0.0];
+    ym = [cs*v + sn*u, 0.0, cs*v - sn*u, 0.0];
+    m = numberof(xm);
+    n = array(1, 1 + numberof(y1));
+    n(1) = m;
+    if ((head&1) != 0) {
+      plfp, z, grow(ym,y0(*)), grow(xm,x0(*)), n,
+        edges=1, ewidth=width, ecolor=color;
+    }
+    if ((head&2) != 0) {
+      plfp, z, grow(-ym,y1(*)), grow(-xm,x1(*)), n,
+        edges=1, ewidth=width, ecolor=color;
+    }
+  }
+}
+
 func pl_fc(z, y, x, ireg, levs=, legend=, hide=, type=, width=, color=,
 	   colors=, smooth=, marks=, marker=, mspace=, mphase=,
 	   triangle=, region=)
@@ -2669,8 +2708,8 @@ func pl_cbox(x0, y0, xsize, ysize, color=, width=, type=, legend=)
   if (is_void(ysize)) ysize = xsize;
   if (is_void(legend)) legend=string(0);
   plg,
-    x0 + xsize * [-0.5, -0.5, +0.5, +0.5],
     y0 + ysize * [-0.5, +0.5, +0.5, -0.5],
+    x0 + xsize * [-0.5, -0.5, +0.5, +0.5],
     color=color, width=width, type=type, marks=0, closed=1, legend=legend;
 }
 

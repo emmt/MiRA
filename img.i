@@ -18,73 +18,77 @@
  *-----------------------------------------------------------------------------
  *
  * Routines:
- *	img_dims - returns dimension [WIDTH,HEIGHT] of an image
- *	img_plot - plot an image
- *	img_cbar - add a color to an image plot
- *      img_convolve - convolution/correlation of images
- *	img_crop - crop an image
- *	img_interpolate - bi-linear interpolation of an image
- *	img_extract_parallelogram_as_rectangle - (as its name says)
- *	img_max - get coordinates of maximum in a 2-D array
- *	img_fft_centered_at_max - recenter an image at its maximum according
- *		to fft indexing
- *	img_pad - expand an image
- *	img_paste - copy an image into another one at a given location
- *	img_photometry - measure integrated intensity inside a circular region
- *	img_flt_max - filter an image
- *	img_flt_flac - flipped-local-auto-convolution of an image
- *	ing_get_format - get image file format
- *	img_read, img_write - read/write PNM/JPEG/PNG/TIFF/FITS/GIF image
- *	img_tmpnam - get name of temporary file
- *      img_to_gray - convert an image to grayscale
+ *   img_dims - returns dimension [WIDTH,HEIGHT] of an image
+ *   img_plot - plot an image
+ *   img_cbar - add a color to an image plot
+ *   img_convolve - convolution/correlation of images
+ *   img_crop - crop an image
+ *   img_interpolate - bi-linear interpolation of an image
+ *   img_extract_parallelogram_as_rectangle - (as its name says)
+ *   img_max - get coordinates of maximum in a 2-D array
+ *   img_fft_centered_at_max - recenter an image at its maximum according
+ *           to fft indexing
+ *   img_pad - expand an image
+ *   img_paste - copy an image into another one at a given location
+ *   img_photometry - measure integrated intensity inside a circular region
+ *   img_flt_max - filter an image
+ *   img_flt_flac - flipped-local-auto-convolution of an image
+ *   ing_get_format - get image file format
+ *   img_read, img_write - read/write PNM/JPEG/PNG/TIFF/FITS/GIF image
+ *   img_tmpnam - get name of temporary file
+ *   img_to_gray - convert an image to grayscale
  *
  * History:
- *	$Id: img.i,v 1.10 2010/11/18 19:45:40 eric Exp eric $
- *	$Log: img.i,v $
- *	Revision 1.10  2010/11/18 19:45:40  eric
- *	 - Use yorick-z plugin if available to read/write JPEG and
- *	   PNG images.
- *	 - Bug in img_read for PNG images fixed (thanks to Loïc Denis).
+ *   $Id: img.i,v 1.11 2011/01/17 15:14:42 eric Exp $
+ *   $Log: img.i,v $
+ *   Revision 1.11  2011/01/17 15:14:42  eric
+ *    - Fix documentation.
+ *    - Use JPEG optimization.
  *
- *	Revision 1.9  2010/02/19 18:01:19  eric
- *	 - Renamed old img_cbar as img_cbar_old.
- *	 - New img_cbar routine with more flexibility for the labels and the levels.
- *	 - Added optional color bar in img_plot.
+ *   Revision 1.10  2010/11/18 19:45:40  eric
+ *    - Use yorick-z plugin if available to read/write JPEG and
+ *      PNG images.
+ *    - Bug in img_read for PNG images fixed (thanks to Loïc Denis).
  *
- *	Revision 1.8  2010/01/14 07:47:02  eric
- *	 - Renamed img_get_type as img_get_file_type.
- *	 - New function img_to_gray.
- *	 - New option ROI in img_crop.
- *	 - Functions img_read and img_write use YorZ extension if plugin loaded.
+ *   Revision 1.9  2010/02/19 18:01:19  eric
+ *    - Renamed old img_cbar as img_cbar_old.
+ *    - New img_cbar routine with more flexibility for the labels and the
+ *      levels.
+ *    - Added optional color bar in img_plot.
  *
- *	Revision 1.7  2009/10/12 08:21:48  eric
- *	 - New function: img_crop.
- *	 - Slight improvements in img_get_type().
+ *   Revision 1.8  2010/01/14 07:47:02  eric
+ *    - Renamed img_get_type as img_get_file_type.
+ *    - New function img_to_gray.
+ *    - New option ROI in img_crop.
+ *    - Functions img_read and img_write use YorZ extension if plugin loaded.
  *
- *	Revision 1.6  2008/07/12 06:44:04  eric
- *	 - Added final comment for setting local variables of Emacs.
+ *   Revision 1.7  2009/10/12 08:21:48  eric
+ *    - New function: img_crop.
+ *    - Slight improvements in img_get_type().
  *
- *	Revision 1.5  2007/06/29 13:04:34  eric
- *	 - New function img_convolve.
+ *   Revision 1.6  2008/07/12 06:44:04  eric
+ *    - Added final comment for setting local variables of Emacs.
  *
- *	Revision 1.4  2004/10/14 09:54:53  eric
- *	 - "img_protect_path" and "img_expand_path" removed and replaced by
- *	   their counterparts, "expand_file_name" and "expand_file_name",
- *	   in "utils.i" (which was already required by "img.i").
+ *   Revision 1.5  2007/06/29 13:04:34  eric
+ *    - New function img_convolve.
  *
- *	Revision 1.3  2004/10/13 10:18:32  eric
- *	 - New functions (img_read, img_write, img_get_type,
- *	   img_protect_path, img_expand_path, img_tmpnam) to
- *	   implement reading/writing of various image file formats
- *	   (PNM/PBM/PGM/PPM, JPEG, PNG, TIFF, FITS, and GIF).
+ *   Revision 1.4  2004/10/14 09:54:53  eric
+ *    - "img_protect_path" and "img_expand_path" removed and replaced by
+ *      their counterparts, "expand_file_name" and "expand_file_name",
+ *      in "utils.i" (which was already required by "img.i").
  *
- *	Revision 1.2  2004/09/17 11:21:18  eric
- *	 - removed jped_read and jpeg_write (backup in jpeg_img.i) which
- *	   are provided by jpeg.i plugin in Yorick from version >= 1.6
+ *   Revision 1.3  2004/10/13 10:18:32  eric
+ *    - New functions (img_read, img_write, img_get_type,
+ *      img_protect_path, img_expand_path, img_tmpnam) to
+ *      implement reading/writing of various image file formats
+ *      (PNM/PBM/PGM/PPM, JPEG, PNG, TIFF, FITS, and GIF).
  *
- *	Revision 1.1  2004/07/17 13:37:40  eric
- *	Initial revision
+ *   Revision 1.2  2004/09/17 11:21:18  eric
+ *    - removed jped_read and jpeg_write (backup in jpeg_img.i) which
+ *      are provided by jpeg.i plugin in Yorick from version >= 1.6
  *
+ *   Revision 1.1  2004/07/17 13:37:40  eric
+ *   Initial revision
  *-----------------------------------------------------------------------------
  */
 
@@ -116,7 +120,7 @@ func img_plot(img, first=, scale=, cmin=, cmax=, top=, cbar=,
      two values depending whether or not both axis have same value.
 
      If Keyword CBAR is true, then a color bar is drawn with img_cbar.
-     
+
    SEE ALSO pli, img_dims. */
 {
   if (is_array(img)) {
@@ -149,7 +153,7 @@ func img_cbar(z, cmin=, cmax=, vert=, vport=, adjust=,
               width=, ticklen=, thickness=, format=)
 /* DOCUMENT img_cbar, z;
        -or- img_cbar, cmin=CMIN, cmax=CMAX;
-  
+
      Draw a color bar below the current coordinate system the colors and
      the associated label values are from min(Z) to max(Z) -- alternatively
      keywords CMIN and CMAX can be specified.  If keyword VERT is true, the
@@ -169,7 +173,7 @@ func img_cbar(z, cmin=, cmax=, vert=, vport=, adjust=,
      that the last label correspond to CMAX (or max(Z) if CMAX is
      unspecified) and that the other labels are uniformly spaced (there
      must be at least 2 labels).
-     
+
      If none of LEVELS and LABELS are specified, the labels are
      automatically computed.  Keyword NTICKS can be used to choose the
      number of displayed labels; by default, NTICKS=11 which correspond to
@@ -180,25 +184,25 @@ func img_cbar(z, cmin=, cmax=, vert=, vport=, adjust=,
      "helvetica"), HEIGHT (default 14 points) and ORIENT respectively.  If
      LABELS is unspecified and FORMAT is set to string(0), then no labels
      are displayed though the ticks are.
-  
+
      By default the colorbar is drawn next to the current viewport; other
      viewport coordinates can be given by VPORT=[xmin,xmax,ymin,ymax].
      Keyword ADJUST can be used to move the bar closer to (adjust<0) or
      further from (adjust>0) the viewport.
-  
+
      Keyword COLOR can be used to specify the color of the labels, the
      ticks and the frame of the colorbar.  Default is foreground color.
-  
+
      Keyword WIDTH can be used to set the width of the lines used to draw
      the frame and the ticks of the colorbar.
-  
+
      Keyword TICKLEN can be used to set the lenght (in NDC units) of the
      ticks.  Default is 0.007 NDC.
-  
+
      Keyword THICKNESS can be used to set the thickness of the colorbar (in
      NDC units).  Default is 0.020 NDC.
-  
-  
+
+
     SEE ALSO: pli, plt, pldj, plg, viewport.
  */
 {
@@ -257,7 +261,7 @@ func img_cbar(z, cmin=, cmax=, vert=, vport=, adjust=,
       nticks = numberof(select);
     }
   }
-  
+
   local red, green, blue;
   palette, red, green, blue, query=1;
   ncolors = numberof(red);
@@ -1115,13 +1119,12 @@ func img_get_file_type(filename, type=, reading=, noerr=)
      *   "P6" space     = raw PPM
      */
     magic = array(char, 4);
-    file = open(filename, "rb", 1);
-    if (! file) {
+    if (! (file = open(filename, "rb", 1))) {
       return IMG_NONE;
     }
     n = _read(file, 0, magic);
     close, file;
-    z = char(0);
+    z = '\0';
     c1 = (n >= 1 ? magic(1) : z);
     c2 = (n >= 2 ? magic(2) : z);
     c3 = (n >= 3 ? magic(3) : z);
@@ -1162,20 +1165,23 @@ func img_get_file_type(filename, type=, reading=, noerr=)
     }
     return IMG_NONE;
   }
-  if ((s = structof(type)) == string) {
-    if (type == "pnm") return IMG_PNM;
-    if (type == "jpeg") return IMG_JPEG;
-    if (type == "png") return IMG_PNG;
-    if (type == "tiff") return IMG_TIFF;
-    if (type == "fits") return IMG_FITS;
-    if (type == "gif") return IMG_GIF;
-    error, "bad image type name, expecting: pnm, jpeg, png, tiff, fits or gif";
-  }
-  if ((s == long) || (s == int) || (s == short) || (s == char)) {
-    if ((1 <= type) && (type <= 6)) {
-      return long(type);
+  if (is_scalar(type)) {
+    if (is_string(type)) {
+      if (type == "pnm") return IMG_PNM;
+      if (type == "jpeg") return IMG_JPEG;
+      if (type == "png") return IMG_PNG;
+      if (type == "tiff") return IMG_TIFF;
+      if (type == "fits") return IMG_FITS;
+      if (type == "gif") return IMG_GIF;
+      if (! noerr) error, "unknown image type name";
+    } else if (is_integer(type)) {
+      if ((1 <= type) && (type <= 6)) {
+        return long(type);
+      }
+      if (! noerr) error, "unknown image type identifier";
     }
   }
+  if (! noerr) error, "image type must be a name or an integer";
   return IMG_NONE;
 }
 IMG_NONE = 0;
@@ -1270,7 +1276,7 @@ func img_write(img, filename, type=, cmin=, cmax=, tmp=,
        TYPE - Output image type, one of: "jpeg", "pnm", "png", "tiff"
            or "fits".
        TMP - Name of the temporary file (format PBM, PGM, or PPM, see
-           pnm_write) to creates.  Default is FILENAME~NUMBER where NUMBER is
+           pnm_write) to create.  Default is FILENAME~NUMBER where NUMBER is
            the smallest integer such that no file with the same name already
            exists (note that under race conditions the name of the default
            temporary file is not guaranteed to be unique).
@@ -1283,7 +1289,8 @@ func img_write(img, filename, type=, cmin=, cmax=, tmp=,
            PostScript (level 2) image named FILENAME.eps (the JPEG image is
            not removed).
        QUALITY - JPEG quality (default 75).
-       OPTIMIZE - Creates optimized JPEG image (on by default if pnmtojpeg is used).
+       OPTIMIZE - Creates optimized JPEG image (on by default if pnmtojpeg
+           is used).
        PROGRESSIVE - Creates a progressive JPEG file.
        COMMENT - Text comment.
        SMOOTH=0-100 - Smooth the input image to eliminate dithering
@@ -1424,4 +1431,3 @@ func img_tmpnam(name)
  * coding: utf-8
  * End:
  */
-

@@ -1,68 +1,51 @@
 /*
- * rgl.i -
+ * rgl.i --
  *
  * Implement regularization operators for iterative optimization and
  * inverse problems.
  *
- *-----------------------------------------------------------------------------
- *
- * Copyright (C) 2007-20012 Éric Thiébaut <thiebaut@obs.univ-lyon1.fr>
- *
- * This file is free software; you can redistribute it and/or modify it under
- * the terms of the GNU General Public License as published by the Free
- * Software Foundation; either version 2 of the License, or (at your option)
- * any later version.
- *
- * This file is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
+ * This file is part of IPY package, "Inverse Problems with Yorick".
  *
  *-----------------------------------------------------------------------------
  *
- * $Id: rgl.i,v 0.6 2012/04/18 09:43:37 eric Exp $
- * $Log: rgl.i,v $
- * Revision 0.6  2012/04/18 09:43:37  eric
- *  - update header/footer comments;
- *  - entropy: fix variable name in _rgl_entropy_set_attr;
- *  - totvar: make "isotropic" the default and fix the updating of internals
- *    in _rgl_totvar_state2;
- *  - fix T_LONG --> Y_LONG;
+ * Copyright (C) 2007-20012 Éric Thiébaut <eric.thiebaut@obs.univ-lyon1.fr>
+ * Copyright (C) 2013 MiTiV project <http://mitiv.univ-lyon1.fr>
  *
- * Revision 0.5  2009/05/14 10:47:57  eric
- *  - The builder rgl_new can also configure attributes.
- *  - Cleanup: unused/untested regularizations have been removed.
- *  - Entropy regularizations have a new attribute "epsilon" to
- *    avoid singularities.  Regularizations with floating prior
- *    have to be fixed.  Other entropy regularizations have been
- *    checked and the cache management has been improved.
- *  - New regularization: isotropic total variation ("totvar") which
- *    can also be used for edge-preserving smoothness.
+ * This software is governed by the CeCILL-C license under French law and
+ * abiding by the rules of distribution of free software.  You can use, modify
+ * and/or redistribute the software under the terms of the CeCILL-C license as
+ * circulated by CEA, CNRS and INRIA at the following URL
+ * "http://www.cecill.info".
  *
- * Revision 0.4  2008/09/04 10:07:53  eric
- *  - Version used for the demonstration at SPIE 2008 Conference in Marseille
- *    (France).
- *  - Add new attribute "cost" for the "simple" regularization to allow for
- *    cost functions other than L2.
+ * As a counterpart to the access to the source code and rights to copy, modify
+ * and redistribute granted by the license, users are provided only with a
+ * limited warranty and the software's author, the holder of the economic
+ * rights, and the successive licensors have only limited liability.
  *
- * Revision 0.3  2008/09/04 08:44:40  eric
- *  - Version used for the VLTI 2008 Summer School at Keszthely (Hungary).
+ * In this respect, the user's attention is drawn to the risks associated with
+ * loading, using, modifying and/or developing or reproducing the software by
+ * the user in light of its specific status of free software, that may mean
+ * that it is complicated to manipulate, and that also therefore means that it
+ * is reserved for developers and experienced professionals having in-depth
+ * computer knowledge. Users are therefore encouraged to load and test the
+ * software's suitability as regards their requirements in conditions enabling
+ * the security of their systems and/or data to be ensured and, more generally,
+ * to use and operate it in the same conditions as regards security.
  *
- * Revision 0.2 2007/05/03 21:28:57 eric
- *  - New "separable" regularization after J.-F. Giovannelli
- *    and A. Coulais algorithm.
- *  - New "xsmooth" regularization.
- *  - Unified interface to query/configure the "attributes" of
- *    the regularization instance via rgl_config function.
- *  - Functions rgl_set_hyper and rgl_get_hyper removed.
- *  - The term "hyper-parameters" replaced by "attributes"
- *    which is more general.
- *  - New function rgl_make_2d_finite_difference_matrix to
- *    compute sparse matrix for general finite differences.
+ * The fact that you are presently reading this means that you have had
+ * knowledge of the CeCILL-C license and that you accept its terms.
  *
- * Revision 0.1 2007/01/24 18:02:45 eric
- * First release.
+ *-----------------------------------------------------------------------------
  */
+
+/* IPY is required */
+if (! is_func(ipy_include)) {
+  include, "ipy.i", 1;
+}
+
+/* Yeti and LINOP are required. */
+ipy_include, (is_func(h_new) == 2), "yeti.i";
+ipy_include, is_func(linop_new), "linop.i";
 
 /*---------------------------------------------------------------------------*/
 /* PUBLIC INTERFACE */
@@ -149,23 +132,25 @@ func rgl_info(..)
 }
 
 _RGL_CLASS = h_new(); /* used to store implemented regularization classes */
-
-func rgl_new(class, ..)
+local rgl_new, _rgl_new;
 /* DOCUMENT obj = rgl_new(class);
  *       or obj = rgl_new(class, "attr1", value1, "attr2", value2, ...);
+ *       or obj = rgl_new(class, attr1=value1, attr2=value2, ...);
  *
  *   Returns new instance for a specific regularization method.  CLASS can be
  *   a regularization class name (such as "quadratic") or a regularization
  *   class definition (OTHER.class where OTHER is an existing regularization
  *   instance).
  *
- *   Subsequent arguments are pairs of attribute name and value to set for the
- *   regularizer instance (see rgl_config).
+ *   Subsequent arguments are keywords or pairs of attribute name and value to
+ *   set for the regularizer instance (see rgl_config).
  *
  * SEE ALSO: rgl_config, rgl_update, rgl_get_penalty, rgl_get_gradient,
  *           rgl_get_hessian, rgl_get_diagonal_of_hessian, rgl_apply_hessian,
  *           rgl_get_name.
  */
+
+func _rgl_new(class, ..) /* DOCUMENTED */
 {
   /* Get class definition. */
   if (is_string(class) && is_scalar(class)) {
@@ -177,7 +162,7 @@ func rgl_new(class, ..)
   } else if (! _rgl_check_class(class)) {
     error, "expecting a regularization class name or definition";
   }
-  
+
   /* Create new object instance and initialize it according to its
      class definition. */
   obj = class.setup(h_new(class=class, mu=1.0));
@@ -196,14 +181,63 @@ func rgl_new(class, ..)
       }
       h_set, cfg, name, next_arg();
     }
-    rgl_config, obj, cfg;
+    _rgl_config_from_hash, obj, cfg;
   }
   return obj;
 }
 
-local _rgl_attribute_index;
-func rgl_config(this, ..)
-/* DOCUMENT rgl_config, this, ..., attr, value, ...;
+func rgl_new(args) /* DOCUMENTED */
+{
+  /* Get number of positional arguments and list of keywords. */
+  nargs = args(0);
+  key_list = args(-);
+  nkeys = numberof(key_list);
+
+  /* Get class definition. */
+  local class;
+  if (nargs >= 1) eq_nocopy, class, args(1);
+  if (is_string(class) && is_scalar(class)) {
+    value = _RGL_CLASS(class);
+    if (! _rgl_check_class(value)) {
+      error, ("no regularization class match name \"" + class + "\"");
+    }
+    class = value;
+  } else if (! _rgl_check_class(class)) {
+    error, "expecting a regularization class name or definition";
+  }
+
+  /* Create new object instance and initialize it according to its class
+     definition and, optionally, to configuration settings specified by the
+     other arguments. */
+  obj = class.setup(h_new(class=class, mu=1.0));
+  if (nargs > 1 || nkeys > 0) {
+    cfg = h_new();
+    /* Process positional arguments. */
+    for (i = 2; i <= nargs; ++i) {
+      local key;
+      eq_nocopy, key, args(i);
+      if (rgl_string_scalar(key)) {
+        error, "attribute name must be a string";
+      }
+      if (++i > nargs) {
+        error, ("missing value for attribute \"" + key + "\"");
+      }
+      h_set, cfg, key, args(i);
+    }
+    /* Process keywords. */
+    for (i = 1; i <= nkeys; ++i) {
+      key = key_list(i);
+      h_set, cfg, key, args(key);
+    }
+    /* Apply configuration settings. */
+    _rgl_config_from_hash, obj, cfg;
+  }
+  return obj;
+}
+
+local _rgl_config_from_hash, _rgl_config_attribute, _rgl_config_query;
+local rgl_config, _rgl_config, _rgl_attribute_index;
+/* DOCUMENT rgl_config, this, ..., attr, value, ..., attr=value, ...;
  *     -or- rgl_config, this, ..., cfg, ...;
  *     -or- rgl_config(this);
  *     -or- rgl_config(this, attr);
@@ -211,9 +245,11 @@ func rgl_config(this, ..)
  *   When called as a subroutine, rgl_config is used to set the value(s) of
  *   configurable attribute(s) of the regularization instance THIS.  Settings
  *   consist in ATTR, VALUE pairs or in CFG hash table.  ATTR and VALUE are an
- *   attribute name (or index) and its new value; keys and associated values
- *   in CFG table are used as attribute names and values.  There may be as
- *   many settings as needed.
+ *   attribute name (or index) and its new value; keys and associated values in
+ *   CFG table are used as attribute names and values.  There may be as many
+ *   settings as needed.  If you have a recent version of Yorick (which support
+ *   wrap_args), attributes may also be specified as keywords, like in
+ *   ATTR=VALUE.
  *
  *   When called as a function, rgl_config is used to query the attributes of
  *   the regularization instance THIS.  Without any other argument, the result
@@ -225,6 +261,8 @@ func rgl_config(this, ..)
  *
  *   For instance:
  *     rgl = rgl_new("xsmooth");
+ *     rgl_config, rgl, threshold=1e-4, dimlist=[2,512,512];
+ *   or:
  *     rgl_config, rgl, "threshold", 1e-4, "dimlist", [2,512,512];
  *   or:
  *     rgl_config, rgl, h_new(threshold=1e-4, dimlist=[2,512,512]);
@@ -243,67 +281,148 @@ func rgl_config(this, ..)
  *
  * SEE ALSO: rgl_new, rgl_get_global_weight, rgl_set_global_weight, h_new.
  */
+
+func rgl_config(args) /* DOCUMENTED */
 {
-  local list, attr;
+  /* Get number of positional arguments and list of keywords. */
+  nargs = args(0);
+  key_list = args(-);
+  nkeys = numberof(key_list);
+
+  local this, list, attr;
+  if (nargs >= 1) eq_nocopy, this, args(1);
+  if (! is_hash(this) || ! h_has(this, "class")) {
+    error, "expecting an instance of a regularization class";
+  }
   class = this.class; /* shortcut */
 
   if (am_subroutine()) {
+    /* Set attributes from positional arguments and then from keywords. */
+    for (i = 2; i <= nargs; ++i) {
+      eq_nocopy, attr, args(i);
+      if (is_hash(attr)) {
+        _rgl_config_from_hash, this, attr;
+      } else {
+        if (++i > nargs) {
+          error, "missing attribute value";
+        }
+       _rgl_config_attribute, this, attr, args(i);
+      }
+    }
+    for (i = 1; i <= nkeys; ++i) {
+      key = key_list(i);
+      _rgl_config_attribute, this, key, args(key);
+    }
+  } else {
+    /* Called as function: query attribute(s). */
+    if (nargs == 1 && nkeys == 0) {
+      list = this.class.attr_list; /* make a copy */
+      return list;
+    } else if (nargs == 2 && nkeys == 0) {
+      /* Query attribute value(s). */
+      return _rgl_config_query(this, args(2));
+    } else {
+      error, "too many arguments or keywords in this context";
+    }
+  }
+}
+
+func _rgl_config(this, ..) /* DOCUMENTED */
+{
+  local attr;
+  if (am_subroutine()) {
+    /* Set attributes from other arguments. */
     /* Set attribute(s). */
-    set_attr = class.set_attr; /* shortcut */
     while (more_args()) {
       eq_nocopy, attr, next_arg();
       if (is_hash(attr)) {
-        for (key = h_first(attr); key ; key = h_next(attr, key)) {
-          index = _rgl_attribute_index(this, key);
-          if (index <= 0) {
-            error, ("invalid attribute name \"" + key + "\"");
-          }
-          set_attr, this, index, attr(key);
-        }
+        _rgl_config_from_hash, this, attr;
       } else {
-        index = _rgl_attribute_index(this, attr);
-        if (index <= 0) {
-          if (! is_scalar(attr) || ! (is_integer(attr) || is_string(attr))) {
-            error, "expecting an attribute name (or index) or a hash table";
-          }
-          error, "invalid attribute name or index";
-        }
         if (! more_args()) {
           error, "missing attribute value";
         }
-        set_attr, this, index, next_arg();
+        _rgl_config_attribute, this, attr, next_arg();
       }
     }
   } else {
     /* Called as function: query attribute(s). */
-    get_attr = class.get_attr; /* shortcut */
     if (more_args()) {
       /* Query attribute value(s). */
       eq_nocopy, attr, next_arg();
       if (more_args()) {
         error, "too many arguments in this context";
       }
-      index = _rgl_attribute_index(this, attr, 1n);
-      if (index > 0) {
-        return get_attr(this, index);
-      }
-      if (index == -1) {
-        /* Return all attributes in the form of a hash-table. */
-        result = h_new();
-        eq_nocopy, list, class.attr_list;
-        n = numberof(list);
-        for (k = 1; k <= n; ++k) {
-          // FIXME: make a copy here?
-          h_set, result, list(k), get_attr(this, k);
-        }
-        return result;
-      }
-      error, "invalid attribute name or index";
+      return _rgl_config_query(this, attr);
     } else {
       list = this.class.attr_list; /* make a copy */
       return list;
     }
   }
+}
+
+/* Use old versions of rgl_new and rgl_config if Yorick does not support
+   wrap_args. */
+if (is_func(wrap_args) == 2) {
+  //errs2caller, rgl_new;
+  //errs2caller, rgl_config;
+  wrap_args, rgl_new;
+  wrap_args, rgl_config;
+  _rgl_new = [];
+  _rgl_config = [];
+} else {
+  rgl_new = _rgl_new;
+  rgl_config = _rgl_config;
+}
+
+func _rgl_config_from_hash(this, table)
+{
+  set_attr = this.class.set_attr; /* shortcut */
+  for (key = h_first(table); key ; key = h_next(table, key)) {
+    index = _rgl_attribute_index(this, key);
+    if (index <= 0) {
+      error, ("invalid attribute name \"" + key + "\"");
+    }
+    set_attr, this, index, table(key);
+  }
+}
+
+func _rgl_config_attribute(this, attr, value)
+{
+  index = _rgl_attribute_index(this, attr);
+  if (index <= 0) {
+    if (! is_scalar(attr) || ! (is_integer(attr) || is_string(attr))) {
+      error, "expecting an attribute name (or index) or a hash table";
+    }
+    error, "invalid attribute name or index";
+  }
+  set_attr = this.class.set_attr; /* needed to overcome Yorck limitations */
+  set_attr, this, index, value;
+}
+
+func _rgl_config_query(this, attr)
+{
+  get_attr = this.class.get_attr; /* shortcut */
+  index = _rgl_attribute_index(this, attr, 1n);
+  if (index > 0) {
+    return get_attr(this, index);
+  }
+  if (index == -1) {
+    /* Return all attributes in the form of a hash-table. */
+    result = h_new();
+    eq_nocopy, list, class.attr_list;
+    n = numberof(list);
+    for (k = 1; k <= n; ++k) {
+      // FIXME: make a copy here?
+      h_set, result, list(k), get_attr(this, k);
+    }
+    return result;
+  }
+  error, "invalid attribute name or index";
+}
+if (is_func(errs2caller) == 2) {
+  errs2caller, _rgl_config_from_hash;
+  errs2caller, _rgl_config_attribute;
+  errs2caller, _rgl_config_query;
 }
 
 func _rgl_attribute_index(this, attr, query)
@@ -542,7 +661,7 @@ func _rgl_bogus_set_attr(this, x)
 }
 
 func _rgl_get_symbol(str)
-/* DOCUMENT _rgl_get_symbol(str);  
+/* DOCUMENT _rgl_get_symbol(str);
  *   Returns symbol with name STR or nil if it doesn't exists.  This function
  *   is mainly a workaround of builtin symbol_def which raises an error if STR
  *   was never defined.
@@ -1678,8 +1797,8 @@ local rgl_entropy;
  *    "normalized" (3) - X is normalized?
  *    "prior"      (4) - prior p (if an array) or matrix A (if a linear
  *                       operator), or "none".
- *    "epsilon"    (5) - small value to get rid of singularities near zero, denoted
- *                       EPS in equations above (default is 1E-20).
+ *    "epsilon"    (5) - small value to get rid of singularities near zero,
+ *                       denoted EPS in equations above (default is 1E-20).
  *
  *  Cases:
  *     Id. Type    Normalized   Prior   Negentropy
@@ -2833,7 +2952,7 @@ h_evaluator, rgl_identity, "_rgl_identity_evaluator";
  * tab-width: 8
  * c-basic-offset: 2
  * indent-tabs-mode: nil
- * fill-column: 78
+ * fill-column: 79
  * coding: utf-8
  * End:
  */

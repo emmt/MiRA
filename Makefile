@@ -5,6 +5,7 @@
 #
 
 SOURCES = fft_utils.i \
+          ipy.i \
           fmin.i \
           img.i \
           linop.i \
@@ -48,6 +49,18 @@ fft_utils.i: /home/eric/yorick/fft_utils.i
 # 	test -e $@ && mv -f $@ $@.bak || true
 # 	cp -a $< $@
 
+ipy.i: /home/eric/devel/ipy/ipy.i
+	test -e $@ && mv -f $@ $@.bak || true
+	cp -a $< $@
+
+rgl.i: /home/eric/devel/ipy/rgl.i
+	test -e $@ && mv -f $@ $@.bak || true
+	cp -a $< $@
+
+linop.i: /home/eric/devel/ipy/linop.i
+	test -e $@ && mv -f $@ $@.bak || true
+	cp -a $< $@
+
 fmin.i: /home/eric/yorick/fmin.i
 	test -e $@ && mv -f $@ $@.bak || true
 	cp -a $< $@
@@ -56,9 +69,6 @@ img.i: /home/eric/yorick/img.i
 	test -e $@ && mv -f $@ $@.bak || true
 	cp -a $< $@
 
-linop.i: /home/eric/yorick/linop.i
-	test -e $@ && mv -f $@ $@.bak || true
-	cp -a $< $@
 
 options.i: /home/eric/yorick/options.i
 	test -e $@ && mv -f $@ $@.bak || true

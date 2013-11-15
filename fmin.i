@@ -19,7 +19,7 @@
  *
  *-----------------------------------------------------------------------------
  *
- *	$Id: fmin.i,v 1.2 2008/07/12 06:47:24 eric Exp $
+ *	$Id: fmin.i,v 1.2 2008/07/12 06:47:24 eric Exp eric $
  *	$Log: fmin.i,v $
  *	Revision 1.2  2008/07/12 06:47:24  eric
  *	 - Added final comment for setting local variables of Emacs.
@@ -69,6 +69,10 @@ func fmin(f, a, b, lim, tol=, all=, eps=)
    REFERENCES:
      The method is  based on original Brent's method  modified to allow for
      different kind of bounds (both, left, right or none).
+
+     [1] Brent, R.P. 1973, "Algorithms for Minimization without Derivatives"
+         (Englewood Cliffs, NJ: Prentice-Hall), Chapter 5.
+
 
    SEE ALSO: */
 {

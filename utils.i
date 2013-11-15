@@ -5,7 +5,7 @@
  *
  *-----------------------------------------------------------------------------
  *
- * Copyright (C) 1996-2008 Eric Thiébaut <thiebaut@obs.univ-lyon1.fr>
+ * Copyright (C) 1996-2012 Eric Thiébaut <thiebaut@obs.univ-lyon1.fr>
  *
  * This file is free software; as a special exception the author gives
  * unlimited permission to copy and/or distribute it, with or without
@@ -32,6 +32,7 @@
  *   height_of    - get 2nd dimension of an array
  *   is_integer_scalar - check if argument is a scalar of integer type
  *   is_string_scalar - check if argument is a scalar string
+ *   lambda       - create anonymous function
  *   load_text    - load all lines of a text file
  *   map          - apply function to every elements of array or list
  *   moments      - get first moments of a sampled distribution
@@ -62,6 +63,7 @@
  *   strrchr      - backward search for a character in a string
  *   strupper     - convert string(s) to upper case letters
  *   strip_file_extension - remove extension from file name
+ *   swap_bytes   - swap bytes of an array
  *   tempfile     - get unique file name
  *   timer_elapsed - get/print the elapsed time since timer_start
  *   timer_start  - (re)start the profiling timer
@@ -72,8 +74,21 @@
  *-----------------------------------------------------------------------------
  *
  * History:
- *   $Id: utils.i,v 1.28 2010/03/30 15:11:15 eric Exp eric $
+ *   $Id: utils.i,v 1.31 2013/04/12 17:00:46 eric Exp $
  *   $Log: utils.i,v $
+ *   Revision 1.31  2013/04/12 17:00:46  eric
+ *   - New function lambda to create an anonymous function.
+ *
+ *   Revision 1.30  2013/03/15 10:28:34  eric
+ *   - map() function improved to handle being called as a subroutine
+ *      and functions which return non-scalar result (for a scalar
+ *      argument).
+ *
+ *   Revision 1.29  2012/05/15 07:16:04  eric
+ *    - New function swap_bytes().
+ *    - Fix xopen() for "pack" and "compress" methods.
+ *    - Add "lzma" and "xz" methods to xopen().
+ *
  *   Revision 1.28  2010/03/30 15:11:15  eric
  *    - Loading of "emulate_yeti.i" fixed.
  *    - New functions: rescale() and cast().
@@ -292,21 +307,22 @@ func old_eval(code, tmp=, debug=)
 
 func undersample(a, nsub, which=, op=)
 /* DOCUMENT undersample(a, nsub)
-     Returns  array A  with all  (some)  dimensions divided  by NSUB.   The
+
+     Returns array A with all (some) dimensions divided by NSUB.  The
      dimensions of interest must be a multiple of NSUB.
 
-     Keyword  WHICH can  be used  to  specify the  dimension(s) to  shrink.
-     Values  in  WHICH  less  or  equal  zero are  counted  from  the  last
-     dimension.  By default, all dimensions of A get undersampled.
+     Keyword WHICH can be used to specify the dimension(s) to shrink.  Values
+     in WHICH less or equal zero are counted from the last dimension.  By
+     default, all dimensions of A get undersampled.
 
-     Keyword OP can  be used to specify the range operator  to apply to the
-     sets of NSUB adjacent values along the considered dimensions:
+     Keyword OP can be used to specify the range operator to apply to the sets
+     of NSUB adjacent values along the considered dimensions:
        OP=sum   to sum the values
        OP=avg   to average values
        OP=min   to keep the smallest value
        OP=max   to keep the largest value
-     By default,  the median is  taken (WARNING: with the  median operator,
-     the result depends in which order the dimensions of A are considered).
+     By default, the median is taken (WARNING: with the median operator, the
+     result depends in which order the dimensions of A are considered).
 
    SEE ALSO: median. */
 {
@@ -341,6 +357,138 @@ func undersample(a, nsub, which=, op=)
     }
     tmp = []; /* free some memory */
     if (this != 1) a = transpose(a, [this,1]);
+  }
+  return a;
+}
+
+func resample(a, f)
+/* DOCUMENT resample(a, f);
+       -or- resample(a, dims);
+
+     Resample input array A so that its dimensions are rescaled by the factor(s)
+     F or become the new dimension list DIMS.
+
+     F is a floating point value or vector which specifies the scaling
+     factor(s) to apply to the dimensions of the original array A.  If the
+     scaling factors are all the same for all dimensions, F may be a scalar;
+     otherwise, F must be a vector with as many elements as the rank of A.
+     The dimensions of the result are the dimensions of the input array times
+     F and rounded to the nearest integer (though the dimension is at least 1).
+
+     DIMS is an integer value or vector which specifies the dimensions of the
+     result.  If the result dimensions are all the same, DIMS may be a scalar;
+     otherwise, DIMS is the dimension list of the result which must have the
+     same rank as the input array A.
+
+     Along dimensions that are reduced, the sampling is decreased by
+     integrating values at a lower resolution; along dimensions that are
+     augmented, the sampling is increased by linear interpolating at an higher
+     resolution; nothing is done for dimensions that remain the same and have
+     a scaling factor equals to 1.
+
+     For instance, to resample an RBG image IMG1 of size 3-by-W1-by-H1 to size
+     3-by-W2-by-H2:
+
+       img2 = resample(img1, [3,3,w2,h2])
+
+     if you further need to keep the result of type char (i.e. as an RGB image
+     for Yorick):
+
+       img2 = char(max(0, min(255, resample(img1, [3,3,w2,h2]) + 0.5)));
+
+
+   SEE ALSO: bytescl, dimsof, interp, spline_zoom.
+ */
+{
+  if (! is_array(a) || identof(a) >= Y_STRING) {
+    error, "expecting a numerical array";
+  }
+  if (is_scalar(a)) return a;
+
+  local new_dims, scale;
+  old_dims = dimsof(a);
+  ndims = old_dims(1);
+  err = 0n;
+  if (is_integer(f)) {
+    if (is_scalar(f) && f >= 1) {
+      new_dims = array(long, ndims + 1);
+      new_dims(1) = ndims;
+      new_dims(2:) = f;
+    } else if (is_vector(f) && numberof(f) == ndims + 1 && f(1) == ndims
+               && (ndims == 0 || min(f) >= 1)) {
+      eq_nocopy, new_dims, f;
+    } else {
+      err = 1n;
+    }
+    if (! err) {
+      f = double(new_dims(2:))/double(old_dims(2:));
+    }
+  } else if (is_real(f) && min(f) > 0.0) {
+    if (is_scalar(f)) {
+      f = array(double(f), ndims);
+    } else if (numberof(f) == ndims) {
+      eq_nocopy, f, double(f);
+    } else {
+      err = 1n;
+    }
+    if (! err) {
+      new_dims = array(long, ndims + 1);
+      new_dims(1) = ndims;
+      new_dims(2:) = max(1, long(floor(f*old_dims(2:) + 0.5)));
+    }
+  }
+  if (err) {
+    error, "bad new dimension list or scaling factor(s)";
+  }
+
+  /* Resample the original array starting by all dimensions that need to be
+     reduced to work with as small arrays as possible. */
+  flags = (old_dims(2:) != new_dims(2:) | f != 1.0)*((f < 1.0) + 1);
+  for (k = 1; k <= ndims; ++k) {
+    if (flags(k) == 2) {
+      /* Decrease sampling by integrating values at a lower resolution. */
+      q = f(k);
+      old_len = old_dims(k+1);
+      new_len = new_dims(k+1);
+      old_pos = (indgen(old_len + 1) - (old_len + 2)/2.0)*q;
+      new_pos = (indgen(new_len + 1) - (new_len + 2)/2.0);
+      if (k == 1) {
+        a = interp(unref(a)(cum,..), old_pos, new_pos, k)(dif,..)*q;
+      } else if (k == 2) {
+        a = interp(unref(a)(,cum,..), old_pos, new_pos, k)(,dif,..)*q;
+      } else if (k == 3) {
+        a = interp(unref(a)(,,cum,..), old_pos, new_pos, k)(,,dif,..)*q;
+      } else if (k == 4) {
+        a = interp(unref(a)(,,,cum,..), old_pos, new_pos, k)(,,,dif,..)*q;
+      } else if (k == 5) {
+        a = interp(unref(a)(,,,,cum,..), old_pos, new_pos, k)(,,,,dif,..)*q;
+      } else if (k == 6) {
+        a = interp(unref(a)(,,,,,cum,..), old_pos, new_pos, k)(,,,,,dif,..)*q;
+      } else if (k == 7) {
+        a = interp(unref(a)(,,,,,,cum,..), old_pos, new_pos, k)(,,,,,,dif,..)*q;
+      } else if (k == 8) {
+        a = interp(unref(a)(,,,,,,,cum,..), old_pos, new_pos, k)(,,,,,,,dif,..)*q;
+      } else if (k == 9) {
+        a = interp(unref(a)(,,,,,,,,cum,..), old_pos, new_pos, k)(,,,,,,,,dif,..)*q;
+      } else if (k == 10) {
+        a = interp(unref(a)(,,,,,,,,,cum,..), old_pos, new_pos, k)(,,,,,,,,,dif,..)*q;
+      } else {
+        error, "too many dimensions";
+      }
+    }
+    for (k = 1; k <= ndims; ++k) {
+      if (flags(k) == 1) {
+        /* Increase sampling by linear interpolating at an higher resolution. */
+        q = f(k);
+        old_len = old_dims(k+1);
+        new_len = new_dims(k+1);
+        old_pos = (indgen(old_len) - (old_len + 1)/2.0)*q;
+        new_pos = (indgen(new_len) - (new_len + 1)/2.0);
+        a = interp(unref(a), old_pos, new_pos, k);
+        old_pos = (indgen(old_len + 1) - (old_len + 2)/2.0)*q;
+        new_pos = (indgen(new_len + 1) - (new_len + 2)/2.0);
+      }
+    }
   }
   return a;
 }
@@ -383,9 +531,9 @@ func spline_zoom(a, factor, rgb=)
      specified, then it is considered as true if A is a 3 dimensional array
      of 'char' with its first dimension equal to 3.
 
-     The rescale function is probably more powerful.
+     The rescale() function is probably more powerful.
 
-   SEE ALSO: spline, transpose, rescale. */
+   SEE ALSO: spline, transpose, rescale, resample. */
 {
   if (! is_func(spline)) require, "spline.i";
   dims = dimsof(a);
@@ -425,33 +573,96 @@ func spline_zoom(a, factor, rgb=)
 }
 
 func map(__map__f, __map__x)
-/* DOCUMENT map(f, input)
-     Map scalar function F onto array/list argument INPUT to mimics
-     element-wise unary operation.
-   SEE ALSO: _map. */
+/* DOCUMENT map(f, x)
+         or map, f, x;
+     Map scalar function or subroutine F onto argument X to mimics
+     elementwise unary operation.  Argument X must be an array, or
+     a list or nil.  When called as a function, the result is: nil
+     if X is nil, an array dimsof(F(X(1)))-by-dimsof(X) if X is an
+     array, a list if X is a list.
+
+     For example, to kill all windows:
+       map, winkill, window_list();
+
+     To print all the elements of a list:
+       map, write, list;
+
+   SEE ALSO: lambda, _map. */
 {
-  /* all locals here must have weird names, since the user's function may
-     rely on external variables for arguments not varying in the source,
-     or for accumulated outputs */
+  /* All locals here must have weird names, since the user's function
+     may rely on external variables for arguments not varying in the
+     source, or for accumulated outputs. */
   if (is_array(__map__x)) {
-    __map__y = array(structof((__map__i = __map__f(__map__x(1)))),
-                     dimsof(__map__x));
-    __map__y(1) = __map__i;
-    __map__n = numberof(__map__x);
-    for (__map__i=2 ; __map__i<=__map__n ; ++__map__i) {
-      __map__y(__map__i) = __map__f(__map__x(__map__i));
+    if (am_subroutine()) {
+      __map__n = numberof(__map__x);
+      for (__map__i = 1; __map__i <= __map__n; ++__map__i) {
+        __map__f, __map__x(__map__i);
+      }
+    } else if (is_scalar(__map__x)) {
+      return __map__f(__map__x);
+    } else {
+      __map__n = numberof(__map__x);
+      __map__y1 = __map__f(__map__x(1));
+      __map__y = array(structof(__map__y1), dimsof(__map__y1),
+                       dimsof(__map__x));
+      if ((__map__m = numberof(__map__y1)) == 1) {
+        __map__y(1) = __map__y1;
+        for (__map__i = 2; __map__i <= __map__n; ++__map__i) {
+          __map__y(__map__i) = __map__f(__map__x(__map__i));
+        }
+      } else {
+        __map__y(1:(__map__j1 = __map__m)) = __map__y1(*);
+        for (__map__i = 2; __map__i <= __map__n; ++__map__i) {
+          __map__j0 = __map__j1 + 1;
+          __map__j1 += __map__m;
+          __map__y(__map__j0:__map__j1) = __map__f(__map__x(__map__i))(*);
+        }
+      }
+      return __map__y;
     }
-  } else if ((__map__n = typeof(__map__x)) == "list") {
-    __map__y = __map__i = _lst(__map__f(_car(__map__x)));
-    for (__map__x = _cdr(__map__x) ; ! is_void(__map__x) ;
-         __map__x = _cdr(__map__x)) {
-      _cat, __map__i, _lst(__map__f(_car(__map__x)));
-      __map__i= _cdr(__map__i);
+  } else if (is_list(__map__x)) {
+    if (am_subroutine()) {
+      while (__map__x) {
+        __map__f, _car(__map__x);
+        __map__x = _cdr(__map__x);
+      }
+    } else {
+      __map__y = _lst(__map__f(_car(__map__x)));
+      while ((__map__x = _cdr(__map__x))) {
+        _cat, __map__y, __map__f(_car(__map__x));
+      }
+      return __map__y;
     }
   } else if (! is_void(__map__x)) {
-    error, "unsupported data type \""+__map__n+"\"";
+    error, "unsupported data type \""+typeof(__map__x)+"\"";
   }
-  return __map__y;
+}
+
+func lambda(args, code)
+/* DOCUMENT lambda(args, code);
+     Return an anonymous function with ARGS its argment list and CODE
+     the body of the function.  ARGS and CODE must be scalar strings.
+     For instance:
+
+       f1 = lambda("x", "c = x*x; return sqrt(c + abs(x));");
+       f2 = lambda("x,y", "return cos(x*y + abs(x));");
+
+     define two functions f1 and f2 which take respectively one and two
+     arguments.  When variables f1 and f2 get out of scope the function
+     definition is automatically deleted.
+
+     Other example:
+     
+       a = _lst(12,34,67);
+       b = map(lambda("x", "return sin(x);"), a);
+
+     B is a list with its elements the sines of the elements of A.
+     
+   SEE ALSO: map, include.
+ */
+{
+  include,["func __lambda__(" + args + ") { " + code + " }"], 1;
+  return __lambda__;
 }
 
 func rescale(a, .., scale=, rgb=, cubic=)
@@ -463,11 +674,11 @@ func rescale(a, .., scale=, rgb=, cubic=)
      first dimension of A and of the interpolated array must be 3 and the
      interpolated array is converted into char.  If keyword CUBIC is true
      cubic spline interpolation is used.
-     
-   SEE ALSO: interp, spline, transpose, cast. */
+
+   SEE ALSO: interp, spline, transpose, cast, resample. */
 {
   /* explicit */ extern spline;
-  
+
   /* Get dimension lists. */
   if (! is_array(a)) error, "unexpected non-array argument";
   old_dimlist = dimsof(a);
@@ -499,7 +710,7 @@ func rescale(a, .., scale=, rgb=, cubic=)
 
   type = structof(a);
   cmplx = (type == complex);
-  if (! cmplx && type != double) a = double(a); 
+  if (! cmplx && type != double) a = double(a);
   n1 = (cmplx ? 2 : 1);
   n2 = 1;
   n3 = numberof(a);
@@ -532,9 +743,9 @@ func rescale(a, .., scale=, rgb=, cubic=)
               b(i1,,i3) = spline(a(i1,,i3), old_x, new_x);
             }
           }
-          eq_nocopy, a, b; 
+          eq_nocopy, a, b;
         } else {
-          a = interp(a, old_x, new_x, 2); 
+          a = interp(a, old_x, new_x, 2);
         }
       }
     }
@@ -547,7 +758,7 @@ func rescale(a, .., scale=, rgb=, cubic=)
     a = cast(a, double, new_dimlist);
   }
   return a;
-} 
+}
 
 func cast(a, type, dimlist)
 /* DOCUMENT cast(a, type, dims)
@@ -565,7 +776,7 @@ func cast(a, type, dimlist)
 func swap_bytes(a)
 /* DOCUMENT swap_bytes(a)
      Swap the bytes of the array A.
-     
+
    SEE ALSO: swap, cast.
  */
 {
@@ -1376,6 +1587,8 @@ func guess_compression(filename)
        2 - if file compressed with "bzip2";
        3 - if file compressed with "compress";
        4 - if file compressed with "pack";
+       5 - if file compressed with "lzma";
+       6 - if file compressed with "xz";
        0 - otherwise.
 
   SEE ALSO: xopen. */
@@ -1383,12 +1596,17 @@ func guess_compression(filename)
   /* according to information in /etc/magic:
    *
    * method    min.            bytes
-   *           size      0    1    2    3
-   * --------- ----    ---- ---- ---- ----
-   * pack:       3     \037 \036
-   * compress:   3     \037 \235
-   * gzip:      20     \037 \213   c         (1)
-   * bzip2:     14      'B'  'Z'  'h'   c    (2)
+   *           size      1    2    3    4    5    6
+   * --------- ----    ---- ---- ---- ---- ---- ----
+   * pack        3     \037 \036
+   * compress    3     \037 \235
+   * gzip       20     \037 \213   c         (1)
+   * bzip2      14      'B'  'Z'  'h'   c    (2)
+   * lzma              \135 \000 \000 \200
+   * xz                \375 \067 \172 \130
+   *                   \375  '7'  'z'  'X'  'Z' \000
+   * 7z                 '7'  'z' \274 \257 \047 \034
+   * zip                'P'  'K' \003 \004
    *
    *   (1)  if c<8, compression level, else if c==8 deflated
    *   (2)  with '0' <= c <= '9', block size = c*100kB
@@ -1399,7 +1617,7 @@ func guess_compression(filename)
    *     gzip     -> 20 bytes, if compression level is specified
    *                 24 bytes, otherwise
    */
-  magic = array(char, 4);
+  magic = array(char, 6);
   n = _read(open(filename, "rb"), 0, magic);
   if ((c = magic(1)) == '\037') {
     if ((c = magic(2)) == '\213') {
@@ -1421,6 +1639,16 @@ func guess_compression(filename)
     write, format="%s: compressed with \"bzip2\" (block size = %d kB)\n",
       filename, 100*(c - '0');
     return;
+  } else if (c == '\135' && magic(2) == '\000' && magic(3) == '\000' &&
+             magic(4) == '\200') {
+    if (! am_subroutine()) return 5; /* lzma */
+    write, format="%s: compressed with \"lzma\"\n", filename;
+    return;
+  } else if (n >= 6 && c == '\375' && magic(2) == '7' && magic(3) == 'z' &&
+             magic(4) == 'X' && magic(5) == 'Z' && magic(6) ==  '\000') {
+    if (! am_subroutine()) return 6; /* xz */
+    write, format="%s: compressed with \"xz\"\n", filename;
+    return;
   }
   if (! am_subroutine()) return 0;
   write, format="%s: uncompressed?\n", filename;
@@ -1429,16 +1657,16 @@ func guess_compression(filename)
 func xopen(filename, filemode, preserve=, nolog=, compress=, level=, prims=)
 /* DOCUMENT xopen(filename)
        -or- xopen(filename, filemode)
-     Opens the file FILENAME according to FILEMODE (both are strings).  The
-     return value is an IOStream (or just stream for short).  When the last
-     reference to this return value is discarded, the file will be closed.
-     The file can also be  explicitly closed with the close function (which
-     see).  The  FILEMODE (default  "r" -- open  an existing text  file for
-     reading) determines whether  the file is to be  opened in read, write,
-     or update mode,  and whether writes are restricted  to the end-of-file
-     (append mode).  FILEMODE also determines whether the file is opened as
-     a text  file or  as a  binary file.  FILEMODE  can have  the following
-     values, which are the same as for the ANSI standard fopen function:
+     Opens the  file FILENAME according  to FILEMODE (both are  strings).  The
+     return value  is an IOStream (or  just stream for short).   When the last
+     reference to  this return  value is discarded,  the file will  be closed.
+     The file  can also  be explicitly closed  with the close  function (which
+     see).   The FILEMODE  (default  "r" --  open  an existing  text file  for
+     reading) determines whether  the file is to be opened  in read, write, or
+     update mode, and whether writes are restricted to the end-of-file (append
+     mode).  FILEMODE  also determines  whether the file  is opened as  a text
+     file or as a binary file.   FILEMODE can have the following values, which
+     are the same as for the ANSI standard fopen function:
          "r"   - read only
          "w"   - write only, random access, existing file overwritten
          "a"   - write only, forced to end-of-file, existing file preserved
@@ -1449,10 +1677,10 @@ func xopen(filename, filemode, preserve=, nolog=, compress=, level=, prims=)
          "rb"  "wb"  "ab"  "r+b"  "rb+"  "w+b"  "wb+"  "a+b"  "ab+"
                  without b means text file, with b means binary file
 
-     Keyword COMPRESS can be used  to specify compression method for a text
-     file open for reading (FILEMODE="r") or writing (FILEMODE="w") only --
-     (de)compression  is unsupported in  append mode  or for  binary files.
-     The value of keyword COMPRESS can be a scalar string or an integer:
+     Keyword COMPRESS  can be  used to specify  compression method for  a text
+     file open  for reading (FILEMODE="r")  or writing (FILEMODE="w")  only --
+     (de)compression is unsupported  in append mode or for  binary files.  The
+     value of keyword COMPRESS can be a scalar string or an integer:
           "auto"     - guess compression according to first bytes of file
                        in read  mode, or according to file extension in
                        write mode: ".gz" for gzip, ".bz2" for bzip2 and
@@ -1462,32 +1690,33 @@ func xopen(filename, filemode, preserve=, nolog=, compress=, level=, prims=)
        2  "bzip2"    - use bzip2 to (de)compress
        3  "compress" - use compress to (de)compress
        4  "pack"     - use pack to (de)compress
-     The default  value for COMPRESS is  "auto" in read mode  and "none" in
-     write mode.  Note that "gzip", "bzip2", "pack" and "compress" commands
-     must  exists in  your  $PATH for  compressing  with the  corresponding
-     methods.  Decompression of files compressed with "pack" and "compress"
-     is  done  by  "gzip".   If  keyword  COMPRESS  is  explicitely  0,  no
-     decompression  is ever  applied;  if keyword  COMPRESS is  explicitely
-     non-zero, the  file must have been compressed.   The compression level
-     for gzip  and bzip2  can be  specified as an  integer value  thanks to
-     keyword LEVEL.
+       5  "lzma"     - use lzma to (de)compress
+       6  "xz"       - use xz to (de)compress
 
-     Keyword PRIMS  can be used  to specify primitives data  type different
-     than  the native  ones for  binary files  (PRIMS is  ignored  for text
-     files).  PRIMS can  be a scalar string (i.e.,  "alpha", "mac", "sun3",
-     "cray", "macl", "sun", "dec",  "pc", "vax", "vaxg", "i86", "sgi64", or
-     "xdr") or  a 32-element  vector of long's  as taken  by set_primitives
-     (which see).
+     The default value for COMPRESS is "auto" in read mode and "none" in write
+     mode.   Note that "gzip",  "bzip2", "pack",  "compress", "lzma"  and "xz"
+     commands must exists in your $PATH for compressing with the corresponding
+     methods.  Decompression of files compressed with "pack" and "compress" is
+     done by "gzip".   If keyword COMPRESS is explicitely  0, no decompression
+     is ever  applied; if keyword  COMPRESS is explicitely non-zero,  the file
+     must have been compressed.  The  compression level for gzip and bzip2 can
+     be specified as an integer value thanks to keyword LEVEL.
 
-     When a binary file is created, it is possible to avoid the creation of
+     Keyword PRIMS can be used  to specify primitives data type different than
+     the  native ones  for binary  files (PRIMS  is ignored  for  text files).
+     PRIMS  can be  a scalar  string  (i.e., "alpha",  "mac", "sun3",  "cray",
+     "macl", "sun", "dec", "pc", "vax", "vaxg", "i86", "sgi64", or "xdr") or a
+     32-element vector of long's as taken by set_primitives (which see).
+
+     When a  binary file is created, it  is possible to avoid  the creation of
      the log-file FILENAME+"L" by setting keyword NOLOG to true.
 
-     Keyword PRESERVE can  be set to true to  avoid overwriting an existing
-     file when FILENAME is open for writing (i.e. with a "w" in FILEMODE).
+     Keyword PRESERVE can be set to true to avoid overwriting an existing file
+     when FILENAME is open for writing (i.e. with a "w" in FILEMODE).
 
 
-   BUGS:
-     If (de)compression is used, FILENAME must not contain any double quote
+   RESTRICTIONS:
+     If (de)compression  is used, FILENAME  must not contain any  double quote
      character (").
 
 
@@ -1498,14 +1727,14 @@ func xopen(filename, filemode, preserve=, nolog=, compress=, level=, prims=)
     compress = __xopen_get_compress(compress, filename, 1);
     if (! compress) return open(filename, "r");
     if (compress == 2) return popen("bzip2 -dc \"" + filename + "\"", 0);
+    if (compress == 5) return popen("lzma -dc \"" + filename + "\"", 0);
+    if (compress == 6) return popen("xz -dc \"" + filename + "\"", 0);
     if (compress == -1) error, "bad value for keyword COMPRESS";
     return popen("gzip -dc \"" + filename + "\"", 0);
   }
 
   if (preserve && strmatch(filemode, "w") && open(filename, "r", 1))
     error, "file \""+filename+"\" already exists";
-
-  filemode
 
   if (filemode == "w") {
     /* Open file for writing in text mode. */
@@ -1519,12 +1748,17 @@ func xopen(filename, filemode, preserve=, nolog=, compress=, level=, prims=)
       else command = swrite(format="bzip2 -%d > \"%s\"", level, filename);
     } else if (compress == 3) {
       command = swrite(format="compress > \"%s\"", filename);
-    } else if (compress == 2) {
+    } else if (compress == 4) {
       command = swrite(format="pack > \"%s\"", filename);
+    } else if (compress == 5) {
+      if (is_void(level)) command = swrite(format="lzma > \"%s\"", filename);
+      else command = swrite(format="lzma -%d > \"%s\"", level, filename);
+    } else if (compress == 6) {
+      if (is_void(level)) command = swrite(format="xz > \"%s\"", filename);
+      else command = swrite(format="xz -%d > \"%s\"", level, filename);
     } else {
       error, "bad value for keyword COMPRESS";
     }
-    command
     return popen(command, 1);
   }
 
@@ -1576,9 +1810,11 @@ func __xopen_get_compress(compress, filename, for_reading)
     if ((s = structof(compress)) == string) {
       if (compress == "auto") {
         if (for_reading) return guess_compression(filename);
-        if (strpart(filename, -2:0) == ".gz" ) return 1; /* gzip */
-        if (strpart(filename, -3:0) == ".bz2") return 2; /* bzip2 */
-        if (strpart(filename, -1:0) == ".Z"  ) return 3; /* compress */
+        if (strpart(filename, -2:0) == ".gz"  ) return 1; /* gzip */
+        if (strpart(filename, -3:0) == ".bz2" ) return 2; /* bzip2 */
+        if (strpart(filename, -1:0) == ".Z"   ) return 3; /* compress */
+        if (strpart(filename, -4:0) == ".lzma") return 5; /* lzma */
+        if (strpart(filename, -2:0) == ".xz"  ) return 6; /* xz */
         return 0;
       }
       if (compress == "none"    ) return 0;
@@ -1586,6 +1822,8 @@ func __xopen_get_compress(compress, filename, for_reading)
       if (compress == "bzip2"   ) return 2;
       if (compress == "compress") return 3;
       if (compress == "pack"    ) return 4;
+      if (compress == "lzma"    ) return 5;
+      if (compress == "xz"      ) return 6;
     } else if ((s == long || s == int || s == short || s == char) &&
                compress >= 0 && compress <= 4) {
       return compress;
@@ -1596,26 +1834,26 @@ func __xopen_get_compress(compress, filename, for_reading)
 
 func raw_read(filename, type, .., encoding=, offset=)
 /* DOCUMENT raw_read(filename, type, dimlist, ...)
- *
- *   Read binary array of TYPE elements with DIMLIST dimension list
- *   into file FILENAME and return the array.
- *
- *   Keyword OFFSET can be used to set the number of bytes to skip
- *   prior to reading the data.
- *
- *   Keyword ENCODING can be used to change the data encoding of the
- *   file.  The value of the keyword is a string like:
- *
- *      "xdr", "sun"  - eXternal Data Representation (IEEE big endian)
- *       "native"     - native data representation (i.e. no conversion)
- *       "i86", "pc"  - IEEE little endian machines
- *       ...
- *
- *   see documentation for "__sun" for a list of supported encodings;
- *   the default is "native".
- *
- *
- * SEE ALSO: open, _read, __sun, make_dimlist, read_ascii.
+
+     Read binary array of TYPE  elements with DIMLIST dimension list into file
+     FILENAME and return the array.
+
+     Keyword OFFSET can  be used to set  the number of bytes to  skip prior to
+     reading the data.
+
+     Keyword ENCODING  can be used  to change the  data encoding of  the file.
+     The value of the keyword is a string like:
+
+        "xdr", "sun"  - eXternal Data Representation (IEEE big endian)
+         "native"     - native data representation (i.e. no conversion)
+         "i86", "pc"  - IEEE little endian machines
+         ...
+
+     see  documentation for  "__sun" for  a list  of supported  encodings; the
+     default is "native".
+
+
+   SEE ALSO: open, _read, __sun, make_dimlist, read_ascii.
  */
 {
   /* Get dimension list. */

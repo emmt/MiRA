@@ -28,13 +28,13 @@ MIRA_VERSION = "1.0.0";
 local MIRA_VERSION;
 local mira;
 /* DOCUMENT MiRA: a Multi-aperture Image Reconstruction Algorithm.
-  
+
      MiRA (Multi-aperture Image Reconstruction Algorithm) is a software tool
      for image reconstruction from interferometric data.
-  
+
      Global variable MIRA_VERSION is a stting with the current version of
      MiRA.
-  
+
    SEE ALSO: mira_new, mira_config,
  */
 
@@ -75,7 +75,7 @@ func mira_include(sym, src)
  * SEE ALSO: include, is_func, require.
  */
 {
-  code = is_func(sym); 
+  code = is_func(sym);
   if (code != 1 && code != 2) {
     include, src, 1;
   }
@@ -167,8 +167,8 @@ MIRA_BISPECTRUM_PHASE             = 9; /* phase of bispectrum (phase closure) */
  *   mira_get_dim - get number of pixels per side of model image
  *   mira_get_pixelsize - get the pixel size (in radians) for the model image
  *   mira_get_w - returns wavelength(s)
- *   mira_get_x - returns sky X-coordinates
- *   mira_get_y - returns sky Y-coordinates
+ *   mira_get_ra - returns sky RA-coordinates (Right Ascension)
+ *   mira_get_dec - returns sky DEC-coordinates (Declination)
  *   mira_get_ndata - get number of measurements used in last fit
  *
  *   mira_dirac - make an image of a point-like object
@@ -318,72 +318,73 @@ func mira_new(.., eff_wave=, eff_band=, wave_tol=,
               noise_method=, noise_level=,
               cleanup_bad_data=, target=, goodman=)
 /* DOCUMENT mira_new(filename1, filename2, ...)
-  
+
      Return a new instance of MiRA data opaque structure filled with data read
      from files FILENAME1, FILENAME2, ...  Input data files must follow
      OI-FITS standard.  The following keywords are allowed:
-  
+
        EFF_WAVE = Effective wavelength (units: meters), data with wavelengths
            in the range EFF_WAVE +/- 0.5*EFF_BAND will be selected for image
            reconstruction.  If EFF_WAVE is not specified, the average
            wavelength from the first block of data is used.
-  
+
        EFF_BAND = Effective spectral bandwidth (units: meters), default value
            is 1e-7 (0.1 micron).
-  
+
        WAVE_TOL = Tolerance for wavelength grouping (units: meters).  Default
            value is 1e-10 (1 Ångström).  This tolerance is used to decide
            whether different wavelengths correspond to the same one.
-  
+
        BASE_TOL = Tolerance for baseline grouping (units: meters).  Default
            value is 1e-3 (1 millimeter).  This tolerance is used to decide
            whether different positions correspond to the same baseline.
-  
+
        MONOCHROMATIC = True if a monochromatic (gray) model of the object
            brightness distribution is to be reconstructed.
-  
+
        QUIET = Turn off informational messages?  Set 2nd bit to one to also
            turn off the printing of the filename which is loaded and summary
            of u-v coverage and maximum pixel size.
-  
+
        TARGET = Target name as a glob-style pattern (see strglob), the
            comparison is case-insensitive and leading/trailing spaces are
            ignored.  Using TARGET="*" will select all available targets (only
            recommended if you are sure that all the data really come from the
            same object).
-  
+
        CLEANUP_BAD_DATA = Delete invalid data?  If true, data with invalid
            error bars (ERR <= 0) get removed.  If CLEANUP_BAD_DATA > 1, then
            data with out of range amplitudes (AMP < 0 or AMP > 1) get also
            removed.
-  
+
        GOODMAN = True to force Goodman approximation for the penalty with
            respect to complex visibility or bispectrum data (default is
            false).
-  
+
      It is possible to add noise to the data by specifying the keyword
      NOISE_METHOD and, possibly, the keyword NOISE_LEVEL:
-  
+
        NOISE_METHOD = 1 or "generate" to add noise to noiseless data; the
            standard deviation of the noise is taken from the contents of
            MASTER; in this case, the NOISE_LEVEL argument must be nil or
            omitted.
-  
+
        NOISE_METHOD = 2 or "snr" to add noise to noiseless data; the standard
            deviation of noise is computed to achieve a signal-to-noise ratio
            equal to the value of NOISE_LEVEL.
-  
+
        NOISE_METHOD = 3 or "amplify" to add noise to noisy data so that the
            standard deviation of total noise (existing one plus added one) is
            multiplied by the value of NOISE_LEVEL which must be greater or
            equal one.  The standard deviation of the noise prior to the
            amplification is taken from the contents of MASTER.
-  
-  
+
+
    SEE ALSO: mira_add_oidata, mira_config, mira_solve.
  */
 {
   if (is_void(quiet)) quiet = 0;
+  if (is_void(monochromatic)) monochromatic = 1n;
 
   /* Get spectral bandwidth parameters (in meters). */
   if (! is_void(eff_wave) &&
@@ -484,25 +485,25 @@ func mira_new(.., eff_wave=, eff_band=, wave_tol=,
 func mira_add_oidata(this, .., quiet=, noise_method=, noise_level=,
                      cleanup_bad_data=, goodman=)
 /* DOCUMENT mira_add_oidata, this, data, ...;
-  
+
      Append interferometric OI-FITS data to MiRA handle THIS (as created by
      mira_new, which see).  DATA and subsequent arguments are either OI-FITS
      file names or opaque OI-FITS handles as returned by oifits_load (which
      see).
-  
+
      If keyword QUIET is true, the operation is performed silently.
-  
+
      Keywords NOISE_METHOD and NOISE_LEVEL can be used to add some noise to
      the data.
-  
+
      If keyword CLEANUP_BAD_DATA is true, then data with invalid error bars
      (ERR <= 0) get removed.  If CLEANUP_BAD_DATA > 1, then data with out of
      range amplitudes (AMP < 0 or AMP > 1) get also removed.
-  
+
      Keyword GOODMAN can be used to force Goodman approximation for the
      penalty with respect to complex visibility or bispectrum data (default is
      false).
-  
+
    SEE ALSO: mira_new, mira_noise, oifits_load.
  */
 {
@@ -754,12 +755,12 @@ func _mira_get_datablock(this, key, type)
 
 func _mira_build_coordinate_list(master)
 /* DOCUMENT _mira_build_coordinate_list, master;
-  
+
      Build or rebuild global list of "unique" sampled coordinates in MiRA
      opaque object MASTER.  This must be done after any addition/removal of
      data and prior to any attempt of image reconstruction.  Normally this
      operation is automatically triggered by mira_update (which see).
-  
+
    SEE ALSO: mira_new, mira_config, mira_add_oidata, mira_update.
  */
 {
@@ -1041,7 +1042,7 @@ func mira_update(this)
      automatically called whenever any parameters of THIS have changed which
      require to recompute some cached values (most importantly the
      coefficients of the Fourier transform).
-  
+
    SEE ALSO: mira_config.
  */
 {
@@ -1130,8 +1131,8 @@ func mira_new_exact_xform(u, v, pixelsize, nx, ny)
   if (! is_vector(u) || ! is_vector(v) || numberof(u) != numberof(v)) {
     error, "arguments U and V must be vectors of same length";
   }
-  x = pixelsize*(indgen(nx) - (nx + 1)/2.0);
-  y = pixelsize*(indgen(ny) - (ny + 1)/2.0);
+  x = mira_xstep(pixelsize)*(indgen(nx) - (nx + 1)/2.0);
+  y = mira_ystep(pixelsize)*(indgen(ny) - (ny + 1)/2.0);
   q = (-2.0*MIRA_PI)*(u*x(-,..) + v*y(-,-,..));
   a = array(double, 2, dimsof(q));
   a(1,..) = cos(q);
@@ -1145,6 +1146,16 @@ func _mira_apply_exact_xform(this, x, job)
 {
   return mvmult(this.a, x, job);
 }
+
+local mira_xstep, mira_ystep;
+func mira_xstep(pixelsize) { return -pixelsize; } // RA = -X
+func mira_ystep(pixelsize) { return +pixelsize; } // DEC = +Y
+/* DOCUMENT xstep = mira_xstep(pixelsize);
+         or ystep = mira_ystep(pixelsize);
+     These functions respectively return the coordinate increment along the
+     horizontal and vertical axis per pixel of the image.  PIXELSIZE is the
+     size of the pixel (in radians).  These functions are needed to convert
+     pixel coordinates (X,Y) into sky coordinates (RA,DEC).  */
 
 /*---------------------------------------------------------------------------*/
 /* NONEQUISPACED FAST FOURIER TRANSFORM */
@@ -1191,12 +1202,16 @@ func mira_new_nfft_xform(u, v, pixelsize, nx, ny)
   /* The coordinate system is slighlty different between NFFT and MiRA.
    *
    * In MiRA, (0,0) is at the geometrical center of the field of view (FOV):
-   *   x = pixelsize*(indgen(nx) - (nx + 1)/2.0);
-   *   y = pixelsize*(indgen(ny) - (ny + 1)/2.0);
+   *   x = xstep*(indgen(nx) - (nx + 1)/2.0);
+   *   y = ystep*(indgen(ny) - (ny + 1)/2.0);
+   *
+   * with:
+   *   xstep = mira_xstep(pixelsize)
+   *   ystep = mira_ystep(pixelsize)
    *
    * In NFFT:
-   *   x = [-nx/2, 1-nx/2, ..., nx/2-1]*pixelsize
-   *   y = [-ny/2, 1-ny/2, ..., ny/2-1]*pixelsize
+   *   x = [-nx/2, 1-nx/2, ..., nx/2-1]*xstep
+   *   y = [-ny/2, 1-ny/2, ..., ny/2-1]*ystep
    * plus NX and NY must be even.
    */
   local r1, r2;
@@ -1212,7 +1227,7 @@ func mira_new_nfft_xform(u, v, pixelsize, nx, ny)
   } else {
     n2 = ny;
   }
-  nodes = [u*pixelsize, v*pixelsize];
+  nodes = [u*mira_xstep(pixelsize), v*mira_ystep(pixelsize)];
   dims = [n1, n2];
   obj = h_new(nfft = nfft_new(dims, nodes),
               n1 = n1, r1 = r1,
@@ -1294,8 +1309,8 @@ func mira_new_fft_xform(u, v, pixelsize, nx, ny)
       || (nfreqs = numberof(u)) != numberof(v)) {
     error, "arguments U and V must be vectors of same length";
   }
-  u *= (pixelsize*nx); /* RA  = X */
-  v *= (pixelsize*ny); /* DEC = Y */
+  u *= (nx*mira_xstep(pixelsize));
+  v *= (ny*mira_ystep(pixelsize));
 
   /* Compute integer bounding box of frequencies such that:
    *   U0 <= U < U0 + 1
@@ -1944,10 +1959,53 @@ func _mira_zmult_im(re1, im1, re2, im2) { return re1*im2 + im1*re2; }
 /* IMAGE RECONSTRUCTION */
 
 local _mira_window;
-func mira_window_new
+func mira_new_window
+/* DOCUMENT mira_new_window;
+     Manage to have next MiRA reconstruction plotted in a new graphics window.
+     The current graphics window is preserve, if any.
+ */
 {
   extern _mira_window;
   _mira_window = -1;
+}
+if (is_void(_mira_window)) _mira_window = -1;
+
+// MIRA_ANCHOR_NORTH = 0;
+// MIRA_ANCHOR_SOUTH = 1;
+// MIRA_ANCHOR_EAST =  2;
+// MIRA_ANCHOR_WEST =  3;
+// _mira_plot_anchor_table = h_new(n=MIRA_ANCHOR_NORTH, s=MIRA_ANCHOR_SOUTH,
+//                                 e=MIRA_ANCHOR_EAST, w=MIRA_ANCHOR_WEST);
+func mira_plot_title(text, height=, font=, anchor=, offset=, orient=)
+{
+  port = viewport();
+  if (is_void(offset)) offset = 0.02;
+  if (is_void(font)) font = "helvetica";
+  if (is_void(height)) height = 18;
+  if (is_void(anchor) || anchor == "n") {
+    x = port(avg:1:2);
+    y = port(4) + offset;
+    justify = "CB";
+    if (is_void(orient)) orient = 0;
+  } else if (anchor == "s") {
+    x = port(avg:1:2);
+    y = port(3) - offset;
+    justify = "CT";
+    if (is_void(orient)) orient = 0;
+  } else if (anchor == "e") {
+    x = port(2) + offset;
+    y = port(avg:3:4);
+    justify = "CB";
+    if (is_void(orient)) orient = 3;
+  } else if (anchor == "w") {
+    x = port(1) - offset;
+    y = port(avg:3:4);
+    justify = "CB";
+    if (is_void(orient)) orient = 1;
+  } else {
+    error, "bad value for ANCHOR keyword";
+  }
+  plt, text, x, y, font=font, justify=justify, height=height, orient=orient;
 }
 
 func _mira_solve_viewer(x, extra)
@@ -1959,12 +2017,31 @@ func _mira_solve_viewer(x, extra)
     return;
   }
 
+  label_height = 5; // height for axis labels
+  title_height = 8; // height for axis titles
+  title_offset = 0.015;
+  label_offset = 0.020;
+
   /* Setup for graphics. */
   if (is_void(_mira_window) || ! window_exists(_mira_window)) {
-    vp = [[5,45,55,95],[55,95,55,95],[5,65,5,45],[75,95,5,25]]*1e-2;
-    xwindow, dpi=100, viewport=vp, units=1, size=6, xopt=, yopt=,
+    dpi = 133; // DPI=133 yields ~ 800x800 pixel graphic windows
+    vp = [[7,47,55,95],[57,97,55,95],[7,67,5,45],[72,97,5,30]]*1e-2;
+    win_min =  0;
+    win_max = 63;
+    if (is_void(_mira_window) || _mira_window < win_min || _mira_window > win_max) {
+      _mira_window = win_min; // window number if all possible windows already exist
+      for (n = win_min; n < win_max; ++n) {
+        if (! window_exists(n)) {
+          _mira_window = n;
+          break;
+        }
+      }
+    }
+    if (window_exists(_mira_window)) {
+      winkill, _mira_window;
+    }
+    xwindow, _mira_window, dpi = dpi, viewport=vp, units=1, size=label_height, xopt=, yopt=,
       frame = [0,0,1,1];
-    _mira_window = current_window();
     palette, "earth.gp";
   }
   if (is_void(x)) {
@@ -1987,16 +2064,24 @@ func _mira_solve_viewer(x, extra)
   if ((flags & 2) != 0) {
     plsys, 3;
     mira_plot, extra.master, x, "vis2";
+    mira_plot_title, "Powerspectrum", height=label_height, offset=title_offset, anchor="w";
+    mira_plot_title, "spatial frequency", height=label_height, offset=label_offset, anchor="s";
   }
   if ((flags & 4) != 0) {
     plsys, 2;
     mira_plot, extra.master, x, "vis2-2D";
+    mira_plot_title, "Powerspectrum", height=title_height, offset=title_offset, anchor="n";
+    mira_plot_title, "spatial frequency", height=label_height, offset=label_offset, anchor="s";
+    mira_plot_title, "spatial frequency", height=label_height, offset=label_offset, anchor="w";
  }
   if ((flags & 8) != 0) {
     plsys, 4;
     mira_plot, extra.master, x, "vis3";
+    mira_plot_title, "Closure residuals", height=title_height, offset=title_offset, anchor="n";
+    //mira_plot_title, "!DPHI3 (UNITS????)", height=label_height, anchor="s";
+    //mira_plot_title, "frequency (???)", height=label_height, anchor="w";
   }
-  
+
   /* Display current solution. */
   if ((flags & 1) != 0) {
     plsys, 1;
@@ -2006,7 +2091,17 @@ func _mira_solve_viewer(x, extra)
     //if (min(x) != cmax) {
     //  cmax = max(x(where(x != cmax)));
     //}
-    pli, x, cmin=cmin, cmax=cmax;
+    pixelsize = extra.master.pixelsize;
+    dim = extra.master.dim;
+    xstep = mira_xstep(pixelsize)/MIRA_MILLIARCSECOND;
+    ystep = mira_ystep(pixelsize)/MIRA_MILLIARCSECOND;
+    x0 = -(x1 = xstep*dim/2);
+    y0 = -(y1 = ystep*dim/2);
+    pli, x, cmin=cmin, cmax=cmax, x0,y0, x1,y1;
+    mira_fix_image_axis;
+    mira_plot_title, "Image", height=title_height, offset=title_offset, anchor="n";
+    mira_plot_title, "!DRA (milliarcseconds)", height=label_height, offset=label_offset, anchor="s";
+    mira_plot_title, "!DDEC (milliarcseconds)", height=label_height, offset=title_offset, anchor="w";
     //mira_plot_image, /*log(1e-6*max(x) + x)*/ x, extra.master,
     //  cmin=cmin, cmax=cmax, clear=1, zformat="%+.2e";
     //title = extra.title;
@@ -2152,55 +2247,6 @@ func mira_select(this, select)
   return other;
 }
 
-func mira_new_functor(args)
-/* DOCUMENT obj = mira_new_functor(fn, key1=val1, keu2=val2, ...);
-
-      The function mira_new_functor() creates a functor which calls
-      function FN with itself prepended to its argument list:
-
-         obj(arg1, arg2, ...)
-
-      is the same as:
-
-         fn(obj, arg1, arg2, ...)
-      
-      Argument FN can be a name or any object callable as a function
-      (including another functor).  Any given keywords will be stored into the
-      returned object (which can be used as a hash-table) and are accessible
-      by OBJ.KEY1, OBJ.KEY2, etc.
-
-      The object is built as:
-
-         obj = h_new(key1=val1, keu2=val2, ...);
-         h_evaluator, obj, fn;
-      
-
-   SEE ALSO: h_new, h_evaluator, wrap_args.
- */
-{
-  local f;
-  nargs = args(*);
-  if (nargs != 1) {
-    error, "expecting 1 positional argument";
-  }
-  eq_nocopy, fn, args(1);
-  if (is_void(fn)) {
-    error, "invalid function argument";
-  }
-  obj = h_new();
-  keys = args(-);
-  nkeys = numberof(keys);
-  for (k = 1; k <= nkeys; ++k) {
-    key = keys(k);
-    //if (h_has(obj, key)) {
-    //  error, ("keyword \"" + key + "\" is reserved");
-    //}
-    h_set, obj, key, args(key);
-  }
-  h_evaluator, obj, fn;
-  return obj;
-}
-wrap_args, mira_new_functor;
 
 local mira_solve; /* only to provide the documentation */
 /* DOCUMENT img = mira_solve(data, key1=value1, key2=value2, ...);
@@ -2273,7 +2319,7 @@ local mira_solve; /* only to provide the documentation */
  *          number of corrections and gradient differences memorized by the
  *          variable metric algorithm; by default, MEM=7 (see op_mnb).
  *   FTOL - relative function tolerance for the stopping criterion of
- *          the optimizer; default value is: FTOL = 1e-12 (see op_mnb).
+ *          the optimizer; default value is: FTOL = 1e-15 (see op_mnb).
  *   GTOL - gradient tolerance for the stopping criterion of the
  *          optimizer; default value is: GTOL = 0.0 (see op_mnb).
  *   SFTOL, SGTOL, SXTOL - control the stopping criterion of the
@@ -2303,7 +2349,7 @@ func mira_solve(master, x, &penalty, reset=, fix=,
   if (is_void(view)) view = -1; /* default is to show every graphics */
 
   /* Set default values for optimizer. */
-  if (is_void(ftol)) ftol =  1e-12;
+  if (is_void(ftol)) ftol =  1e-15;
   if (is_void(gtol)) gtol = 0.0;
   if (is_void(mem)) mem = 7;
 
@@ -2387,7 +2433,7 @@ func mira_solve(master, x, &penalty, reset=, fix=,
     return extra;
   }
   cost = _mira_solve_cost;
-  
+
   viewer = _mira_solve_viewer;
   printer = _mira_solve_printer;
   if (verb) viewer, , extra;
@@ -2781,10 +2827,10 @@ func mira_projected_gradient_norm(x, gx, xmin=, xmax=)
 /* PSEUDO-OBJECT MANAGEMENT */
 
 local mira_get;
-local mira_get_w, mira_get_x, mira_get_y;
-/* DOCUMENT mira_get_w(this) - returns wavelength(s)
- *     -or- mira_get_x(this) - returns sky X-coordinates
- *     -or- mira_get_y(this) - returns sky Y-coordinates
+local mira_get_w, mira_get_ra, mira_get_dec;
+/* DOCUMENT mira_get_w(this)   - returns wavelength(s)
+ *     -or- mira_get_ra(this)  - returns sky RA-coordinates (Right Ascension)
+ *     -or- mira_get_dec(this) - returns sky DEC-coordinates (Declination)
  *
  *   These functions can be used to query internals of MiRA master
  *   object THIS.
@@ -2792,15 +2838,15 @@ local mira_get_w, mira_get_x, mira_get_y;
  * SEE ALSO:
  */
 func mira_get_w(this) { return this.w; }
-func mira_get_x(this)
+func mira_get_ra(this)
 {
   if (this.update_pending) mira_update, this;
-  return this.pixelsize*(indgen(this.dim) - 0.5*(this.dim + 1));
+  return mira_xstep(this.pixelsize)*(indgen(this.dim) - 0.5*(this.dim + 1));
 }
-func mira_get_y(this)
+func mira_get_dec(this)
 {
   if (this.update_pending) mira_update, this;
-  return this.pixelsize*(indgen(this.dim) - 0.5*(this.dim + 1));
+  return mira_ystep(this.pixelsize)*(indgen(this.dim) - 0.5*(this.dim + 1));
 }
 
 func mira_get_ndata(this)
@@ -2950,7 +2996,7 @@ func mira_fix_image_axis
      astronomy to display RA positive toward East (that is left of graphics)
      and DEC positive toward North (that is top of graphics).  In other words,
      the horizontal axis is reversed with respect to mathematical convention.
-  
+
    SEE ALSO: limits, mira_plot_image, mira_plot_baselines.
  */
 {
@@ -3742,8 +3788,9 @@ func mira_save_image(filename, img, master, single=, overwrite=,
   naxis = dims(1);
   fh = fits_create(filename, bitpix=bitpix, dimlist=dims,
                    comment=comment, history=history, overwrite=overwrite);
-  cr1 = mira_get_x(master);
-  cr2 = mira_get_y(master);
+  // FIXME: check/simplify this
+  cr1 = mira_get_ra(master);
+  cr2 = mira_get_dec(master);
   pixelsize = mira_get_pixelsize(master);
   cdelt1 = (cr1(1) < cr1(0) ? pixelsize : -pixelsize);
   cdelt2 = (cr2(1) < cr2(0) ? pixelsize : -pixelsize);
@@ -3791,27 +3838,27 @@ func mira_save_image(filename, img, master, single=, overwrite=,
 func mira_digitize(data, precision)
 /* DOCUMENT bin = mira_digitize(data);
          or bin = mira_digitize(data, precision);
-  
+
      This function digitizes values in DATA and returns a hash table object
      BIN with the following members:
 
         BIN.index - has same dimension list as DATA and is the index
                     associated with each value (running from 1 to N, where N
                     is the number of significantly different values);
-  
+
         BIN.count - is a N-element vector set with the number of elements in
                     each set of data values;
-  
+
         BIN.value - is a N-element vector set with the central value in each
                     set of data values;
 
      The result is such that:
-     
+
         abs(DATA - BIN.value(BIN.index)) <= 0.5*PRECISION
 
      where the optional absolute precision is 0 by default.
 
-  
+
    SEE ALSO: mira_classify, heapsort, histogram.
  */
 {
@@ -3849,36 +3896,36 @@ func mira_digitize(data, precision)
 func mira_classify(data, threshold)
 /* DOCUMENT obj = mira_classify(data);
          or obj = mira_classify(data, threshold);
-  
+
      Classify DATA in different cliques.  Optional THRESHOLD (default is 0) is
      the absolute minimum distance between the values taken in different
      cliques.  In words, if
-  
+
         abs(DATA(INDEX(j)) - DATA(INDEX(j+1))) > THRESHOLD
-  
+
      where INDEX = sort(DATA(*)), then DATA(INDEX(j)) and DATA(INDEX(j+1))
      belongs to a different clique; otherwise they belong to the same clique.
-  
+
      The result is a hash table object such that:
-  
+
         OBJ.region - has same dimension list as DATA and is the clique
                      index associated with each datum (running from 1 to N,
                      where N is the number of different cliques);
-  
+
         OBJ.count  - is a N-element vector set with the number of
                      elements in each clique;
-  
+
         OBJ.mean   - is a N-element vector set with the mean data value in
                      each clique;
-  
+
         OBJ.stdv   - is a N-element vector set with the standard deviation
                      of data values in each clique;
-  
+
      Beware that the classification only works for cliques well separated.
      It would fail if DATA is continuously varying.  In that case, the only
      solution is to use THRESHOLD = 0.
-  
-  
+
+
    SEE ALSO: mira_digitize, heapsort.
  */
 {
