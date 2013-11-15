@@ -3835,9 +3835,9 @@ func mira_save_image(filename, img, master, single=, overwrite=,
 /*---------------------------------------------------------------------------*/
 /* DIGITIZATION AND CLASSIFICATION */
 
-func mira_digitize(data, precision)
+func mira_digitize(data, prec)
 /* DOCUMENT bin = mira_digitize(data);
-         or bin = mira_digitize(data, precision);
+         or bin = mira_digitize(data, prec);
 
      This function digitizes values in DATA and returns a hash table object
      BIN with the following members:
@@ -3854,9 +3854,9 @@ func mira_digitize(data, precision)
 
      The result is such that:
 
-        abs(DATA - BIN.value(BIN.index)) <= 0.5*PRECISION
+        abs(DATA - BIN.value(BIN.index)) <= 0.5*PREC
 
-     where the optional absolute precision is 0 by default.
+     where the optional absolute precision PREC is 0 by default.
 
 
    SEE ALSO: mira_classify, heapsort, histogram.
@@ -3864,32 +3864,31 @@ func mira_digitize(data, precision)
 {
   local rounded_data;
 
-  if (is_void(precision)) {
-    precision = 0.0;
-  } else if (! is_scalar(precision)
-             || identof(precision) > Y_DOUBLE
-             || precision < 0.0) {
-    error, "bad value for PRECISION";
+  if (is_void(prec)) {
+    prec = 0.0;
+  } else if (! is_scalar(prec) || identof(prec) > Y_DOUBLE || prec < 0.0) {
+    error, "invalid value for absolute precision";
   }
-  if (precision > 0.0) {
-    /* Round DATA to PRECISION. */
-    data = precision*round((1.0/precision)*data);
-  }
-
-  index = array(long, dimsof(data));
-  order = heapsort(data);
-  sorted_data = data(order);
-  data = [];
-  test = (sorted_data(dif) > 0);
-  index(order) = 1 + long(test)(cum);
-  order = [];
-  if (anyof(test)) {
-    value = sorted_data(grow(0, where(test)) + 1);
+  if (numberof(data) < 2) {
+    value = data; /* copy the data */
+    index = array(1, dimsof(data));
+    count = index;
   } else {
-    value = [sorted_data(1)];
+    if (prec > 0.0) {
+      /* Round DATA to given precision. */
+      data = prec*round((1.0/prec)*data);
+    }
+    index = array(long, dimsof(data));
+    order = heapsort(data);
+    sorted_data = data(order);
+    data = [];
+    test = (sorted_data(dif) > 0);
+    index(order) = 1 + long(test)(cum);
+    order = [];
+    value = sorted_data((anyof(test) ? grow(0, where(test)) + 1 : [1]));
+    test = [];
+    count = histogram(index);
   }
-  test = [];
-  count = histogram(index);
   return h_new(index=index, count=count, value=value);
 }
 
@@ -3929,21 +3928,30 @@ func mira_classify(data, threshold)
    SEE ALSO: mira_digitize, heapsort.
  */
 {
+  if (identof(data) > Y_DOUBLE) {
+    error, "bad data type";
+  }
   if (is_void(threshold)) {
     threshold = 0;
-  } else if (! is_scalar(threshold) ||
-             identof(threshold) > Y_DOUBLE ||
-             threshold < 0) {
+  } else if (! is_scalar(threshold) || identof(threshold) > Y_DOUBLE
+             || threshold < 0) {
     error, "bad value for THRESHOLD";
   }
-  order = heapsort(data);
-  region = array(long, dimsof(data));
-  region(order) = 1 + (data(order)(dif) > threshold)(cum);
-  order = [];
-  count = histogram(region);
-  mean = histogram(region, data)/count;
-  diff = data - mean(region);
-  stdv = histogram(region, diff*diff)/count; // FIXME
+  if (numberof(data) < 2) {
+    mean = double(data);
+    stdv = array(double, dimsof(data));
+    region = array(1, dimsof(data));
+    count = region;
+  } else {
+    order = heapsort(data);
+    region = array(long, dimsof(data));
+    region(order) = 1 + (data(order)(dif) > threshold)(cum);
+    order = [];
+    count = histogram(region);
+    mean = histogram(region, data)/count;
+    diff = data - mean(region);
+    stdv = histogram(region, diff*diff)/count; // FIXME
+  }
   return h_new(region=region, count=count, mean=mean, stdv=stdv);
 }
 
