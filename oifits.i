@@ -5,8 +5,9 @@
  *
  *-----------------------------------------------------------------------------
  *
- * Copyright (C) 2005 Eric Thiébaut, Clémentine Béchet, Julien Salmon.
- * Copyright (C) 2006-2010 Eric Thiébaut <thiebaut@obs.univ-lyon1.fr>
+ * Copyright (C) 2005 Éric Thiébaut, Clémentine Béchet, Julien Salmon.
+ * Copyright (C) 2006-2010 Éric Thiébaut <thiebaut@obs.univ-lyon1.fr>
+ * Copyright (C) 2014 Éric Thiébaut <eric.thiebaut@univ-lyon1.fr>
  *
  * This file is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -704,13 +705,15 @@ local oifits_new_vis;
      revn               revision number (default is last version)
      date_obs           UTC start date of observations
      arrname            name of corresponding array
-     insname            name of correspondingdetector
+     insname            name of corresponding detector
      target_id          target number as index into OI_TARGET table
      time       s       UTC time of observation
      mjd        day     modified Julian Day
      int_time   s       integration time
-     vis2data           squared visibility
-     vis2err            error in squared visibility
+     visamp             complex visibility amplitude
+     visamperr          error in complex visibility amplitude
+     visphi     deg     complex visibility phase
+     visphierr  deg     error in complex visibility phase
      ucoord     m       U coordinate of the data
      vcoord     m       V coordinate of the data
      sta_index          station numbers contributing to the data
@@ -785,7 +788,7 @@ local oifits_new_vis2;
      revn               revision number (default is last version)
      date_obs           UTC start date of observations
      arrname            name of corresponding array
-     insname            name of correspondingdetector
+     insname            name of corresponding detector
      target_id          target number as index into OI_TARGET table
      time       s       UTC time of observation
      mjd        day     modified Julian Day
@@ -862,7 +865,7 @@ local oifits_new_t3;
      revn               revision number (default is last version)
      date_obs           UTC start date of observations
      arrname            name of corresponding array
-     insname            name of correspondingdetector
+     insname            name of corresponding detector
      target_id          target number as index into OI_TARGET table
      time       s       UTC time of observation
      mjd        day     modified Julian Day
@@ -923,6 +926,65 @@ func oifits_new_t3(master,
                                        v2coord = v2coord,
                                        sta_index = sta_index,
                                        flag = flag));
+  if (numberof(_oifits_error_stack)) {
+    error, _oifits_error_stack(1);
+  }
+  if (master) {
+    oifits_insert, master, db;
+  }
+  return db;
+}
+
+local oifits_new_spectrum;
+/* DOCUMENT db = oifits_new_spectrum(key1 = value1, ...);
+       -or- db = oifits_new_spectrum(master, key1 = value1, ...);
+       -or- oifits_new_spectrum, master, key1 = value1, ...;
+
+     Creates a new OI-FITS data-block of type OI_SPECTRUM (spectral energy
+     distribution).  If MASTER is non-nil, it must be an existing OI-FITS
+     master instance to store the new data-block (in this case the returned
+     value can be ignored).  All members of DB are specified by keywords (KEY1
+     = VALUE1, KEY2 = VALUE2, etc).
+
+     As of revision 1 of OI-FITS standard, the members of an OI_SPECTRUM
+     data-block are:
+
+     Keyword    Units   Description
+     --------------------------------------------------------------
+     revn               revision number (default is last version)
+     date_obs           UTC start date of observations
+     insname            name of corresponding detector
+     target_id          target number as index into OI_TARGET table
+     mjd        day     modified Julian Day
+     int_time   s       integration time
+     flux               target spectral energy distribution
+     fluxerr            flux error
+     --------------------------------------------------------------
+
+   SEE ALSO: oifits_insert, oifits_get, oifits_new, oifits_new_array,
+             oifits_new_target, oifits_new_wavelength. */
+func oifits_new_spectrum(master,
+                         revn=,
+                         date_obs=,
+                         insname=,
+                         fov=, /* FIXME: FOV is ignored for now */
+                         target_id=,
+                         mjd=,
+                         int_time=,
+                         fluxdata=,
+                         fluxerr=)
+{
+  local _oifits_error_stack;
+  _oifits_on_error = _oifits_on_error_stop;
+  db = _oifits_datablock_builder(OIFITS_TYPE_SPECTRUM,
+                                 h_new(revn = revn,
+                                       date_obs = date_obs,
+                                       insname = insname,
+                                       target_id = target_id,
+                                       mjd = mjd,
+                                       int_time = int_time,
+                                       fluxdata = fluxdata,
+                                       fluxerr = fluxerr));
   if (numberof(_oifits_error_stack)) {
     error, _oifits_error_stack(1);
   }
@@ -2114,7 +2176,7 @@ _OIFITS_CLASSDEF_VIS_1 = \
 ["H revn      OI_REVN    1I -   revision number of the table definition",
  "H date_obs  DATE-OBS   1A -   UTC start date of observations",
  "H arrname   ARRNAME    0A -   name of corresponding array",
- "H insname   INSNAME    1A -   name of correspondingdetector",
+ "H insname   INSNAME    1A -   name of corresponding detector",
  "T target_id TARGET_ID  1I -   target number as index into OI_TARGET table",
  "T time      TIME       1D s   UTC time of observation",
  "T mjd       MJD        1D day modified Julian Day",
@@ -2136,7 +2198,7 @@ _OIFITS_CLASSDEF_VIS2_1 = \
 ["H revn      OI_REVN    1I -   revision number of the table definition",
  "H date_obs  DATE-OBS   1A -   UTC start date of observations",
  "H arrname   ARRNAME    0A -   name of corresponding array",
- "H insname   INSNAME    1A -   name of correspondingdetector",
+ "H insname   INSNAME    1A -   name of corresponding detector",
  "T target_id TARGET_ID  1I -   target number as index into OI_TARGET table",
  "T time      TIME       1D s   UTC time of observation",
  "T mjd       MJD        1D day modified Julian Day",
@@ -2156,7 +2218,7 @@ _OIFITS_CLASSDEF_T3_1 = \
 ["H revn      OI_REVN    1I -   revision number of the table definition",
  "H date_obs  DATE-OBS   1A -   UTC start date of observations",
  "H arrname   ARRNAME    0A -   name of corresponding array",
- "H insname   INSNAME    1A -   name of correspondingdetector",
+ "H insname   INSNAME    1A -   name of corresponding detector",
  "T target_id TARGET_ID  1I -   target number as index into OI_TARGET table",
  "T time      TIME       1D s   UTC time of observation",
  "T mjd       MJD        1D day modified Julian Day",
@@ -2171,6 +2233,21 @@ _OIFITS_CLASSDEF_T3_1 = \
  "T v2coord   V2COORD    1D m   V coordinate of baseline BC of the triangle",
  "T sta_index STA_INDEX  3I -   station numbers contributing to the data",
  "T flag      FLAG      -1L -   flag"];
+
+/*---------------------------------------------*/
+/* OI_SPECTRUM CLASS DEFINITION (1ST REVISION) */
+/*---------------------------------------------*/
+
+_OIFITS_CLASSDEF_SPECTRUM_1 = \
+["H revn      OI_REVN    1I -   revision number of the table definition",
+ "H date_obs  DATE-OBS   1A -   UTC start date of observations",
+ "H insname   INSNAME    1A -   name of corresponding detector",
+/*"H fov       FOV        1D -   area of sky over which flux is integrated",*/
+ "T target_id TARGET_ID  1I -   target number as index into OI_TARGET table",
+ "T mjd       MJD        1D day modified Julian Day",
+ "T int_time  INT_TIME   1D s   integration time",
+ "T fluxdata  FLUXDATA  -1D -   flux",
+ "T fluxerr   FLUXERR   -1D -   flux error"];
 
 /*---------------------------------------------------------------------------*/
 /* INITIALIZATION OF OI-FITS TABLES AND CONSTANTS */
@@ -2193,7 +2270,8 @@ OIFITS_MILLIARCSECOND = 1e-3*OIFITS_ARCSECOND;
 OIFITS_MICRON = 1e-6;
 
 local OIFITS_TYPE_TARGET, OIFITS_TYPE_WAVELENGTH, OIFITS_TYPE_ARRAY;
-local OIFITS_TYPE_VIS,    OIFITS_TYPE_VIS2,       OIFITS_TYPE_T3;
+local OIFITS_TYPE_VIS, OIFITS_TYPE_VIS2, OIFITS_TYPE_T3;
+local OIFITS_TYPE_SPECTRUM;
 func oifits_get_type(db) { return db.__type; }
 /* DOCUMENT oifits_get_type(db)
      Returns OI-FITS type identifier for datablock DB, one of:
@@ -2208,6 +2286,8 @@ func oifits_get_type(db) { return db.__type; }
                                 squared visibilities;
        OIFITS_TYPE_T3         - for an OI-FITS data block with measured
                                 triple products (bispectrum).
+       OIFITS_TYPE_SPECTRUM   - for an OI-FITS data block with measured
+                                target(s) spectrum.
 
    SEE ALSO: oifits_new. */
 
@@ -2262,15 +2342,16 @@ func _oifits_init
 {
   extern OIFITS_TYPE_TARGET, OIFITS_TYPE_WAVELENGTH, OIFITS_TYPE_ARRAY;
   extern OIFITS_TYPE_VIS, OIFITS_TYPE_VIS2, OIFITS_TYPE_T3;
+  extern OIFITS_TYPE_SPECTRUM;
   extern _OIFITS_TYPE_TABLE, _OIFITS_CLASS_NAME_TABLE;
   extern _OIFITS_DATABLOCK_CLASS;
 
   _OIFITS_DATABLOCK_CLASS = ["TARGET", "WAVELENGTH", "ARRAY",
-                             "VIS", "VIS2", "T3"];
+                             "VIS", "VIS2", "T3", "SPECTRUM"];
 
   _OIFITS_TYPE_TABLE = h_new();
   _OIFITS_CLASS_NAME_TABLE = array(string, numberof(_OIFITS_DATABLOCK_CLASS));
-  for (type=numberof(_OIFITS_DATABLOCK_CLASS) ; type>=1 ; --type) {
+  for (type = numberof(_OIFITS_DATABLOCK_CLASS); type >= 1; --type) {
     class = _OIFITS_DATABLOCK_CLASS(type);
     h_set, _OIFITS_TYPE_TABLE, "OI_"+class, type;
     _OIFITS_CLASS_NAME_TABLE(type) = class;
@@ -2378,5 +2459,6 @@ _oifits_init = []; /* avoids calling it again */
  * indent-tabs-mode: nil
  * fill-column: 78
  * coding: utf-8
+ * ispell-local-dictionary: "american"
  * End:
  */
