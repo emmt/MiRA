@@ -32,8 +32,7 @@ local mira;
      MiRA (Multi-aperture Image Reconstruction Algorithm) is a software tool
      for image reconstruction from interferometric data.
 
-     Global variable MIRA_VERSION is a stting with the current version of
-     MiRA.
+     Global variable MIRA_VERSION is a set with the current version of MiRA.
 
    SEE ALSO: mira_new, mira_config,
  */
@@ -454,7 +453,7 @@ func mira_new(.., eff_wave=, eff_band=, wave_tol=,
           noise_method=noise_method, noise_level=noise_level,
           cleanup_bad_data=cleanup_bad_data, goodman=goodman;
       }
-    } else {
+    } else if (! is_void(arg)) {
       mira_add_oidata, master, arg, quiet=quiet,
           noise_method=noise_method, noise_level=noise_level,
           cleanup_bad_data=cleanup_bad_data, goodman=goodman;
@@ -3692,10 +3691,10 @@ func mira_cast_real_as_complex(x)
     }
     x = double(unref(x));
   }
-  if ((ndims = (dimlist = dimsof(x))(1)) < 1 || dimlist(2) != 2) {
+  if ((n = numberof((dimlist = dimsof(x)))) < 2 || dimlist(2) != 2) {
     error, "incompatible dimension list";
   }
-  reshape, z, &x, complex, (ndims == 1 ? [0] : grow(ndims - 1, dimlist(3:0)));
+  reshape, z, &x, complex, (n == 2 ? [0] : grow(n - 2, dimlist(3:0)));
   return z;
 }
 func mira_cast_complex_as_real(z)
@@ -3704,7 +3703,7 @@ func mira_cast_complex_as_real(z)
   if (structof(z) != complex) {
     error, "bad data type (expecting complex)";
   }
-  reshape, x, &z, double, make_dimlist(2, dimsof(z));
+  reshape, x, &z, double, 2, dimsof(z);
   return x;
 }
 
