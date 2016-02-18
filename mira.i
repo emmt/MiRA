@@ -1130,9 +1130,9 @@ func mira_new_exact_xform(u, v, pixelsize, nx, ny)
   if (! is_vector(u) || ! is_vector(v) || numberof(u) != numberof(v)) {
     error, "arguments U and V must be vectors of same length";
   }
-  x = mira_xstep(pixelsize)*(indgen(nx) - (nx + 1)/2.0);
-  y = mira_ystep(pixelsize)*(indgen(ny) - (ny + 1)/2.0);
-  q = (-2.0*MIRA_PI)*(u*x(-,..) + v*y(-,-,..));
+  x = mira_xstep(pixelsize)*(indgen(nx) - (nx/2 + 1));
+  y = mira_ystep(pixelsize)*(indgen(ny) - (ny/2 + 1));
+  q = (-2.0*MIRA_PI)*(u*x(-,) + v*y(-,-,));
   a = array(double, 2, dimsof(q));
   a(1,..) = cos(q);
   a(2,..) = sin(unref(q));
