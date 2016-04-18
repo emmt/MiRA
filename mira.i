@@ -1242,9 +1242,10 @@ func mira_new_nfft_xform(u, v, pixelsize, nx, ny)
   } else {
     n2 = ny;
   }
+  flags = NFFT_SORT_NODES;
   nodes = [u*mira_xstep(pixelsize), v*mira_ystep(pixelsize)];
   dims = [n1, n2];
-  obj = h_new(nfft = nfft_new(dims, nodes),
+  obj = h_new(nfft = nfft_new(dims, nodes, flags=flags),
               n1 = n1, r1 = r1,
               n2 = n2, r2 = r2,
               sub = (n1 != nx || n2 != ny));
