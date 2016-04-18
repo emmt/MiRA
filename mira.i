@@ -312,7 +312,8 @@ MIRA_BISPECTRUM_PHASE             = 9; /* phase of bispectrum (phase closure) */
  *
  */
 
-func mira_new(.., eff_wave=, eff_band=, wave_tol=,
+func mira_new(.., wavemin=, wavemax=,
+              eff_wave=, eff_band=, wave_tol=,
               quiet=, base_tol=, monochromatic=,
               noise_method=, noise_level=,
               cleanup_bad_data=, target=, goodman=)
@@ -386,13 +387,28 @@ func mira_new(.., eff_wave=, eff_band=, wave_tol=,
   if (is_void(monochromatic)) monochromatic = 1n;
 
   /* Get spectral bandwidth parameters (in meters). */
-  if (! is_void(eff_wave) &&
-      (mira_get_one_real(eff_wave) || eff_wave <= 0.0)) {
-    error, "bad value for effective wavelength (EFF_WAVE in meters)";
-  }
-  if (mira_get_one_real(eff_band, 1e-7) ||
-      eff_band <= 0.0 || eff_band >= 1e2) {
-    error, "bad value for effective spectral bandwidth (EFF_BAND in meters)";
+  choice = ((is_void(wavemin) ? 0 : 1) |
+            (is_void(wavemax) ? 0 : 2) |
+            (is_void(eff_wave) ? 0 : 4) |
+            (is_void(eff_band) ? 0 : 8));
+  if (choice == 3) {
+    if (mira_get_one_real(wavemin) || mira_get_one_real(wavemax) ||
+        wavemin <= 0 || wavemin >= wavemax) {
+      error, "bad value(s) for WAVEMIN/WAVEMAX keywords";
+    }
+    eff_wave = (wavemax + wavemin)/2.0;
+    eff_band = (wavemax - wavemin);
+  } else if ((choice & 3) == 0) {
+    if (! is_void(eff_wave) &&
+        (mira_get_one_real(eff_wave) || eff_wave <= 0.0)) {
+      error, "bad value for effective wavelength (EFF_WAVE in meters)";
+    }
+    if (mira_get_one_real(eff_band, 1e-7) ||
+        eff_band <= 0.0 || eff_band >= 1e2) {
+      error, "bad value for effective spectral bandwidth (EFF_BAND in meters)";
+    }
+  } else {
+    error, "wavelength selection can only be done via keywords WAVEMIN and WAVEMAX or via keywords EFF_WAVE and/or EFF_BAND";
   }
 
   /* Absolute tolerance for wavelengths (in meters). */
