@@ -2102,6 +2102,7 @@ func _mira_solve_viewer(x, extra)
   if ((flags & 1) != 0) {
     plsys, 1;
     // FIXME: CMIN/CMAX
+    if (! is_void(extra.mask)) x *= extra.mask;
     cmin = 0.0;
     cmax = max(x);
     //if (min(x) != cmax) {
@@ -2348,7 +2349,7 @@ func mira_solve(master, x, &penalty, reset=, fix=,
                 normalization=,
                 haniff=, zap_phase=, zap_data=, zap_amplitude=,
                 cubic=,
-                view=, title=,
+                view=, title=, mask=,
                 cmin=, cmax=,
                 select=,
                 regul=, mu=,
@@ -2391,6 +2392,16 @@ func mira_solve(master, x, &penalty, reset=, fix=,
     x = mira_rescale(x, dim, dim, cubic=0);
   }
   dims = dimsof(x);
+
+  /* Mask for displaying image. */
+  if (! is_void(mask)) {
+    temp = dimsof(mask);
+    if (identof(mask) > Y_DOUBLE || numberof(temp) != numberof(dims) ||
+        anyof(temp != dims)) {
+      error, "bad type or dimension(s) for mask";
+    }
+    mask = double(mask != 0);
+  }
 
   /* Get cost function for the data. */
   if (is_void(data_cost)) {
@@ -2442,6 +2453,7 @@ func mira_solve(master, x, &penalty, reset=, fix=,
                 regul=regul,
                 master=master,
                 view=view,
+                mask=mask,
                 wait=wait,
                 title=title);
   if (get_cost) {
