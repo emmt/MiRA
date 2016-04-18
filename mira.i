@@ -1232,13 +1232,13 @@ func mira_new_nfft_xform(u, v, pixelsize, nx, ny)
   local r1, r2;
   if (nx % 2 == 1) {
     n1 = nx + 1;
-    r1 = 2 : nx;
+    r1 = 2 : n1;
   } else {
     n1 = nx;
   }
   if (ny % 2 == 1) {
     n2 = ny + 1;
-    r2 = 2 : ny;
+    r2 = 2 : n2;
   } else {
     n2 = ny;
   }
@@ -1268,7 +1268,7 @@ func _mira_apply_nfft_xform(this, x, job)
     if (this.sub) {
       tmp = array(complex, this.n1, this.n2);
       tmp(this.r1, this.r2) = x;
-      eq_nocopy, tmp, x;
+      eq_nocopy, x, tmp;
     }
     reshape, z, &this.nfft(x), double, 2, this.nfft.num_nodes;
     return z;
