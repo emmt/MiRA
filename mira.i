@@ -316,7 +316,8 @@ func mira_new(.., wavemin=, wavemax=,
               eff_wave=, eff_band=, wave_tol=,
               quiet=, base_tol=, monochromatic=,
               noise_method=, noise_level=,
-              cleanup_bad_data=, target=, goodman=)
+              cleanup_bad_data=, target=, goodman=,
+              no_t3=, no_vis=, no_vis2=)
 /* DOCUMENT mira_new(filename1, filename2, ...)
 
      Return a new instance of MiRA data opaque structure filled with data read
@@ -341,6 +342,12 @@ func mira_new(.., wavemin=, wavemax=,
 
        MONOCHROMATIC = True if a monochromatic (gray) model of the object
            brightness distribution is to be reconstructed.
+
+       NO_VIS = True to not use complex visibilities (OI_VIS data-blocks).
+
+       NO_VIS2 = True to not use powerspectrum data (OI_VIS2 data-blocks).
+
+       NO_T3 = True to not use bispectrum data (OI_T3 data-blocks).
 
        QUIET = Turn off informational messages?  Set 2nd bit to one to also
            turn off the printing of the filename which is loaded and summary
@@ -467,12 +474,14 @@ func mira_new(.., wavemin=, wavemax=,
         if (! (quiet & 2)) write, format="Loading file \"%s\"...\n", arg(i);
         mira_add_oidata, master, arg(i), quiet=quiet,
           noise_method=noise_method, noise_level=noise_level,
-          cleanup_bad_data=cleanup_bad_data, goodman=goodman;
+          cleanup_bad_data=cleanup_bad_data, goodman=goodman,
+          no_vis=no_vis, no_vis2=no_vis2, no_t3=no_t3;
       }
     } else if (! is_void(arg)) {
       mira_add_oidata, master, arg, quiet=quiet,
           noise_method=noise_method, noise_level=noise_level,
-          cleanup_bad_data=cleanup_bad_data, goodman=goodman;
+          cleanup_bad_data=cleanup_bad_data, goodman=goodman,
+          no_vis=no_vis, no_vis2=no_vis2, no_t3=no_t3;
     }
   }
 
@@ -498,7 +507,8 @@ func mira_new(.., wavemin=, wavemax=,
 }
 
 func mira_add_oidata(this, .., quiet=, noise_method=, noise_level=,
-                     cleanup_bad_data=, goodman=)
+                     cleanup_bad_data=, goodman=,
+                     no_vis=, no_vis2=, no_t3=)
 /* DOCUMENT mira_add_oidata, this, data, ...;
 
      Append interferometric OI-FITS data to MiRA handle THIS (as created by
@@ -518,6 +528,10 @@ func mira_add_oidata(this, .., quiet=, noise_method=, noise_level=,
      Keyword GOODMAN can be used to force Goodman approximation for the
      penalty with respect to complex visibility or bispectrum data (default is
      false).
+
+     Keywords NO_VIS, NO_VIS2 or NO_T3 can be set true to not use complex
+     visibilities (OI_VIS data-blocks), powerspectrum data (OI_VIS2
+     data-blocks) or bispectrum data (OI_T3 data-blocks).
 
    SEE ALSO: mira_new, mira_noise, oifits_load.
  */
@@ -585,10 +599,16 @@ func mira_add_oidata(this, .., quiet=, noise_method=, noise_level=,
 
     /* Load all datablocks. */
     db_count = 0;
-    for (db = oifits_first(data) ; db ; db = oifits_next(data, db)) {
+    for (db = oifits_first(data); db; db = oifits_next(data, db)) {
 
       ++db_count;
-      if (! oifits_is_data(db)) continue;
+      type = oifits_get_type(db);
+      if (! oifits_is_data(db) ||
+          (no_vis  && type == OIFITS_TYPE_VIS)  ||
+          (no_vis2 && type == OIFITS_TYPE_VIS2) ||
+          (no_t3   && type == OIFITS_TYPE_T3)) {
+        continue;
+      }
 
       /* Target selection -- the test is done in a very pedestrian way, but
          this is the only sure one since there is no rules for the min/max
@@ -633,7 +653,6 @@ func mira_add_oidata(this, .., quiet=, noise_method=, noise_level=,
       w = wavelength(-:1:numberof(target_select),)(*);
       one_over_wavelength = 1.0/wavelength;
       freq_tol = this.base_tol/this.eff_wave;
-      type = oifits_get_type(db);
       if (type == OIFITS_TYPE_VIS) {
         local u, v, w;
         u = (one_over_wavelength*oifits_get_ucoord(data, db)(target_select))(*);
