@@ -3,19 +3,32 @@
  *
  * General purpose utility routines for Yorick.
  *
- *-----------------------------------------------------------------------------
+ * ----------------------------------------------------------------------------
  *
- * Copyright (C) 1996-2012 Eric Thiébaut <thiebaut@obs.univ-lyon1.fr>
+ * This file is part of YLib (Yorick Library) which is licensed under the MIT
+ * "Expat" License:
  *
- * This file is free software; as a special exception the author gives
- * unlimited permission to copy and/or distribute it, with or without
- * modifications, as long as this notice is preserved.
+ * Copyright (C) 1995-2014, Éric Thiébaut.
  *
- * This software is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY, to the extent permitted by law; without even the
- * implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to
+ * deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+ * sell copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
  *
- *-----------------------------------------------------------------------------
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ *
+ * ----------------------------------------------------------------------------
  *
  * Routines:
  *   basename     - get basename of file from path
@@ -71,148 +84,10 @@
  *   width_of     - get 1st dimension of an array
  *   xopen        - extended open with (de)compression, primitives, ...
  *
- *-----------------------------------------------------------------------------
- *
- * History:
- *   $Id: utils.i,v 1.31 2013/04/12 17:00:46 eric Exp $
- *   $Log: utils.i,v $
- *   Revision 1.31  2013/04/12 17:00:46  eric
- *   - New function lambda to create an anonymous function.
- *
- *   Revision 1.30  2013/03/15 10:28:34  eric
- *   - map() function improved to handle being called as a subroutine
- *      and functions which return non-scalar result (for a scalar
- *      argument).
- *
- *   Revision 1.29  2012/05/15 07:16:04  eric
- *    - New function swap_bytes().
- *    - Fix xopen() for "pack" and "compress" methods.
- *    - Add "lzma" and "xz" methods to xopen().
- *
- *   Revision 1.28  2010/03/30 15:11:15  eric
- *    - Loading of "emulate_yeti.i" fixed.
- *    - New functions: rescale() and cast().
- *
- *   Revision 1.27  2009/11/27 09:21:01  eric
- *    - Speed-up functions: strjoin, strchr and strrchr.
- *
- *   Revision 1.26  2009/10/12 08:57:46  eric
- *    - Bug in expand_file_name fixed.
- *
- *   Revision 1.25  2009/07/16 09:16:34  eric
- *    - Fixed glob().
- *    - New functions: is_absolute_path(), locate() and load().
- *
- *   Revision 1.24  2008/07/12 06:50:05  eric
- *    - Changed final comment for setting local variables of Emacs.
- *
- *   Revision 1.23  2008/07/11 20:43:50  eric
- *    - New routine: filesize.
- *
- *   Revision 1.22  2007/07/02 22:17:03  eric
- *    - New routine: strip_file_extension.
- *
- *   Revision 1.21  2007/04/24 07:10:38  eric
- *    - New raw_read function to read binary data from a file.
- *    - Function grow_dimlist superseded by make_dimlist (part of
- *      Yeti) and moved to emulate_yeti.i library file.
- *
- *   Revision 1.20  2007/03/21 08:39:43  eric
- *    - Avoid blocking when function tempfile is called as a subroutine
- *      to initialize internal random generator (_read is *not* designed
- *      to read from devices).
- *
- *   Revision 1.19  2006/06/09 15:32:48  eric
- *    - Fixed 2 glitches in eval().
- *
- *   Revision 1.18  2006/06/09 15:15:25  eric
- *    - Function tempfile() can now preserve the extension of the template
- *      name.
- *    - Private function _tempfile_init() no longer needed and deleted.
- *    - Reworked interface for eval() function to achieve better
- *      protection against symbol name collision.  The old function
- *      (with keywords) is available as old_eval().
- *
- *   Revision 1.17  2006/02/08 01:16:42  eric
- *    - New function glob() to get a list of files matching glob-style
- *      pattern.
- *    - New function tempfile() to get a unique file name.
- *    - New functions to query array dimensions: ndims_of, nrows_of,
- *      ncols_of, width_of height_of and depth_of.
- *    - Removed function reform() which is now part of "std.i".
- *
- *   Revision 1.16  2005/11/23 10:10:54  eric
- *    - In spline_zoom: changed the coordinates relationship.
- *    - In read_ascii: new keyword MAXCOLS, the default maximum
- *      number of columns is 10000 instead of 128, documentation
- *      for the COMPRESS keyword.
- *
- *   Revision 1.15  2005/07/14 08:38:01  eric
- *    - Modified to work with Yorick 1.6 and Yeti package (plugin).
- *      Some functions have been removed and are provided by
- *      "emulate_yeti.i" which is automatically included if Yeti
- *      plugin is not loaded: swap(), unref(), is_scalar(), is_vector(),
- *      is_matrix(), is_real(), is_complex(), is_integer(), is_numerical().
- *    - New function: moments().
- *
- *   Revision 1.14  2005/04/05 13:05:17  eric
- *    - New functions: pw_get_user, pw_get_uid, pw_get_gid, pw_get_name,
- *      pw_get_home, and pw_get_shell to parse /etc/passwd file.
- *
- *   Revision 1.13  2004/11/29 21:26:00  eric
- *    - new functions: strchr, strrchr, basename, dirname.
- *
- *   Revision 1.12  2004/10/14 09:51:37  eric
- *    - Unused (to my knowledge) function "filenameof" removed,
- *      it is superseded by "get_file_name".
- *    - New functions: "expand_file_name", "get_file_name",
- *      and "protect_file_name".
- *
- *   Revision 1.11  2004/08/31 07:26:17  eric
- *    - New routines for PDB files: pdb_list, pdb_restore_all.
- *    - New routines for profiling: timer_start, timer_elapsed.
- *
- *   Revision 1.10  2003/06/03 20:37:36  eric
- *    - Function map() now accept a list argument (as _map) and use
- *      weird names for local variables to avoid name clash.
- *    - New functions: xopen, guess_compression, read_ascii,
- *      load_text, and dump_text.
- *
- *   Revision 1.9  2002/11/22 08:24:27  eric
- *    - slight changes in eval() code
- *    - fix list of routines in leading comments of this file
- *
- *   Revision 1.8  2002/11/20 09:22:15  eric
- *    - take care of not overwriting builtin functions (unref, strlower,
- *      strupper, ...)
- *    - new function: grow_dimlist
- *
- *   Revision 1.7  2002/07/25 10:52:32  eric
- *   - New function: eval.
- *
- *   Revision 1.6  2002/07/01 09:41:45  eric
- *    - New function: pwd.
- *
- *   Revision 1.5  2002/06/06 14:19:42  eric
- *    - New function: undersample.
- *
- *   Revision 1.4  2002/02/22 16:19:24  eric
- *    - Change (one more time) names of str(to)upper/lower functions to
- *      avoid clash with builtin Yeti routines.
- *    - Add "unref" routines (after Yorick's FAQ, so the true author is
- *      Dave, not me).
- *
- *   Revision 1.3  2001/12/08 22:33:37  eric
- *    - stat(): computation of standard deviation improved.
- *
- *   Revision 1.2  2001/11/26 08:17:11  eric
- *    - Functions strto{lower,upper} renamed as str{lower,upper}.
- *
- *   Revision 1.1  2001/03/23 16:20:52  eric
- *   Initial revision
- *
- *-----------------------------------------------------------------------------
+ * ----------------------------------------------------------------------------
  */
+
+_UTILS_VERSION = "$Date: 2014-10-21 09:07:31 +0200$";
 
 local old_eval;
 func eval(eval_code, eval_tmp, eval_debug)
@@ -343,7 +218,7 @@ func undersample(a, nsub, which=, op=)
   noop = is_void(op); /* take median value */
   if (! noop && typeof(op) != "range") error, "OP must be nil or a range operator";
   dims = array(rank+1, rank+2);
-  for (k=1 ; k<=nw ; ++k) {
+  for (k = 1; k <= nw; ++k) {
     this = which(k);
     if (this != 1) a = transpose(a, [1,this]);
     dims(2:) = dimsof(a);
@@ -497,9 +372,9 @@ func resample(a, f)
 
 local nrows_of, ncols_of;
 func ndims_of(a)  { return (is_array(a) ? dimsof(a)(1) : -1); }
-func width_of(a)  { return (is_array(a) ? ((dims = dimsof(a))(1) >= 1 ? dims(2) : 1) : 0); }
-func height_of(a) { return (is_array(a) ? ((dims = dimsof(a))(1) >= 2 ? dims(3) : 1) : 0); }
-func depth_of(a)  { return (is_array(a) ? ((dims = dimsof(a))(1) >= 3 ? dims(4) : 1) : 0); }
+func width_of(a)  { return (is_array(a) ? (numberof((dims = dimsof(a))) >= 2 ? dims(2) : 1) : 0); }
+func height_of(a) { return (is_array(a) ? (numberof((dims = dimsof(a))) >= 3 ? dims(3) : 1) : 0); }
+func depth_of(a)  { return (is_array(a) ? (numberof((dims = dimsof(a))) >= 4 ? dims(4) : 1) : 0); }
 /* DOCUMENT ndims_of(a) - get number of dimensions of array A; returns -1
  *                        for non-array argument;
  *          nrows_of(a) - get number of rows of array A, returns 0
@@ -562,7 +437,7 @@ func spline_zoom(a, factor, rgb=)
         x0 = (indgen(n0) - (n0 + 1)/2.0)/n0;
         x1 = (indgen(n1) - (n1 + 1)/2.0)/n1;
         n = numberof(a)/n0;
-        for (i=1 ; i<=n ; ++i) b(,i) = spline(a(,i), x0, x1);
+        for (i = 1; i <= n; ++i) b(,i) = spline(a(,i), x0, x1);
         eq_nocopy, a, b;
       }
       if (ndims > 1) a = transpose(a, 0);
@@ -652,12 +527,12 @@ func lambda(args, code)
      definition is automatically deleted.
 
      Other example:
-     
+
        a = _lst(12,34,67);
        b = map(lambda("x", "return sin(x);"), a);
 
      B is a list with its elements the sines of the elements of A.
-     
+
    SEE ALSO: map, include.
  */
 {
@@ -811,10 +686,10 @@ func strcut(str, len)
 
    SEE ALSO strjoin */
 {
-  if ((str_len= strlen(str))<=len) return str;
-  n= (str_len+len-1)/len;
-  result= array(string, n);
-  for (i=1, i1=1, i2=len ; i<=n ; ++i, i1+=len, i2+=len)
+  if ((str_len = strlen(str))<=len) return str;
+  n = (str_len+len-1)/len;
+  result = array(string, n);
+  for (i = 1, i1 = 1, i2 = len; i <= n; ++i, i1 += len, i2 += len)
     result(i)= strpart(str, i1:i2);
   return result;
 }
@@ -1029,7 +904,7 @@ func locate(name, split=, path=)
 func load(__c6ce8719)
 /* DOCUMENT load, name;
          or load(name);
-     Include Yorick script immediately, taking care of pre-inserting the the
+     Include Yorick script immediately, taking care of pre-inserting the
      directory where is the script to the plug-in directory list.  When called
      as a function, returns the full path to the script or nil is not found.
      When called as a subroutine, an error is raised if the script is not
@@ -1072,23 +947,21 @@ func load(__c6ce8719)
 local _TEMPFILE_ALPHABET, _TEMPFILE_SEED;
 func tempfile(template)
 /* DOCUMENT tempfile(template)
-     Returns a file name build from TEMPLATE and which did not exists
-     when the function checked.  If the string "XXXXXX" is found in
-     the file part of TEMPLATE (that is after the last / if any),
-     these characters get replaced with a pseudo-random string;
-     otherwise, the pseudo-random string is simply appended to
-     TEMPLATE.  The pseudo-random string is chosen so as to make the
-     filename unique.  There is however a very small chance that the
-     returned filename is not unique.  To limit conflicts, an empty
-     file with the same name as the returned value is created; this
-     file can be deleted or overwritten by the caller.  The caller is
-     responsible to delete the temporary file (with remove) when no
-     longer needed.
+     Returns a file name build from TEMPLATE and which did not exists when the
+     function checked.  If the string "XXXXXX" is found in the file part of
+     TEMPLATE (that is after the last / if any), these characters get replaced
+     with a pseudo-random string; otherwise, the pseudo-random string is simply
+     appended to TEMPLATE.  The pseudo-random string is chosen so as to make
+     the filename unique.  There is however a very small chance that the
+     returned filename is not unique.  To limit conflicts, an empty file with
+     the same name as the returned value is created; this file can be deleted
+     or overwritten by the caller.  The caller is responsible to delete the
+     temporary file (with remove) when no longer needed.
 
-     Note that the tempfile function uses its own internal random
-     generator to avoid changing the sequence of random values
-     returned by Yorick's builtin random generator.  When called as a
-     subroutine, the internal random generator is (re)initialized.
+     Note that the tempfile function uses its own internal random generator to
+     avoid changing the sequence of random values returned by Yorick's builtin
+     random generator.  When called as a subroutine, the internal random
+     generator is (re)initialized.
 
    SEE ALSO: open, remove.
  */
@@ -1138,7 +1011,7 @@ func tempfile(template)
     /* 32-bit pseudo-random number generator */
     _TEMPFILE_SEED = (1664525.0*_TEMPFILE_SEED + 1013904223.0)%4294967296.0;
     x = _TEMPFILE_SEED;
-    for (i=i1 ; i<=i2 ; ++i) {
+    for (i = i1; i <= i2; ++i) {
       r = x % n;
       buf(i) = _TEMPFILE_ALPHABET(long(r + 1.5));
       x = (x - r)/n;
@@ -1450,32 +1323,35 @@ _protect_file_name_list = ['$','&','!','#','?','*',
                            ' ','\t','\r','\n','\v','\f'];
 (_protect_file_name_table = array(char, 256))(1 + _protect_file_name_list) = 1;
 
-func read_ascii(file, compress=, maxcols=)
-/* DOCUMENT read_ascii(file_or_name)
-     Reads ascii numeric  data in columns from text  file.  FILE_OR_NAME is
-     the name of the  file or an already open file stream.  The result is a
-     NCOLUMNS-by-NLINES array of doubles.
+func read_ascii(file, compress=, maxcols=, skip=)
+/* DOCUMENT arr = read_ascii(file_or_name);
 
-     Data are  read as double values  arranged in columns  separated by any
-     number of spaces  or tabs.  Comments starting with a  "#" or any other
-     character  which  is not  part  of  a number  are  ignored  up to  the
-     end-of-line.  Blank lines  are ignored.  The first non-blank/commented
-     line  gives the  number of  values per  column, for  subsequent lines.
-     Subsequent lines  must have  the same number  of columns --  blanks in
-     columns are  not permitted, use  0.0 instead.  However,  minimal error
-     checking  is performed,  and if  the data  is not  really  in columns,
-     read_ascii  can silently  fail to  interpret  your file  as you  would
-     scanning it by eye.
+     Reads ascii numeric  data in columns from text file.   FILE_OR_NAME is the
+     name  of the  file  or an  already  open  file stream.   The  result is  a
+     NCOLS-by-NROWS array of doubles.
 
-     The  read operation will  be much  faster if  the number  of commented
-     lines is  relatively small.   Blank lines cost  nothing, while  a line
-     containing just a "#" is expensive.
+     Data are read as double values arranged in columns separated by any number
+     of spaces  or tabs.  Comments starting  with a "#" or  any other character
+     which is not  part of a number  are ignored up to  the end-of-line.  Blank
+     lines are ignored.  The first non-blank/commented line gives the number of
+     values per column,  for subsequent lines.  Subsequent lines  must have the
+     same number  of columns --  blanks in columns  are not permitted,  use 0.0
+     instead.  However, minimal error checking is performed, and if the data is
+     not really in columns, read_ascii can silently fail to interpret your file
+     as you would scanning it by eye.
 
-     If the  file is specified by its  name, it may be  compressed in which
-     case it get automatically decompressed while reading (see xopen).  The
-     value of keyword COMPRESS ("auto" by default) is passed to xopen.
+     Keyword SKIP can be  set with the number of lines  to skip before starting
+     the parsing.
 
-     For very large  data file, keyword MAXCOLS can be  used to specify the
+     The read operation will be much faster if the number of commented lines is
+     relatively small.  Blank lines cost  nothing, while a line containing just
+     a "#" is expensive.
+
+     If the file is  specified by its name, it may be  compressed in which case
+     it is automatically decompressed while  reading (see xopen).  The value of
+     keyword COMPRESS ("auto" by default) is passed to xopen.
+
+     For  very large  data file,  keyword MAXCOLS  can be  used to  specify the
      expected maximum number of columns (10000 by default).
 
    SEE ALSO: xopen, read, raw_read. */
@@ -1487,6 +1363,9 @@ func read_ascii(file, compress=, maxcols=)
   /* read lines one at a time until the "model" line which
    * determines the number of columns is discovered
    * assume the number of columns is less than MAXCOLS */
+  if (! is_void(skip)) {
+    rdline, file, skip;
+  }
   x = array(double, (is_void(maxcols) ? 10000 : maxcols));
   ncols = 0;
   while ((line = rdline(file))) {
@@ -1506,7 +1385,7 @@ func read_ascii(file, compress=, maxcols=)
       /* if didn't get any, drop back to reading comments one
        * line at a time until we get some more numbers */
       while ((line = rdline(file))) {
-	if ((n = sread(line, x))) break;
+        if ((n = sread(line, x))) break;
       }
       if (! line) break;    /* rdline detected end-of-file, n==0 too */
     }
@@ -1522,7 +1401,7 @@ func read_ascii(file, compress=, maxcols=)
 
   /* pop chunks off list and reassemble result */
   x = array(0.0, ncols, nrows);
-  for (i=nrows ; list ; list=_cdr(list)) {
+  for (i = nrows; list; list = _cdr(list)) {
     n = numberof(_car(list))/ncols;
     x(,i-n+1:i) = _car(list);
     i -= n;
@@ -1603,7 +1482,7 @@ func guess_compression(filename)
    * gzip       20     \037 \213   c         (1)
    * bzip2      14      'B'  'Z'  'h'   c    (2)
    * lzma              \135 \000 \000 \200
-   * xz                \375 \067 \172 \130
+   * xz                \375 \067 \172 \130 \132 \000
    *                   \375  '7'  'z'  'X'  'Z' \000
    * 7z                 '7'  'z' \274 \257 \047 \034
    * zip                'P'  'K' \003 \004
@@ -1902,26 +1781,26 @@ func raw_read(filename, type, .., encoding=, offset=)
 local pw_get_user, pw_get_uid, pw_get_gid;
 local pw_get_name, pw_get_home, pw_get_shell;
 /* DOCUMENT pw_get_user(id)          // user name
- *     -or- pw_get_uid(id)           // user numerical identifier
- *     -or- pw_get_gid(id)           // group numerical identifier
- *     -or- pw_get_name(id)          // real user name (from GECOS field)
- *     -or- pw_get_home(id)          // home directory of user
- *     -or- pw_get_shell(id)         // path to shell of user
- *
- *   These functions return the value(s) of a specific field of password
- *   entry matching user ID by parsing /etc/passwd file.  If ID is
- *   unspecified, get_env("USER") is used; otherwise, ID can be a string or
- *   a numerical identifier.  If ID is specified, it can be a scalar or an
- *   array and the result has the same geometry as ID.  For a non-existing
- *   entry (or empty field), the returned value is -1 or the nil-string.
- *
- *   Keyword PASSWD can be used to specify another location for the
- *   password file (default: "/etc/passwd").
- *
- *   Keyword SED can be used to specify the path to the 'sed' command
- *   (default: "sed").
- *
- * SEE ALSO: get_env, popen.
+         or pw_get_uid(id)           // user numerical identifier
+         or pw_get_gid(id)           // group numerical identifier
+         or pw_get_name(id)          // real user name (from GECOS field)
+         or pw_get_home(id)          // home directory of user
+         or pw_get_shell(id)         // path to shell of user
+
+     These functions return the value(s) of a specific field of password entry
+     matching user ID by parsing /etc/passwd file.  If ID is unspecified,
+     get_env("USER") is used; otherwise, ID can be a string or a numerical
+     identifier.  If ID is specified, it can be a scalar or an array and the
+     result has the same geometry as ID.  For a non-existing entry (or empty
+     field), the returned value is -1 or the nil-string.
+
+     Keyword PASSWD can be used to specify another location for the password
+     file (default: "/etc/passwd").
+
+     Keyword SED can be used to specify the path to the 'sed' command (default:
+     "sed").
+
+   SEE ALSO: get_env, popen.
  */
 func pw_get_user (id,sed=,passwd=)
 { return _pw_get("s/^\\([^:]*\\).*$/\\1/"); }
@@ -1948,7 +1827,7 @@ func _pw_get(script, as_integer)
     /* user specified by its name */
     select = swrite(format="^%s:", id);
     result = (as_integer ? array(-1, dimsof(id)) : id);
-  } else if (s==long || s==int || s==short || s==char) {
+  } else if (s == long || s == int || s == short || s == char) {
     /* user specified by its numerical ID */
     select = swrite(format="^[^:]*:[^:]*:%d:", id);
     result = array((as_integer ? -1 : string), dimsof(id));
@@ -1958,13 +1837,13 @@ func _pw_get(script, as_integer)
   if (! open(passwd, "r" , 1)) error, "cannot read password file";
   format = "%s -e '/%s/!d;%s' '%s'";
   n = numberof(id);
-  for (i=1;i<=n;++i) {
+  for (i = 1; i <= n; ++i) {
     value = rdline(popen(swrite(format=format, sed,
                                 select(i), script, passwd), 0));
     if (strlen(value)) {
       if (as_integer) {
         x = 0;
-        if (sread(value,x) == 1) result(i) = x;
+        if (sread(value, x) == 1) result(i) = x;
       } else {
         result(i) = value;
       }
@@ -1988,7 +1867,7 @@ func pdb_list(file)
   vars = get_vars(file);
   if (! am_subroutine()) return vars;
   title = ["Non-record variables", "    Record variables"];
-  for (i=1 ; i<=2 ; ++i) {
+  for (i = 1; i <= 2; ++i) {
     write, format="%s:", title(i);
     if (numberof(*vars(i))) {
       write, format=" %s", *vars(i);
@@ -2040,7 +1919,7 @@ func timer_elapsed(count)
        ...             // some more code to be profiled
        timer_elapsed;  // prints out _total_ elapsed time
 
-  SEE ALSO: timer. */
+  SEE ALSO: timer, benchmark. */
 {
   extern _timer_stamp;
   elapsed = _timer_stamp;
@@ -2053,6 +1932,52 @@ func timer_elapsed(count)
   } else {
     return elapsed;
   }
+}
+
+local __benchmark_proc;
+func benchmark(script, repeat)
+/* DOCUMENT t = benchmark(script);
+         or t = benchmark(script, repeat);
+         or benchmark, script;
+         or benchmark, script, repeat;
+
+     Measure the  time spent  by executing  Yorick code  in the  SCRIPT string.
+     Argument SCRIPT can be a scalar  string or an array of strings (typically,
+     one per line of code).  Optional argument REPEAT gives the number of times
+     the script is executed; if omitted, its default value is 100.  When called
+     as a function,  the returned value is the elapsed  times [CPU,SYS,WALL] in
+     seconds  (see `timer`).   When called  as  a subroutine,  the results  are
+     printed to standard output.
+
+     The  function `__benchmark_proc`  is created  on  the fly  to perform  the
+     benchmark.  A consequence  is that it is not possible  to call `benchmark`
+     from the  script.  Also symbols  prefixed by `__benchmark_` should  not be
+     used  by  the script  (they  are  reserved  to implement  the  `benchmark`
+     function).
+
+
+   SEE ALSO: timer, timer_start.
+ */
+{
+  extern __benchmark_proc;
+  if (is_void(repeat)) repeat = 100;
+  if (! is_string(script)) error, "SCRIPT must be a string";
+  include, grow("func __benchmark_proc(__benchmark__counter) {",
+                "  while (--__benchmark__counter >= 0) { ",
+                script,
+                "  }",
+                "}"), 1;
+  t0 = t1 = array(double, 3);
+  timer, t0;
+  __benchmark_proc, repeat;
+  timer, t1;
+  __benchmark_proc = [];
+  t = (t1 - t0)/repeat;
+  if (am_subroutine()) {
+    write, format="cpu=%gms, system=%gms, wall=%gms (measured for %d iteration%s)\n",
+      t(1)*1e3, t(2)*1e3, t(2)*1e3, repeat, (repeat > 1 ? "s" : "");
+  }
+  return t;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -2132,8 +2057,8 @@ func _stat_worker(x)
 
    SEE ALSO stat. */
 {
-  if (structof(x)!=double) x= double(x);
-  avg_x= avg(x);
+  if (structof(x)!=double) x = double(x);
+  avg_x = avg(x);
   dx = x - avg_x;
   return [min(x), max(x), avg_x, sqrt(avg(dx*dx))];
 }
@@ -2142,31 +2067,31 @@ func stat(..)
 /* DOCUMENT stat, x, ...
      Print out statistics and information for all the arguments. */
 {
-  ith= 0;
+  ith = 0;
   while (more_args()) {
     ++ith;
-    x= next_arg();
+    x = next_arg();
     write, format="%2d: ", ith;
     if (is_array(x)) {
       write, format="array(%s", typeof(x);
-      dims= dimsof(x);
-      n= numberof(dims);
-      for (k=2 ; k<=n ; ++k) write, format=",%d", dims(k);
-      type= structof(x);
-      is_numerical= (type==double || type==long || type==int || type==char ||
+      dims = dimsof(x);
+      n = numberof(dims);
+      for (k = 2; k <= n; ++k) write, format=",%d", dims(k);
+      type = structof(x);
+      is_numerical = (type==double || type==long || type==int || type==char ||
                      type==complex || type==float || type==short);
       write, format=")%s", (is_numerical ? " " : "\n");
       if (is_numerical) {
-        fmt= "min=%g max=%g avg=%g std=%g\n";
-        if (type==complex) {
-          s= _stat_worker(double(x));
+        fmt = "min=%g max=%g avg=%g std=%g\n";
+        if (type == complex) {
+          s = _stat_worker(double(x));
           write, format="\n         real part: "+fmt, s(1), s(2), s(3), s(4);
-          s= _stat_worker(x.im);
+          s = _stat_worker(x.im);
           write, format="    imaginary part: "+fmt, s(1), s(2), s(3), s(4);
-          s= _stat_worker(abs(x));
+          s = _stat_worker(abs(x));
           write, format="           modulus: "+fmt, s(1), s(2), s(3), s(4);
         } else {
-          s= _stat_worker(x);
+          s = _stat_worker(x);
           write, format=fmt, s(1), s(2), s(3), s(4);
         }
       }
@@ -2180,12 +2105,12 @@ func stat(..)
 
 func open_url(url, new=, browser=)
 /* DOCUMENT open_url, url;
- *   Open URL into existing browser.  Keyword NEW can be set to "tab" or
- *   anything else on-false to open URL into a new tab or a new window.
- *   Keyword BROWSER can be set to the path of the browser to use (default:
- *   "firefox").
- *
- * SEE ALSO: system.
+     Open URL into existing browser.  Keyword NEW can be set to "tab" or
+     anything else on-false to open URL into a new tab or a new window.
+     Keyword BROWSER can be set to the path of the browser to use (default:
+     "firefox").
+
+   SEE ALSO: system.
  */
 {
   if (is_void(browser)) browser = "firefox";
@@ -2261,7 +2186,7 @@ func smooth(a, level)
 
    SEE ALSO: TDsolve. */
 {
-  n= dimsof(a)(1);
+  n = dimsof(a)(1);
   if (is_void(level) || level == 1) {
     if (n == 1)
       return a(pcen)(zcen);
@@ -2276,54 +2201,52 @@ func smooth(a, level)
     if (n == 6)
       return a(pcen,pcen,pcen,pcen,pcen,pcen)(zcen,zcen,zcen,zcen,zcen,zcen);
     while (n--)
-      a= transpose(a(pcen,..)(zcen,..));
+      a = transpose(a(pcen,..)(zcen,..));
     return a;
   }
   if (n == 1) {
-    for (i=1; i<=level; i++)
-      a= a(pcen)(zcen);
+    for (i = 1; i <= level; ++i) {
+      a = a(pcen)(zcen);
+    }
   } else if (n == 2) {
-    for (i=1; i<=level; i++)
-      a= a(pcen,pcen)(zcen,zcen);
+    for (i=1; i<=level; i++) {
+      a = a(pcen,pcen)(zcen,zcen);
+    }
   } else if (n == 3) {
-    for (i=1; i<=level; i++)
-      a= a(pcen,pcen,pcen)(zcen,zcen,zcen);
+    for (i = 1; i <= level; ++i) {
+      a = a(pcen,pcen,pcen)(zcen,zcen,zcen);
+    }
   } else if (n == 4) {
-    for (i=1; i<=level; i++)
-      a= a(pcen,pcen,pcen,pcen)(zcen,zcen,zcen,zcen);
+    for (i = 1; i <= level; ++i) {
+      a = a(pcen,pcen,pcen,pcen)(zcen,zcen,zcen,zcen);
+    }
   } else if (n == 5) {
-    for (i=1; i<=level; i++)
-      a= a(pcen,pcen,pcen,pcen,pcen)(zcen,zcen,zcen,zcen,zcen);
+    for (i = 1; i <= level; ++i) {
+      a = a(pcen,pcen,pcen,pcen,pcen)(zcen,zcen,zcen,zcen,zcen);
+    }
   } else if (n == 6) {
-    for (i=1; i<=level; i++)
-      a= a(pcen,pcen,pcen,pcen,pcen,pcen)(zcen,zcen,zcen,zcen,zcen,zcen);
+    for (i = 1; i <= level; ++i) {
+      a = a(pcen,pcen,pcen,pcen,pcen,pcen)(zcen,zcen,zcen,zcen,zcen,zcen);
+    }
   } else {
     while (n--) {
-      for (i=1; i<=level; i++)
-	a= a(pcen,..)(zcen,..);
-      a= transpose(a);
+      for (i = 1; i <= level; ++i) {
+        a = a(pcen,..)(zcen,..);
+      }
+      a = transpose(a);
     }
   }
   return a;
-}
-
-/*---------------------------------------------------------------------------*/
-/* ALTERNATIVE TO YETI BUILTIN FUNCTIONS */
-
-if (! is_func(yeti_init)) {
-  include, "yeti.i", 3;
-  if (is_func(h_new) != 2) {
-    require, "emulate_yeti.i";
-  }
 }
 
 /*
  * Local Variables:
  * mode: Yorick
  * tab-width: 8
- * c-basic-offset: 2
  * indent-tabs-mode: nil
- * fill-column: 78
+ * c-basic-offset: 2
+ * fill-column: 79
  * coding: utf-8
+ * ispell-local-dictionary: "american"
  * End:
  */

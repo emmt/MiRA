@@ -1,34 +1,38 @@
 /*
  * fmin.i -
  *
- *	Minimization of an univariate function for Yorick.  The method is
- *	based on original Brent's method modified to allow for different
- *	kind of bounds (both, left, right or none).
+ * Minimization of an univariate function for Yorick.  The method is based
+ * on original Brent's method modified to allow for different kind of
+ * bounds (both, left, right or none).
  *
- *-----------------------------------------------------------------------------
+ * ----------------------------------------------------------------------------
  *
- *      Copyright (C) 2001, Eric Thi�baut <thiebaut@obs.univ-lyon1.fr>
+ * This file is part of YLib (Yorick Library) which is licensed under the MIT
+ * "Expat" License:
  *
- *	This file is free software; you can redistribute it and/or modify
- *	it under the terms of the GNU General Public License version 2 as
- *	published by the Free Software Foundation.
+ * Copyright (C) 2001, 2014, Éric Thiébaut.
  *
- *	This file is distributed in the hope that it will be useful, but
- *	WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to
+ * deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+ * sell copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
  *
- *-----------------------------------------------------------------------------
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
  *
- *	$Id: fmin.i,v 1.2 2008/07/12 06:47:24 eric Exp eric $
- *	$Log: fmin.i,v $
- *	Revision 1.2  2008/07/12 06:47:24  eric
- *	 - Added final comment for setting local variables of Emacs.
- *
- *	Revision 1.1  2005/06/24 18:14:35  eric
- *	Initial revision
- *
- *-----------------------------------------------------------------------------
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ * ----------------------------------------------------------------------------
  */
+
+_FMIN_VERSION = "$Date: 2014-10-21 09:54:38 +0200$";
 
 func fmin(f, a, b, lim, tol=, all=, eps=)
 /* DOCUMENT fmin(f, a, b)
@@ -74,7 +78,8 @@ func fmin(f, a, b, lim, tol=, all=, eps=)
          (Englewood Cliffs, NJ: Prentice-Hall), Chapter 5.
 
 
-   SEE ALSO: */
+   SEE ALSO: fmin_global.
+*/
 {
   /* Make sure A and B are double precision values. */
   a += 0.0;
@@ -269,12 +274,95 @@ func fmin(f, a, b, lim, tol=, all=, eps=)
   } /* end of main loop */
 }
 
-/*---------------------------------------------------------------------------*
- * Local Variables:                                                          *
- * mode: Yorick                                                              *
- * tab-width: 8                                                              *
- * fill-column: 75                                                           *
- * c-basic-offset: 2                                                         *
- * coding: latin-1                                                           *
- * End:                                                                      *
- *---------------------------------------------------------------------------*/
+func fmin_global(f, arg1, arg2, arg3, arg4)
+/* DOCUMENT xm = fmin_global(f, x);
+         or xm = fmin_global(f, x, tol);
+         or xm = fmin_global(f, a, b, n);
+         or xm = fmin_global(f, a, b, n, tol);
+
+     Find the global minimum of an univariate function F.  The argument X
+     is a vector of coordinates in monotonic order; X(1) and X(0) are the
+     endpoints of the global search interval and the other values of X are
+     such that no more than a single local minimum lies in any subinterval
+     [X(i),X(i+2)].
+
+     X = span(A,B,N) if these raguments are supplied instead; i.e. the
+     global search is performed in the (included) interval [A,B] which is
+     cut in N pieces of equal lengths.
+
+     If specified, TOL is the relative precision.
+
+     This function implements the BraDi ("Bracket" then "Dig") algorithm
+     described in [1].
+
+     [1] Ferréol Soulez, Éric Thiebaut, Michel Tallon, Isabelle Tallon-Bosc
+         and Paulo Garcia, "Optimal a posteriori fringe tracking in optical
+         interferometry", Proc. SPIE 9146, Optical and Infrared
+         Interferometry IV, 91462Y (July 24, 2014); doi:10.1117/12.2056590
+
+   SEE ALSO: fmin.
+ */
+{
+  local x, tol;
+  if (is_void(arg3)) {
+    eq_nocopy, x, arg1;
+    eq_nocopy, tol, arg2;
+  } else {
+    x = fmin_range(arg1, arg2, arg3);
+    eq_nocopy, tol, arg4;
+  }
+  xbest = xa = xb = xc = x(1);
+  fbest = fa = fb = fc = f(xc);
+  n = numberof(x);
+  np1 = n + 1;
+  for (j = 2; j <= np1; ++j) {
+    xa = xb;
+    fa = fb;
+    xb = xc;
+    fb = fc;
+    if (j <= n) {
+      xc = x(j);
+      fc = f(xc);
+      if (fc < fbest) {
+        xbest = xc;
+        fbest = fc;
+      }
+    }
+    if (fa >= fb && fb <= fc) {
+      /* A minimum has been bracketed in [XA,XC]. */
+      /* FIXME: use already computed FA, FB and FC. */
+      r = fmin(f, xa, xc, 3, tol=tol, all=1n);
+      xm = r(1);
+      fm = r(2);
+      if (fm < fbest) {
+        xbest = xm;
+        fbest = fm;
+      }
+    }
+  }
+  return xbest;
+}
+
+func fmin_range(a, b, n)
+/* DOCUMENT fmin_range(a, b, n);
+     Returns an array of N doubles equally spaced between A and B.
+     Compared to the span function, this version avoids rounding errors.
+   SEE ALSO: span, indgen.
+ */
+{
+  a = double(a);
+  b = double(b);
+  return ((b - a)/(n - 1.0))*(indgen(n) - (n + 1)/2.0) + (a + b)/2.0;
+}
+
+/*
+ * Local Variables:
+ * mode: Yorick
+ * tab-width: 8
+ * indent-tabs-mode: nil
+ * c-basic-offset: 2
+ * fill-column: 79
+ * coding: utf-8
+ * ispell-local-dictionary: "american"
+ * End:
+ */

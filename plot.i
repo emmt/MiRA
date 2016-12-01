@@ -3,19 +3,32 @@
  *
  * Additional routines for plotting in Yorick.
  *
- *-----------------------------------------------------------------------------
+ * ----------------------------------------------------------------------------
  *
- * Copyright (C) 1996-2010, Eric Thiébaut <thiebaut@obs.univ-lyon1.fr>
+ * This file is part of YLib (Yorick Library) which is licensed under the MIT
+ * "Expat" License:
  *
- * This file is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 as published
- * by the Free Software Foundation.
+ * Copyright (C) 2000, 2014, Éric Thiébaut.
  *
- * This file is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to
+ * deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+ * sell copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
  *
- *-----------------------------------------------------------------------------
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ *
+ * ----------------------------------------------------------------------------
  *
  * Routines:
  *	color_bar: add a color bar to a plot;
@@ -53,131 +66,13 @@
  *	xmouse_point: interactively select and draw point(s);
  *	xwindow: setup viewport and graphic style of graphic windows;
  *
- * History:
- *	$Id: plot.i,v 1.27 2012/06/11 16:15:38 eric Exp eric $
- *	$Log: plot.i,v $
- *	Revision 1.27  2012/06/11 16:15:38  eric
- *	 - New routine pl_hinton to plot Hinton diagram.
- *
- *	Revision 1.26  2010/08/19 14:16:00  eric
- *	 - New function plfg to plot filled graph.
- *
- *	Revision 1.25  2010/06/10 14:28:50  eric
- *	 - Changed default values for PIXELBIAS and PIXELREF in pl_img.
- *
- *	Revision 1.24  2010/03/08 09:29:33  eric
- *	 - Bug in win_copy_lim fixed (thanks to Michel Tallon).
- *
- *	Revision 1.23  2010/03/05 16:23:58  eric
- *	 - Bug in win_copy_lim fixed (thanks to Isabelle Tallon-Bosc).
- *	 - win_copy_lim can optionally copy the limits of just one of the axis.
- *
- *	Revision 1.22  2008/09/04 07:19:30  eric
- *	 - Some documentation fixes.
- *
- *	Revision 1.21  2008/07/12 06:41:25  eric
- *	 - Added c-basic-offset for Emacs.
- *
- *	Revision 1.20  2008/07/11 20:43:17  eric
- *	 - New routines: pl_img and pl_cbar.
- *
- *	Revision 1.19  2007/07/25 17:02:19  eric
- *	 - Some changes in pl_get_palette.
- *
- *	Revision 1.18  2007/07/02 22:16:42  eric
- *	 - Added "utils.i" as a required file.
- *
- *	Revision 1.17  2007/07/02 22:15:18  eric
- *	 - New routines: ps2png, ps2jpeg, win2png and win2jpeg.
- *
- *	Revision 1.16  2007/05/31 07:14:09  eric
- *	 - Fixed pl_get_color when argument is already a RGB triplet.
- *
- *	Revision 1.15  2007/03/19 16:52:48  eric
- *	 - Automatically include "style.i" is function `xwindow`.
- *
- *	Revision 1.14  2007/02/06 12:05:18  eric
- *	Heavy changes in pl_get_color:
- *	 a. allow for named colors from the X11 RGB database (more than 600
- *	    color names);
- *	 b. always return a color as a char array (either indexed color
- *	    or [R,G,B] triplet); this should fix a bug which prevent to
- *	    choose the inside color in plp;
- *	 c. allow for multiple colors (array of colors);
- *	 d. allow for packed RGB colors.
- *
- *	Revision 1.13  2007/02/01 10:20:16  eric
- *	Quick reference for all routines added in top comment of this file.
- *
- *	Revision 1.12  2007/02/01 10:09:22  eric
- *	There are a lot of changes this time:
- *
- *	 - 'plp' improved so that it is possible to draw 'transparent'
- *	   symbols and to specify a different color for the inside and
- *	   outline of the symbols;
- *
- *	 - new routines: 'pl_get_symbol', 'pl_get_color', 'pl_get_font',
- *	   'pl_get_axis_flags' to parse and check values of standard graphic
- *	   keywords;
- *
- *	 - new routine: 'xwindow' to manage graphic windows and setup
- *	   viewport and graphic style;
- *
- *	 - new routines: 'xbtn_plot', 'xbtn_which' to create and manage
- *	   GUI buttons in graphic windows;
- *
- *	 - new interactive routines: 'xmouse', 'xmouse_point', 'xmouse_box',
- *	   'xmouse_line', 'xmouse_length' and 'xmouse_demo';
- *
- *	 - new plotting routines to draw simple shapes: 'pl_box', 'pl_cbox',
- *	   'pl_circle', 'pl_ellipse';
- *
- *	 - new utility routine: 'pl_map' to apply a function to all the
- *	   elements of an array.
- *
- *	Revision 1.11  2007/01/16 08:15:01  eric
- *	 - Fixed coding style and (some) documentation.
- *	 - New functions plhline and plvline.
- *
- *	Revision 1.10  2002/05/14 10:03:49  eric
- *	 - plp: use directly plfp instead of plmk to plot symbols and ticks.
- *	 - plp: draw each symbol inside a unit circle so that they look the
- *	   same size.
- *	 - plp: new "star" symbol (SYMBOL=8) and draw polygon for SYMBOL>=9.
- *	 - plp: new keywords XLO, XHI, YLO, YHI to draw non-symmetrical error
- *	   bars and FILL to draw filled symbols.
- *	 - plp: removed unused keyword HIDE.
- *
- *	Revision 1.9  2001/11/15 09:46:19  eric
- *	 - Mock check-in to synchronize version numbers because RCS
- *	   master file was lost.
- *
- *	Revision 1.8  2001/06/21 12:45:17  eric
- *	- fix indentation and floating point representation.
- *
- *	Revision 1.7  1997/04/03 15:52:39  eric
- *	Added routines color_bar and pl_fc.
- *
- *	Revision 1.6  1996/11/22 11:42:02  eric
- *	 - Add keyword ASPECT for plp.
- *
- *	02/20/96 Eric THIEBAUT: plp;
- *	02/20/96 release 1.1.
- *	02/21/96 Eric THIEBAUT: plh;
- *	02/21/96 release 1.2.
- *	02/21/96 Christophe PICHON and Eric THIEBAUT: pla;
- *	03/04/96 Eric THIEBAUT (from routines written by Christophe PICHON
- *	  and David MUNRO): pl3s, pl3dj pl3t;
- *	03/04/96 release 1.3.
- *	03/04/96 Eric THIEBAUT: added more symbols in plp;
- *	24/03/96 Eric THIEBAUT: added "box" keyword in pl3s and fix some bugs;
- *	24/03/96 release 1.4.
- *	May 3, 1996 by Eric THIEBAUT: added point symbol in routine plp;
- *
- *-----------------------------------------------------------------------------
+ * ----------------------------------------------------------------------------
  */
 
+_PLOT_VERSION = "$Date: 2014-10-21 09:07:31 +0200$";
+
 require, "utils.i";
+require, "xplot.i";
 
 func pl_arrow(x0, y0, x1, y1, head=, size=, width=, color=, angle=)
 /* DOCUMENT pl_arrow, x0, y0, x1, y1;
@@ -187,7 +82,7 @@ func pl_arrow(x0, y0, x1, y1, head=, size=, width=, color=, angle=)
 
    RESTRICTIONS
      Works better with square limits.
-     
+
    SEE ALSO:
  */
 {
@@ -250,314 +145,44 @@ func pl_fc(z, y, x, ireg, levs=, legend=, hide=, type=, width=, color=,
 
 /*---------------------------------------------------------------------------*/
 
-func pl_img(img, clear=, cmin=, cmax=, zformat=, keeplimits=,
-            normalize=, pixelbias=, pixelsize=, pixelref=, pixelunits=)
-/* DOCUMENT pl_img, img;
- *
- *   Plot image IMG in current graphics window.
- *
- *   Keyword CLEAR can be used to call fma command (which see): if CLEAR >
- *   0, fma is called prior to drawing the image; if CLEAR < 0, fma is
- *   called after drawing the image (useful in animate mode); if CLEAR = 0
- *   or undefined, then fma is not called.
- *
- *   Keyword ZFORMAT can be used to specify the format for the color bar
- *   labels (see pl_cbar).
- *
- *   Keywords PIXELSIZE, PIXELBIAS and PIXELREF can be set to specify the
- *   pixel coordinates.  The coordinate of the center of j-th pixel is
- *   given by:
- *
- *       PIXELBIAS + PIXELSIZE*(j - PIXELREF)
- *
- *   The default settings are PIXELBIAS=0.0, PIXELSCALE=1.0 and PIXELREF=0.0
- *   (i.e. to yield the same coordinates as Yorick's indexing rules).
- *
- *   Keyword PIXELUNITS can be used to specify the label(s) of the axis.
- *
- *   PIXELSIZE, PIXELBIAS, PIXELREF and PIXELUNITS can have 1 or 2 elements
- *   to specify same or different settings for the X and Y axis.
- *
- *   Keywords CMIN and CMAX can be used to specify cut levels for the
- *   display (see pli).  If keyword NORMALIZE (see below) is true, CMIN and
- *   CMAX are in units of normalized intensity.
- *
- *   If keyword NORMALIZE is true, the flux is normalized --- divided by
- *   the pixel area that is: PIXELSIZE(1)*PIXELSIZE(0).
- *
- *
- * SEE ALSO:
- *   pli, fma, animate, pl_cbar, xytitles.
- */
-{
-  dims = dimsof(img);
-  if (is_void(dims) || dims(1) != 2) {
-    error, "expecting a 2-D image";
-  }
-  width = dims(2);
-  height = dims(3);
-
-  if (is_void(pixelref)) {
-    pixelref = 0.0;
-  }
-  if (is_void(pixelbias)) {
-    pixelbias = 0.0;
-  }
-  if (is_void(pixelsize)) {
-    pixelsize = 1.0;
-  }
-  if (is_void(normalize)) {
-    scl = 1.0;
-  } else {
-    scl = 1.0/(pixelsize(1)*pixelsize(0));
-    if (scl != 1.0) {
-      img *= scl;
-    }
-  }
-
-  if (is_void(cmin)) cmin = min(img);
-  if (is_void(cmax)) cmax = max(img);
-
-  xsize = pixelsize(1);
-  ysize = pixelsize(0);
-  xbias = pixelbias(1);
-  ybias = pixelbias(0);
-  xref = pixelref(1);
-  yref = pixelref(0);
-
-  x0 = xbias + xsize*(0.5 - xref);
-  x1 = xbias + xsize*(width + 0.5 - xref);
-  y0 = ybias + ysize*(0.5 - yref);
-  y1 = ybias + ysize*(height + 0.5 - yref);
-
-  if (clear && clear > 0) {
-    fma;
-  }
-  pli, img, x0, y0, x1, y1, cmin=cmin, cmax=cmax;
-  local red, green, blue;
-  palette, red, green, blue, query=1;
-  ncolors = numberof(red);
-  levs = span(cmin, cmax, ncolors + 1);
-  colors = indgen(ncolors);
-  pl_cbar, cmin=cmin, cmax=cmax, vert=1, nlabs=11, format=zformat;
-  if (! is_void(pixelunits)) {
-    xytitles, pixelunits(1), pixelunits(0);
-  }
-  if (clear && clear < 0) {
-    fma;
-  }
-}
-
-func pl_cbar(z, cmin=, cmax=, vert=, nlabs=, adjust=,
-             color=, font=, height=, opaque=, orient=,
-             labels=, levels=,
-             width=, ticklen=, thickness=, vport=, format=)
-/* DOCUMENT pl_cbar, z;
-       -or- pl_cbar, cmin=CMIN, cmax=CMAX;
-
-     Draw a color bar below the current coordinate system.  The colors and the
-     default associated label values are from min(Z) to max(Z) --
-     alternatively, keywords CMIN and CMAX can be specified.
-
-     If keywords VERT is set true, the color bar appears to the left of the
-     current coordinate system; by default, an horizontal color bar is drawn.
-
-     By default, the colorbar is drawn next to the current viewport; other
-     viewport coordinates can be given by VPORT=[xmin,xmax,ymin,ymax].
-     Keyword ADJUST can be used to move the bar closer to (adjust<0) or
-     further from (adjust>0) the viewport.
-
-     Keyword LEVELS can be used to specify the positions of the labels and
-     ticks to draw in units of Z.
-
-     Keyword LABELS can be used to specify the labels to print along the color
-     bar.  If keyword LABELS is not specified, the labels are the textual
-     values of the levels and the format of the labels can be specified with
-     keyword FORMAT; by default FORMAT="%.3g".  The font type, font height
-     and text orientation for the labels can be set with keywords FONT
-     (default FONT="helvetica"), HEIGHT (default HEIGHT=14 points) and ORIENT
-     respectively.
-
-     If neither LEVELS nor NLABS are specified, keyword NLABS can be used to
-     choose the number of displayed labels; by default, NLABS=11 which
-     correspond to a label every 10% of the dynamic; use NLABS=0 to suppress
-     all labels.
-
-     Keyword COLOR can be used to specify the color of the labels, the
-     ticks and the frame of the colorbar.  Default is foreground color.
-
-     Keyword WIDTH can be used to set the width of the lines used to draw
-     the frame and the ticks of the colorbar.
-
-     Keyword TICKLEN can be used to set the length (in NDC units) of the
-     ticks.  Default is 0.007 NDC.
-
-     Keyword THICKNESS can be used to set the thickness of the colorbar (in
-     NDC units).  Default is 0.020 NDC.
-
-
-    SEE ALSO: pl_img, pl_span, pli, plt, pldj, plg, viewport.
- */
-{
-  if (is_void(cmin)) cmin = min(z);
-  if (is_void(cmax)) cmax = max(z);
-  if (is_void(vport)) vport = viewport();
-  if (is_void(adjust)) adjust = 0.0;
-  if (is_void(ticklen)) ticklen = 0.007;
-  if (is_void(thickness)) thickness = 0.020;
-  nlevels = numberof(levels);
-  nlabels = numberof(labels);
-  if (nlabels != nlevels && nlevels != 0 && nlabels != 0) {
-    error, "LABELS and LEVELS must have same number of elements";
-  }
-  n = max(nlabels, nlevels);
-  if (is_void(nlabs)) {
-    nlabs = (n != 0 ? n : 11);
-  } else if (n != 0) {
-    error, "NLABS must be unspecified when LEVELS or LABELS are given";
-  }
-
-  /* Make the color gradient image to display. */
-  local red, green, blue;
-  palette, red, green, blue, query=1;
-  ncolors = numberof(red);
-  if (ncolors < 2) {
-    ncolors = 240;
-  }
-  cells = char(indgen(0 : ncolors - 1));
-
-  linetype = 1; /* "solid" */
-
-  if (vert) {
-    x0 = vport(2) + adjust + 0.022;
-    x1 = x0 + thickness;
-    z0 = y0 = vport(3);
-    z1 = y1 = vport(4);
-    cells = cells(-,);
-  } else {
-    z0 = x0 = vport(1);
-    z1 = x1 = vport(2);
-    y0 = vport(3) - adjust - 0.045;
-    y1 = y0 - thickness;
-    cells = cells(,-);
-  }
-  sys = plsys(0);
-  pli, cells, x0, y0, x1, y1;
-  if (is_void(width) || width != 0) {
-    plg, [y0,y0,y1,y1], [x0,x1,x1,x0], closed=1,
-      color=color, width=width, type=linetype, marks=0;
-  }
-
-  if (nlabs > 0) {
-    cmin += 0.0; // make sure CMIN is floating point
-    if (is_void(levels)) {
-      if (cmin == cmax) {
-        levels = cmin;
-        lz = (z0 + z1)/2.0;
-        if (nlabels > 1) labels = labels((nlabels + 1)/2);
-        nlabs = 1;
-      } else if (nlabs == 1) {
-        levels = (cmin + cmax)/2.0;
-        lz = (z0 + z1)/2.0;
-      } else {
-        levels = pl_span(cmin, cmax, nlabs);
-        lz = pl_span(z0, z1, nlabs);
-      }
-    } else {
-      /* Select levels inside the displayed range. */
-      j = where((levels >= min(cmin, cmax))&(levels <= max(cmin, cmax)));
-      if ((n = numberof(j)) != nlabs) {
-        if (is_array(j)) {
-          levels = levels(j);
-          if (! is_void(labels)) labels = labels(j);
-        }
-        nlabs = n; /* may be zero here */
-      }
-      if (nlabs > 0) {
-        if (cmin == cmax) {
-          levels = cmin;
-          lz = (z0 + z1)/2.0;
-          if ((n = numberof(labels)) > 1) labels = labels((n + 1)/2);
-          nlabs = 1;
-        } else {
-          lz = interp([z0, z1], [cmin, cmax], levels);
-        }
-      }
-    }
-  }
-
-  if (nlabs > 0) {
-    if (is_void(labels)) {
-      if (is_void(format)) format = "%.3g";
-      labels = swrite(format=format, levels);
-    }
-
-    local lx0, lx1, lx2, ly0, ly1, ly2;
-    if (vert) {
-      lx0 = array(x1, nlabs);
-      lx1 = array(x1 + ticklen, nlabs);
-      lx2 = array(x1 + 1.67*ticklen, nlabs);
-      eq_nocopy, ly0, lz;
-      eq_nocopy, ly1, lz;
-      eq_nocopy, ly2, lz;
-      justify = "LH";
-    } else {
-      ly0 = array(y1, nlabs);
-      ly1 = array(y1 - ticklen, nlabs);
-      ly2 = array(y1 - 1.67*ticklen, nlabs);
-      eq_nocopy, lx0, lz;
-      eq_nocopy, lx1, lz;
-      eq_nocopy, lx2, lz;
-      justify = "CT";
-    }
-    if (ticklen && (is_void(width) || width != 0)) {
-      pldj, lx0, ly0, lx1, ly1,
-        color=color, width=width, type=linetype;
-    }
-    for (i = 1; i <= nlabs; ++i) {
-      plt, labels(i), lx2(i), ly2(i), tosys=0, color=color, font=font,
-        height=height, opaque=opaque, orient=orient, justify=justify;
-    }
-  }
-  plsys, sys;
-}
-
 func color_bar(levs, colors, vert=, labs=, adjust=, color=, width=,
                height=, ticklen=, vport=, format=, font=)
 /* DOCUMENT color_bar;
          or color_bar, levs, colors;
 
-     Note: pl_cbar (which see) is probably a better routine.
+     Remarks: This routine supersedes `color_bar` in `graph.i` (more keywords
+              are available to specify the viewport, the text font, color,
+              etc.).  For most purposes, `pl_cbar` (which see) is probably
+              more suitable.
 
      Draw a color bar below the current coordinate system.  If LEVS is not
      specified uses plfc_levs (set by previous call to plfc).  If COLORS is
      specified, it should have one more value than LEVS, otherwise equally
-     spaced colors are chosen, or plfc_colors if plfc_levs was used.  With
-     the VERT=1 keyword the color bar appears to the left of the current
-     coordinate system (vert=0 is default).  By default, color_bar will
-     attempt to label some of the color interfaces.  With the LABS keyword,
-     you can force the labelling algorithm as follows: LABS=0 supresses all
-     labels, LABS=n forces a label at every n-th interface, LABS=[i,n]
-     forces a label every n-th interface starting at i-th interface
-     (0<=i<=numberof(LEVS)).
+     spaced colors are chosen, or plfc_colors if plfc_levs was used.  With the
+     VERT=1 keyword the color bar appears to the left of the current coordinate
+     system (vert=0 is default).  By default, color_bar will attempt to label
+     some of the color interfaces.  With the LABS keyword, you can force the
+     labelling algorithm as follows: LABS=0 supresses all labels, LABS=n forces
+     a label at every n-th interface, LABS=[i,n] forces a label every n-th
+     interface starting at i-th interface (0<=i<=numberof(LEVS)).
 
      You can specify the viewport coordinates by keyword
-     VPORT=[xmin,xmax,ymin,ymax]; by default the colorbar is drawn next to
-     the current viewport.  You can use the ADJUST keyword to move the bar
-     closer to (adjust<0) or further from (adjust>0) the viewport.
+     VPORT=[xmin,xmax,ymin,ymax]; by default the colorbar is drawn next to the
+     current viewport.  You can use the ADJUST keyword to move the bar closer
+     to (adjust<0) or further from (adjust>0) the viewport.
 
-     You can specify the string format for labels with keyword FORMAT
-     (default "%g"), the font type with keyword FONT (default "helvetica")
-     and the font height with keyword HEIGHT (default 14 points).
+     You can specify the string format for labels with keyword FORMAT (default
+     "%g"), the font type with keyword FONT (default "helvetica") and the font
+     height with keyword HEIGHT (default 14 points).
 
-     Keyword COLOR can be used to specify the color of the labels, the
-     ticks and the frame of the colorbar.  Default is foreground color.
+     Keyword COLOR can be used to specify the color of the labels, the ticks
+     and the frame of the colorbar.  Default is foreground color.
 
-     Keyword WIDTH can be used to set the width of the lines used to draw
-     the frame and the ticks of the colorbar.
+     Keyword WIDTH can be used to set the width of the lines used to draw the
+     frame and the ticks of the colorbar.
 
-     Keyword TICKLEN can be used to set the length (in NDC units) of the
-     ticks.  Default is 0.005 NDC.
+     Keyword TICKLEN can be used to set the length (in NDC units) of the ticks.
+     Default is 0.005 NDC.
 
    SEE ALSO: pl_cbar, plfc. */
 {
@@ -1035,10 +660,12 @@ func plfg(y, x, base=, vert=, color=, edges=, ecolor=, ewidth=, etype=,
 /*---------------------------------------------------------------------------*/
 
 func plhline(y, x0, x1, color=, width=, type=) {
+  if (! is_void(color)) color = pl_get_color(color);
   lim = limits(); one = array(1.0, dimsof(y));
   pldj, one*(is_void(x0) ? lim(1) : x0), y, one*(is_void(x1) ? lim(2) : x1), y,
     color=color, width=width, type=type; }
 func plvline(x, y0, y1, color=, width=, type=) {
+  if (! is_void(color)) color = pl_get_color(color);
   lim = limits(); one = array(1.0, dimsof(x));
   pldj, x, one*(is_void(y0) ? lim(3) : y0), x, one*(is_void(y1) ? lim(4) : y1),
     color=color, width=width, type=type; }
@@ -2831,7 +2458,7 @@ func pl_hinton(a, x0, y0, x1, y1, cmin=, cmax=,
 
      Keywords CMIN and CMAX can be used to specify the minimum and maximum
      values to consider.
-     
+
    SEE ALSO: plf, pl_get_color.
  */
 {
@@ -2846,7 +2473,7 @@ func pl_hinton(a, x0, y0, x1, y1, cmin=, cmax=,
     error, "expecting a 2-D real array";
   }
   nx = d(2);
-  ny = d(3);  
+  ny = d(3);
   if (is_void(cmin)) cmin = min(a);
   if (is_void(cmax)) cmax = max(a);
   if (is_void(bg)) {
@@ -2894,12 +2521,12 @@ func pl_hinton(a, x0, y0, x1, y1, cmin=, cmax=,
   if (is_void(y1)) y1 = y0 + ny - 1.0;
   xstp = (nx > 1 ? (x1 - x0)/(nx - 1.0) : 1.0);
   ystp = (ny > 1 ? (y1 - y0)/(ny - 1.0) : 1.0);
-  
+
   xmin = x0 - 0.5*xstp;
   xmax = x1 + 0.5*xstp;
   ymin = y0 - 0.5*ystp;
   ymax = y1 + 0.5*ystp;
-  
+
   lx = 2*nx + 2;
   ly = 2*ny + 2;
 
@@ -2907,7 +2534,7 @@ func pl_hinton(a, x0, y0, x1, y1, cmin=, cmax=,
   i1 = 3:lx-1:2;
   j0 = 2:ly-2:2;
   j1 = 3:ly-1:2;
-  
+
   s = (xstp*q)*t;
   c = pl_span(x0, x1, nx)(,-);
   a = c - s;
@@ -2921,7 +2548,7 @@ func pl_hinton(a, x0, y0, x1, y1, cmin=, cmax=,
   x(i1, j1) = b;
   x(,1) = x(,2);
   x(,0) = x(,-1);
- 
+
   s = (ystp*q)*t;
   c = pl_span(y0, y1, ny)(-,);
   a = c - s;
@@ -3315,7 +2942,7 @@ func pl_map(op, arg, default)
        -or- pl_map(op, arg, default)
      Maps scalar function OP onto array argument ARG to mimics element-wise
      unary operation.  Returns DEFAULT if ARG is void.
-  
+
    SEE ALSO xwindow.
  */
 {
@@ -3334,29 +2961,35 @@ func pl_map(op, arg, default)
 func win_copy_lim(src, dst, axis)
 /* DOCUMENT win_copy_lim, src, dst;
          or win_copy_lim, src, dst, axis;
-  
-     Make limits of window DST the same as those in window SRC.
-  
+
+     Make limits of window DST the same as those in window SRC.  DST may be an
+     array of window numbers or a range.
+
      AXIS can be used to specify which limits to copy: 1st and 2nd bits
      respectively indicate whether X and/or Y limits should be copied. If
      unspecified, the limits of the two axis are copied (same as with AXIS=3).
-  
+
    SEE ALSO: current_window, limits, window.
  */
 {
   win = current_window();
   window, src;
   l = limits();
-  window, dst;
-  if (is_void(axis) || (axis & 3) == 3) {
-    /* copy X and Y limits */
-    limits, l(1), l(2), l(3), l(4);
-  } else if ((axis & 3) == 1) {
-    /* only copy X limits */
-    limits, l(1), l(2);
-  } else if ((axis & 3) == 2) {
-    /* copy Y limits */
-    limits, , , l(3), l(4);
+  if (is_range(dst)) {
+    dst = indgen(dst);
+  }
+  for (k = 1; k <= numberof(dst); ++k) {
+    window, dst(k);
+    if (is_void(axis) || (axis & 3) == 3) {
+      /* copy X and Y limits */
+      limits, l(1), l(2), l(3), l(4);
+    } else if ((axis & 3) == 1) {
+      /* only copy X limits */
+      limits, l(1), l(2);
+    } else if ((axis & 3) == 2) {
+      /* copy Y limits */
+      limits, , , l(3), l(4);
+    }
   }
   if (win >= 0) window, win; /* restore old current window */
 }
@@ -3645,9 +3278,10 @@ _PL_COLOR_RGB = char(_PL_COLOR_RGB);
  * Local Variables:
  * mode: Yorick
  * tab-width: 8
- * c-basic-offset: 2
  * indent-tabs-mode: nil
- * fill-column: 78
+ * c-basic-offset: 2
+ * fill-column: 79
  * coding: utf-8
+ * ispell-local-dictionary: "american"
  * End:
  */

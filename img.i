@@ -3,19 +3,32 @@
  *
  * Routines for dealing with images (i.e. 2D arrays) in Yorick.
  *
- *-----------------------------------------------------------------------------
+ * ----------------------------------------------------------------------------
  *
- * Copyright (C) 2000, Eric Thiébaut <thiebaut@obs.univ-lyon1.fr>
+ * This file is part of YLib (Yorick Library) which is licensed under the MIT
+ * "Expat" License:
  *
- * This file is free software; you can redistribute it and/or modify it under
- * the terms of the GNU General Public License version 2 as published by the
- * Free Software Foundation.
+ * Copyright (C) 2000, 2014, Éric Thiébaut.
  *
- * This file is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to
+ * deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+ * sell copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
  *
- *-----------------------------------------------------------------------------
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ *
+ * ----------------------------------------------------------------------------
  *
  * Routines:
  *   img_dims - returns dimension [WIDTH,HEIGHT] of an image
@@ -33,64 +46,17 @@
  *   img_photometry - measure integrated intensity inside a circular region
  *   img_flt_max - filter an image
  *   img_flt_flac - flipped-local-auto-convolution of an image
- *   ing_get_format - get image file format
+ *   img_get_format - get image file format
  *   img_read, img_write - read/write PNM/JPEG/PNG/TIFF/FITS/GIF image
  *   img_tmpnam - get name of temporary file
  *   img_to_gray - convert an image to grayscale
+ *   img_resize - resize an image by moving average and/or linear interpolation
+ *   img_thumbnail - resize an image by moving average
  *
- * History:
- *   $Id: img.i,v 1.11 2011/01/17 15:14:42 eric Exp $
- *   $Log: img.i,v $
- *   Revision 1.11  2011/01/17 15:14:42  eric
- *    - Fix documentation.
- *    - Use JPEG optimization.
- *
- *   Revision 1.10  2010/11/18 19:45:40  eric
- *    - Use yorick-z plugin if available to read/write JPEG and
- *      PNG images.
- *    - Bug in img_read for PNG images fixed (thanks to Loïc Denis).
- *
- *   Revision 1.9  2010/02/19 18:01:19  eric
- *    - Renamed old img_cbar as img_cbar_old.
- *    - New img_cbar routine with more flexibility for the labels and the
- *      levels.
- *    - Added optional color bar in img_plot.
- *
- *   Revision 1.8  2010/01/14 07:47:02  eric
- *    - Renamed img_get_type as img_get_file_type.
- *    - New function img_to_gray.
- *    - New option ROI in img_crop.
- *    - Functions img_read and img_write use YorZ extension if plugin loaded.
- *
- *   Revision 1.7  2009/10/12 08:21:48  eric
- *    - New function: img_crop.
- *    - Slight improvements in img_get_type().
- *
- *   Revision 1.6  2008/07/12 06:44:04  eric
- *    - Added final comment for setting local variables of Emacs.
- *
- *   Revision 1.5  2007/06/29 13:04:34  eric
- *    - New function img_convolve.
- *
- *   Revision 1.4  2004/10/14 09:54:53  eric
- *    - "img_protect_path" and "img_expand_path" removed and replaced by
- *      their counterparts, "expand_file_name" and "expand_file_name",
- *      in "utils.i" (which was already required by "img.i").
- *
- *   Revision 1.3  2004/10/13 10:18:32  eric
- *    - New functions (img_read, img_write, img_get_type,
- *      img_protect_path, img_expand_path, img_tmpnam) to
- *      implement reading/writing of various image file formats
- *      (PNM/PBM/PGM/PPM, JPEG, PNG, TIFF, FITS, and GIF).
- *
- *   Revision 1.2  2004/09/17 11:21:18  eric
- *    - removed jped_read and jpeg_write (backup in jpeg_img.i) which
- *      are provided by jpeg.i plugin in Yorick from version >= 1.6
- *
- *   Revision 1.1  2004/07/17 13:37:40  eric
- *   Initial revision
- *-----------------------------------------------------------------------------
+ * ----------------------------------------------------------------------------
  */
+
+_IMG_VERSION = "$Date: 2014-10-21 09:07:31 +0200$";
 
 require, "utils.i";
 
@@ -140,8 +106,8 @@ func img_plot(img, first=, scale=, cmin=, cmax=, top=, cbar=,
   ur = ll + scale*dims;   // upper-right corner coordinates
   pli, img, ll(1), ll(0), ur(1), ur(0), top=top, cmin=cmin, cmax=cmax;
   if (cbar) {
-    img_cbar, img, cmin=cmin, cmax=cmax,
-      levels=levels, labels=labels, nticks=nticks, vert=vert,
+    pl_cbar, img, cmin=cmin, cmax=cmax,
+      levels=levels, labels=labels, nlabs=nticks, vert=vert,
       adjust=adjust, vport=vport, format=format, color=color,
       width=width, height=height, ticklen=ticklen, font=font;
   }
@@ -151,316 +117,269 @@ func img_cbar(z, cmin=, cmax=, vert=, vport=, adjust=,
               nticks=, levels=, labels=,
               color=, font=, height=, opaque=, orient=,
               width=, ticklen=, thickness=, format=)
-/* DOCUMENT img_cbar, z;
-       -or- img_cbar, cmin=CMIN, cmax=CMAX;
-
-     Draw a color bar below the current coordinate system the colors and
-     the associated label values are from min(Z) to max(Z) -- alternatively
-     keywords CMIN and CMAX can be specified.  If keyword VERT is true, the
-     color bar appears to the left of the current coordinate system
-     (horizontal color bar below the image is the default).
-
-     The positions and texts of the labels can be specified by the keywords
-     LEVELS and LABELS.  If LEVELS is specified, it is in the same units as
-     Z or CMIN and CMAX.  If LABELS is a numerical array, it is formatted
-     into a string according to the FORMAT keyword ("%.3g" by default);
-     otherwise, LABELS must be a string vector.  If LEVELS and LABELS are
-     specified, they must have the same number od elements.  If LEVELS is
-     specified but LABELS is unspecified, the labels are given by the
-     levels (converted to an array of strings).  If LABELS is specified but
-     LEVELS is not specified, then the levels are computed assuming that
-     the first label correspond to CMIN (or min(Z) if CMIN is unspecified),
-     that the last label correspond to CMAX (or max(Z) if CMAX is
-     unspecified) and that the other labels are uniformly spaced (there
-     must be at least 2 labels).
-
-     If none of LEVELS and LABELS are specified, the labels are
-     automatically computed.  Keyword NTICKS can be used to choose the
-     number of displayed labels; by default, NTICKS=11 which correspond to
-     a label every 10% of the dynamic; use NTICKS=0 to suppress all labels.
-     The format of the labels can be specified with keyword FORMAT; by
-     default FORMAT= "%.3g".  The font type, font height and text
-     orientation for the labels can be set with keywords FONT (default
-     "helvetica"), HEIGHT (default 14 points) and ORIENT respectively.  If
-     LABELS is unspecified and FORMAT is set to string(0), then no labels
-     are displayed though the ticks are.
-
-     By default the colorbar is drawn next to the current viewport; other
-     viewport coordinates can be given by VPORT=[xmin,xmax,ymin,ymax].
-     Keyword ADJUST can be used to move the bar closer to (adjust<0) or
-     further from (adjust>0) the viewport.
-
-     Keyword COLOR can be used to specify the color of the labels, the
-     ticks and the frame of the colorbar.  Default is foreground color.
-
-     Keyword WIDTH can be used to set the width of the lines used to draw
-     the frame and the ticks of the colorbar.
-
-     Keyword TICKLEN can be used to set the lenght (in NDC units) of the
-     ticks.  Default is 0.007 NDC.
-
-     Keyword THICKNESS can be used to set the thickness of the colorbar (in
-     NDC units).  Default is 0.020 NDC.
-
-
-    SEE ALSO: pli, plt, pldj, plg, viewport.
- */
 {
-  nil = string(0);
-  if (is_void(cmin)) {
-    if (is_void(img)) error, "keyword CMIN must be given";
-    cmin = min(img);
-  }
-  if (is_void(cmax)) {
-    if (is_void(img)) error, "keyword CMAX must be given";
-    cmax = max(img);
-  }
-  cmin = double(cmin); /* make sure CMIN is double */
-  cmax = double(cmax); /* make sure CMAX is double */
-
-  if (is_void(vport)) vport = viewport();
-  if (is_void(adjust)) adjust = 0.0;
-  if (is_void(ticklen)) ticklen = 0.007;
-  if (is_void(thickness)) thickness = 0.020;
-  if (is_void(nticks)) {
-    if (! is_void(labels)) nticks = numberof(labels);
-    else if (! is_void(levels)) nticks = numberof(levels);
-    else nticks = 11;
-  }
-  if (nticks != 0) {
-    if (nticks < 1 ||
-        (! is_void(labels) && numberof(labels) != nticks) ||
-        (! is_void(levels) && numberof(levels) != nticks)) {
-      error, "bad number of ticks, or labels, or levels";
-    }
-    if (is_void(levels)) {
-      levels = ((cmin + cmax)/2.0 + ((cmax - cmin)/(nticks - 1))*
-                (indgen(nticks) - (1 + nticks)/2.0));
-    }
-    if (is_void(labels)) {
-      if (is_void(format)) format = "%.3g";
-      if (! format) error, "incompatible values of keyword FORMAT and LABELS";
-      labels = swrite(format=format, double(levels));
-    } else {
-      if ((s = structof(labels)) != string) {
-        if (s == double || s == float) {
-          if (is_void(format)) format = "%.3g";
-          labels = swrite(format=format, labels);
-        } else if (s == long || s == int || s == short || s == char) {
-          if (is_void(format)) format = "%d";
-          labels = swrite(format=format, labels);
-        } else {
-          error, "bad data type for labels";
-        }
-      }
-    }
-    select = where((levels >= min(cmin, cmax)) & (levels <= max(cmin, cmax)));
-    if (numberof(select) != nticks) {
-      if (! is_void(levels)) levels = levels(select);
-      if (! is_void(labels)) labels = labels(select);
-      nticks = numberof(select);
-    }
-  }
-
-  local red, green, blue;
-  palette, red, green, blue, query=1;
-  ncolors = numberof(red);
-  if (ncolors < 2) {
-    ncolors = 240;
-  }
-  cells = char(indgen(0 : ncolors - 1));
-
-  linetype = 1; /* "solid" */
-
-  if (vert) {
-    x0 = vport(2) + adjust + 0.022;
-    x1 = x0 + thickness;
-    y0 = vport(3);
-    y1 = vport(4);
-    cells = cells(-,);
-  } else {
-    x0 = vport(1);
-    x1 = vport(2);
-    y0 = vport(3) - adjust - 0.045;
-    y1 = y0 - thickness;
-    cells = cells(,-);
-  }
-  sys = plsys(0);
-  pli, cells, x0, y0, x1, y1;
-  if (is_void(width) || width != 0) {
-    plg, [y0,y0,y1,y1], [x0,x1,x1,x0], closed=1,
-      color=color, width=width, type=linetype, marks=0;
-  }
-
-  if (nticks != 0) {
-    local lx0, lx1, lx2, ly0, ly1, ly2;
-    if (cmin == cmax) {
-      nticks = 1;
-    }
-    if (vert) {
-      lx0 = array(x1, nticks);
-      lx1 = array(x1 + ticklen, nticks);
-      lx2 = array(x1 + 1.67*ticklen, nticks);
-      ly0 = (y1 + y0)/2.0;
-      if (cmin != cmax) {
-        ly0 += (levels - (cmax + cmin)/2.0)*((y1 - y0)/(cmax - cmin));
-      }
-      eq_nocopy, ly1, ly0;
-      eq_nocopy, ly2, ly0;
-      justify = "LH";
-    } else {
-      ly0 = array(y1, nticks);
-      ly1 = array(y1 - ticklen, nticks);
-      ly2 = array(y1 - 1.67*ticklen, nticks);
-      lx0 = (x1 + x0)/2.0;
-      if (cmin != cmax) {
-        lx0 += (levels - (cmax + cmin)/2.0)*((x1 - x0)/(cmax - cmin));
-      }
-      eq_nocopy, lx1, lx0;
-      eq_nocopy, lx2, lx0;
-      justify = "CT";
-    }
-    if (ticklen && (is_void(width) || width != 0)) {
-      pldj, lx0, ly0, lx1, ly1,
-        color=color, width=width, type=linetype;
-    }
-    if (! is_void(labels)) {
-      for (i = 1; i <= nticks; ++i) {
-        plt, labels(i), lx2(i), ly2(i), tosys=0, color=color, font=font,
-          height=height, opaque=opaque, orient=orient, justify=justify;
-      }
-    }
-  }
-  plsys, sys;
+  write, format="WARNING - %s\n",
+    "img_cbar is deprecated, use pl_cbar instead";
+  pl_cbar, z, cmin=cmin, cmax=cmax, vert=vert, vport=vport, adjust=adjust,
+    nlabs=nticks, levels=levels, labels=labels,
+    color=color, font=font, height=height, opaque=opaque, orient=orient,
+    width=width, ticklen=ticklen, thickness=thickness, format=format;
 }
 
+/*---------------------------------------------------------------------------*/
+/* RESIZING OF AN IMAGE */
 
-func img_cbar_old(img, cmin=, cmax=, top=,
-                  levs=, labs=, nticks=, vert=, adjust=, vport=,
-                  format=, color=, width=, height=, ticklen=, font=)
-/* DOCUMENT img_cbar_old, img;
-         or img_cbar_old, cmin=cmin, cmax=cmax;
+func img_resize(z, dim1, dim2, dbl=)
+/* DOCUMENT img_resize(z, s);
+         or img_resize(z, dim);
+         or img_resize(z, width, height);
 
-     Draw a color bar below the  current coordinate system.  If LEVS is not
-     specified uses plfc_levs (set by previous call to plfc).  If COLORS is
-     specified, it should have one  more value than LEVS, otherwise equally
-     spaced colors are chosen, or  plfc_colors if plfc_levs was used.  With
-     the VERT=1  keyword the color bar  appears to the left  of the current
-     coordinate  system (vert=0  is default).   By default,  color_bar will
-     attempt  to  label some  of  the  color  interfaces.  With  the  LABS
-     keyword,  you can  force the  labelling algorithm  as  follows: LABS=0
-     supresses all  labels, LABS=n forces  a label at every  n-th interface,
-     LABS=[i,n]  forces  a  label  at  every n-th  interface  starting  from
-     interface i (0<=i<=numberof(LEVS)).
+      This function returns image Z resized by scale factor S, or resized so
+      that its maximum dimension is DIM while preservering the aspect ratio,
+      or resized to size WIDTH by DIM pixels.  Z can be a grayscale image
+      (i.e., an integer or real 2D array) or a RGB image (i.e., a 3-by-M-by-N
+      array of type char).
 
-     You    can    specify   the    viewport    coordinates   by    keyword
-     VPORT=[xmin,xmax,ymin,ymax]; by default the  colorbar is drawn next to
-     the current viewport.  You can use the ADJUST keyword  to move the bar
-     closer to (adjust<0) or further from (adjust>0) the viewport.
+      For each dimension of the image (not the color axis if any), img_resize
+      performs an interpolated moving average to subsample the image or a
+      linear interpolation to magnify the image.  Thus img_resize can be used
+      to produce accurate thumbnail images.
 
-     You  can specify  the string  format  for labels  with keyword  FORMAT
-     (default "%g"), the font  type with keyword FONT (default "helvetica")
-     and the font height with keyword HEIGHT (default 14 points).
+      When rescaling while preserving the aspect ratio, there may be a slight
+      attenuation at the edges of the result.
 
-     Keyword COLOR  can be  used to  specify the color  of the  labels, the
-     ticks and the frame of the colorbar.  Default is foreground color.
+      Keyword DBL can be set true to keep the result in double precision.  The
+      default is to round the result back to the type of the input image.
 
-     Keyword WIDTH can be  used to set the width of the  lines used to draw
-     the frame and the ticks of the colorbar.
-
-     Keyword TICKLEN  can be used to set  the lenght (in NDC  units) of the
-     ticks.  Default is 0.005 NDC.
-
-   SEE ALSO: plfc. */
+   SEE ALSO: interp, integ, img_thumbnail.
+ */
 {
-  nil = string(0);
-  if (is_void(cmin)) {
-    if (is_void(img)) error, "keyword CMIN must be given";
-    cmin = min(img);
-  }
-  if (is_void(cmax)) {
-    if (is_void(img)) error, "keyword CMAX must be given";
-    cmax = max(img);
-  }
-  cmin = double(cmin); /* make sure CMIN is double */
-  cmax = double(cmax); /* make sure CMAX is double */
-
-  if (is_void(top)) {
-    /* get indices in colormap */
-    crange = long(bytscl([0,1],cmin=0,cmax=1));
-    ncolors = crange(2) - crange(1) + 1;
+  /* Get image size and type. */
+  id = identof(z);
+  dims = dimsof(z);
+  if (id == Y_CHAR && dims(1) == 3 && dims(2) == 3) {
+    rgb = 1n;
+    width = dims(3);
+    height = dims(4);
+  } else if (id <= Y_DOUBLE && dims(1) == 2) {
+    rgb = 0n;
+    width = dims(2);
+    height = dims(3);
   } else {
-    ncolors = top + 1;
+    error, "bad image";
   }
 
-  if (structof(labs) == string) {
-    nticks = numberof(labs);
-    if (is_void(levs)) {
-      levs = array(double, nticks);
-      if (sread(labs, levs) != nticks)
-        error, "cannot convert tick labels into values from LABS, use keyword LEVS";
-    } else if (numberof(levs) != nticks) {
-      error, "LABS and LEVS must have the same number of elements";
-    }
-  } else if (is_void(labs)) {
-    if (is_void(levs)) {
-      if (is_void(nticks)) nticks = 11;
-      /* avoid rounding errors in span() */
-      levs = cmin + ((cmax - cmin)/(nticks - 1))*indgen(0:nticks-1);
+  /* Compute output dimensions and normalized coordinates in the input and
+     output images. */
+  local x, xp, y, yp;
+  q = 1.0; // flux scaling factor
+  if (is_void(dim2)) {
+    /* Rescale keeping aspect ratio. */
+    if (is_integer(dim1) && is_scalar(dim1) && dim1 > 0) {
+      scale = double(dim1)/max(width, height);
+    } else if (is_real(dim1) && is_scalar(dim1) && dim1 > 0.0) {
+      scale = double(dim1);
     } else {
-      nticks = numberof(levs);
+      error, "bad dimension/scale";
     }
-    if (nticks) labs= swrite(format=(is_void(format)?"%g":format), levs);
+    dim1 = lround(scale*width);
+    dim2 = lround(scale*height);
+    if (dim1 < width) {
+      /* Normalized coordinates after integration by "cum" operator. */
+      x = indgen(0:width)*(1.0/width);
+      xp = (indgen(0:dim1) - dim1/2.0)*(1.0/(scale*width)) + 0.5;
+      q *= scale;
+    } else if (dim1 > width) {
+      /* Normalized coordinates for interpolation. */
+      x = (indgen(width) - (width + 1)/2.0)*(1.0/width) + 0.5;
+      xp = (indgen(dim1) - (dim1 + 1)/2.0)*(1.0/(scale*width)) + 0.5;
+    }
+    if (dim2 < height) {
+      /* Normalized coordinates after integration by "cum" operator. */
+      y = indgen(0:height)*(1.0/height);
+      yp = (indgen(0:dim2) - dim2/2.0)*(1.0/(scale*height)) + 0.5;
+      q *= scale;
+    } else if (dim2 > height) {
+      /* Normalized coordinates for interpolation. */
+      y = (indgen(height) - (height + 1)/2.0)*(1.0/height) + 0.5;
+      yp = (indgen(dim2) - (dim2 + 1)/2.0)*(1.0/(scale*height)) + 0.5;
+    }
   } else {
-    error, "LABS must be nil or an array of strings";
+    /* Rescale to given size. */
+    if (! (is_integer(dim1) && is_scalar(dim1) && dim1 > 0) ||
+        ! (is_integer(dim2) && is_scalar(dim2) && dim2 > 0)) {
+      error, "bad dimensions";
+    }
+    if (dim1 < width) {
+      /* Normalized coordinates after integration by "cum" operator. */
+      x = indgen(0:width)*(1.0/width);
+      xp = indgen(0:dim1)*(1.0/dim1);
+      q *= (double(dim1)/width);
+    } else if (dim1 > width) {
+      /* Normalized coordinates for interpolation. */
+      x = (indgen(width) - (width + 1)/2.0)*(1.0/width) + 0.5;
+      xp = (indgen(dim1) - (dim1 + 1)/2.0)*(1.0/dim1) + 0.5;
+    }
+    if (dim2 < height) {
+      /* Normalized coordinates after integration by "cum" operator. */
+      y = indgen(0:height)*(1.0/height);
+      yp = indgen(0:dim2)*(1.0/dim2);
+      q *= (double(dim2)/height);
+    } else if (dim2 > height) {
+      /* Normalized coordinates for interpolation. */
+      y = (indgen(height) - (height + 1)/2.0)*(1.0/height) + 0.5;
+      yp = (indgen(dim2) - (dim2 + 1)/2.0)*(1.0/dim2) + 0.5;
+    }
   }
 
-  if (is_void(font)) font= "helvetica";
-  if (is_void(vport)) vport = viewport();
-  if (is_void(adjust)) adjust = 0.0;
-  if (is_void(ticklen)) ticklen = 0.005;
-  oldsys = plsys(0); /* _after_ calling viewport() */
-  if (vert) {
-    x0 = vport(2) + adjust + 0.022;
-    x1 = x0 + 0.020;
-    y0 = vport(3);
-    y1 = vport(4);
-    if (nticks) {
-      x = x1(-::nticks);
-      y = y0 + (y1 - y0)/(cmax - cmin)*(levs - cmin);
-      if (ticklen) pldj, x, y, x + ticklen, y, legend=nil, color=color, width=width;
-      else ticklen = 0.005;
-      x += 2*ticklen;
-      justify="LH";
+  /* Resize the image. */
+  if (q != 1.0) {
+    z *= q; // also make Z of type double
+  } else if (id != Y_DOUBLE) {
+    z = double(z);
+  }
+  if (rgb) {
+    /* Resize RGB image along second dimension, then along third dimension. */
+    if (dim1 > width) {
+      z = interp(z, x, xp, 2);
+    } else if (dim1 < width) {
+      z = interp(z(,cum,), x, xp, 2)(,dif,);
+    }
+    if (dim2 > height) {
+      z = interp(z, y, yp, 3);
+    } else if (dim2 < height) {
+      z = interp(z(,,cum), y, yp, 3)(,,dif);
     }
   } else {
-    x0 = vport(1);
-    x1 = vport(2);
-    y0 = vport(3) - adjust - 0.045;
-    y1 = y0 - 0.020;
-    if (nticks) {
-      x = x0 + (x1 - x0)/(cmax - cmin)*(levs - cmin);
-      y = y1(-::nticks);
-      if (ticklen) pldj, x, y, x, y - ticklen, legend=nil, color=color, width=width;
-      else ticklen = 0.005;
-      y -= 2*ticklen;
-      justify="CT";
+    /* Resize grayscale image along first dimension, then along second
+       dimension. */
+    if (dim1 > width) {
+      z = interp(z, x, xp, 1);
+    } else if (dim1 < width) {
+      z = interp(z(cum,), x, xp, 1)(dif,);
+    }
+    if (dim2 > height) {
+      z = interp(z, y, yp, 2);
+    } else if (dim2 < height) {
+      z = interp(z(,cum), y, yp, 2)(,dif);
     }
   }
-  for (i=1 ; i<=nticks ; ++i) {
-    plt, labs(i), x(i), y(i), justify=justify, height=height, font=font, color=color;
+  if (dbl || id == Y_DOUBLE) {
+    return z;
   }
-  colors = char(indgen(0:ncolors-1));
-  colors = (vert ? colors(-,) : colors(,-));
-  /* FIXME: there is a bug in Yorick, I have to make the colorbar at least 2 pixel wide to
-     avoid division by zero in pli... */
-  pli, colors, x0, y0, x1, y1;
+  if (id == Y_FLOAT) {
+    return float(z);
+  }
+  z = lround(z);
+  if (id == Y_CHAR) {
+    return char(z);
+  }
+  if (id == Y_INT) {
+    return int(z);
+  }
+  if (id == Y_SHORT) {
+    return short(z);
+  }
+  return z;
+}
 
-  if (width) {
-    plg, [y0,y0,y1,y1,y0], [x0,x1,x1,x0,x0], closed=0,
-      width=width, color=color, legend=nil, marks=0, type=1;
+func img_thumbnail(z, dim1, dim2, dbl=)
+/* DOCUMENT img_thumbnail(z, s);
+         or img_thumbnail(z, dim);
+         or img_thumbnail(z, width, height);
+
+      This function has been superceeded by img_resize (which to see) as it
+      always uses an nterpolated moving average which is less efficient than a
+      simple interpolation for magnifying an image.
+
+      This function returns image Z resized by scale factor S, or resized so
+      that its maximum dimension is DIM while preservering the aspect ratio,
+      or resized to size WIDTH by DIM pixels.  Z can be a grayscale image
+      (i.e., an integer or real 2D array) or a RGB image (i.e., a 3-by-M-by-N
+      array of type char).
+
+      This function apply a moving averaging to subsample the image, the
+      operation is similar to interpolation when the image is magnified. This
+      function can thus be used to magnify an image but is it is more
+      efficient to use a bi-linear interpolation for that.  See for instance,
+      img_resize.
+
+      When rescaling while preserving the aspect ratio, there may be a slight
+      attenuation at the edges.
+
+      Keyword DBL can be set true to keep the result in double precision.  The
+      default is to round the result back to the type of the input image.
+
+   SEE ALSO: interp, integ, img_resize.
+ */
+{
+  /* Get image size and type. */
+  id = identof(z);
+  dims = dimsof(z);
+  if (id == Y_CHAR && dims(1) == 3 && dims(2) == 3) {
+    rgb = 1n;
+    width = dims(3);
+    height = dims(4);
+  } else if (id <= Y_DOUBLE && dims(1) == 2) {
+    rgb = 0n;
+    width = dims(2);
+    height = dims(3);
+  } else {
+    error, "bad image";
   }
-  plsys, oldsys;
+
+  /* Normalized coordinates after integration by "cum" operator. */
+  x = (1.0/width)*indgen(0:width);
+  y = (1.0/height)*indgen(0:height);
+
+  /* Normalized coordinates in the thumbnail. */
+  if (is_void(dim2)) {
+    /* Rescale keeping aspect ratio. */
+    if (is_integer(dim1) && is_scalar(dim1) && dim1 > 0) {
+      scale = double(dim1)/max(width, height);
+    } else if (is_real(dim1) && is_scalar(dim1) && dim1 > 0.0) {
+      scale = double(dim1);
+    } else {
+      error, "bad dimension/scale";
+    }
+    dim1 = lround(scale*width);
+    dim2 = lround(scale*height);
+    xp = (indgen(0:dim1) - dim1/2.0)*(1.0/(scale*width)) + 0.5;
+    yp = (indgen(0:dim2) - dim2/2.0)*(1.0/(scale*height)) + 0.5;
+    scale = scale^2; // flux scale
+  } else {
+    /* Rescale to given size. */
+    if (! (is_integer(dim1) && is_scalar(dim1) && dim1 > 0) ||
+        ! (is_integer(dim2) && is_scalar(dim2) && dim2 > 0)) {
+      error, "bad dimensions";
+    }
+    xp = indgen(0:dim1)*(1.0/dim1);
+    yp = indgen(0:dim2)*(1.0/dim2);
+    scale = (double(dim1)/width)*(double(dim2)/height); // flux scale
+  }
+  z *= scale; // also make Z of type double
+  if (rgb) {
+    z = interp(interp(z(,cum,), x, xp, 2)(,dif,)(,,cum), y, yp, 3)(,,dif);
+  } else {
+    z = interp(interp(z(cum,), x, xp, 1)(dif,)(,cum), y, yp, 2)(,dif);
+  }
+  if (dbl || id == Y_DOUBLE) {
+    return z;
+  }
+  if (id == Y_FLOAT) {
+    return float(z);
+  }
+  z = lround(z);
+  if (id == Y_CHAR) {
+    return char(z);
+  }
+  if (id == Y_INT) {
+    return int(z);
+  }
+  if (id == Y_SHORT) {
+    return short(z);
+  }
+  return z;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -567,28 +486,27 @@ func img_fft_centered_at_max(img)
 
 func img_convolve(a, b, unroll=, pad=, correl=)
 /* DOCUMENT img_convolve(a, b)
- *
- *   Convolve image B by image A using FFT's.  If Yeti FFTW plugin is
- *   loaded, FFTW is used; otherwise Yorick's FFT is used.
- *
- *   If keyword UNROLL is true, the result is centered at pixel
- *   ((WIDTH + 1)/2, (HEIGHT + 1)/2) where WIDTH and HEIGHT are the
- *   dimensuon of the result (and integere division is applied); the
- *   default is to have the result centered at pixel (1,1) according
- *   to FFT conventions.
- *
- *   If keyword CORREL is true, the correlation of B by A instead of
- *   the convolution is computed.
- *
- *   If keyword PAD is true, then A and B are padded with zeroes to
- *   match good dimensions for the FFT.  As a special case, with PAD=2
- *   the padding is such that there is no aliasing in the result,
- *   i.e. dimensions of the result are such that:
- *     WIDTH  >= DIMSOF(A)(2) + DIMSOF(B)(2) - 1
- *     HEIGHT >= DIMSOF(A)(2) + DIMSOF(B)(2) - 1
- *
- *
- * SEE ALSO: fft_best_dim, fft, fftw.
+
+     Convolve image B by image A using FFT's.  If Yeti FFTW plugin is
+     loaded, FFTW is used; otherwise Yorick's FFT is used.
+
+     If keyword UNROLL is true, the result is centered at pixel
+     ((WIDTH + 1)/2, (HEIGHT + 1)/2) where WIDTH and HEIGHT are the
+     dimensuon of the result (and integere division is applied); the
+     default is to have the result centered at pixel (1,1) according
+     to FFT conventions.
+
+     If keyword CORREL is true, the correlation of B by A instead of
+     the convolution is computed.
+
+     If keyword PAD is true, then A and B are padded with zeroes to
+     match good dimensions for the FFT.  As a special case, with PAD=2
+     the padding is such that there is no aliasing in the result,
+     i.e. dimensions of the result are such that:
+       WIDTH  >= DIMSOF(A)(2) + DIMSOF(B)(2) - 1
+       HEIGHT >= DIMSOF(A)(2) + DIMSOF(B)(2) - 1
+
+   SEE ALSO: fft_best_dim, fft, fftw.
  */
 {
   real = (structof(a) != complex && structof(b) != complex);
@@ -899,7 +817,6 @@ func img_flatten(a, n)
   return out;
 
 }
-
 
 /*---------------------------------------------------------------------------*/
 /* MEASUREMENT */
@@ -1426,8 +1343,10 @@ func img_tmpnam(name)
  * Local Variables:
  * mode: Yorick
  * tab-width: 8
+ * indent-tabs-mode: nil
  * c-basic-offset: 2
- * fill-column: 78
+ * fill-column: 79
  * coding: utf-8
+ * ispell-local-dictionary: "american"
  * End:
  */

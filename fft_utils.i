@@ -1,91 +1,36 @@
 /*
  * fft_utils.i --
  *
- *	Useful routines for FFT operations in Yorick.
+ * Useful routines for FFT operations in Yorick.
  *
- *-----------------------------------------------------------------------------
+ * ---------------------------------------------------------------------------
  *
- *      Copyright (C) 1995, Eric Thi�baut <thiebaut@obs.univ-lyon1.fr>
+ * This file is part of YLib (Yorick Library) which is licensed under the MIT
+ * "Expat" License:
  *
- *	This file is free software; you can redistribute it and/or modify
- *	it under the terms of the GNU General Public License version 2 as
- *	published by the Free Software Foundation.
+ * Copyright (C) 1995-2014, Éric Thiébaut.
  *
- *	This file is distributed in the hope that it will be useful, but
- *	WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
  *
- *-----------------------------------------------------------------------------
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
  *
- * History:
- *	$Id: fft_utils.i,v 1.15 2008/12/24 11:04:04 eric Exp $
- *	$Log: fft_utils.i,v $
- *	Revision 1.15  2008/12/24 11:04:04  eric
- *	 - Fixed a bug in fft_best_dim which might not return the smallest
- *	   multiple of 2, 3, and/or 5 greater of equal its argument (thanks
- *	   to Clementine Bechet for the fix).
- *
- *	Revision 1.14  2008/09/24 16:18:30  eric
- *	 - Fixed bug in fft_recenter found by Ferréol Soulez.
- *
- *	Revision 1.13  2008/07/12 06:38:26  eric
- *	 - Considerable speed-up of fft_gaussian_mtf and fft_gaussian_psf for
- *	   multidimensional array (accounting for the fact that the Gaussian
- *	   is separable).  Also FWHM can now be a scalar or a vector with as
- *	   many values as number of dimensions.
- *	 - New function fft_get_ndims.
- *
- *	Revision 1.12  2007/04/24 07:11:43  eric
- *	 - Function grow_dimlist replaced by make_dimlist.
- *	 - Function fft_paste fixed.
- *
- *	Revision 1.11  2005/10/18 18:20:39  eric
- *	 - Oops, the previous bug fix yields a new bug, OK now fft_dist
- *	   should work again for n-D arrays (with n>1).
- *
- *	Revision 1.10  2005/10/18 18:09:19  eric
- *	 - new function: fft_paste;
- *	 - fixed bug in fft_dist for 1-D dimension lists which affected
- *	   functions such as fft_smooth for 1-D arrays (thanks to Christophe
- *	   Pichon for pointing the bug);
- *
- *	Revision 1.9  2004/10/11 11:18:21  eric
- *	 -  Fix fft_dist() so that it is as flexible as, e.g., array() for
- *	    the dimension list.
- *
- *	Revision 1.8  2004/08/31 16:20:22  eric
- *	 - New routines for Fourier interpolation: fft_fine_shift,
- *	   fft_unphasor, fft_interp, fft_interp_complex, fft_interp_real.
- *
- *	Revision 1.7  2003/08/23 09:55:57  eric
- *	 - new functions: fft_gaussian_mtf and fft_gaussian_psf;
- *	 - *** POSSIBLE INCOMPATIBILITY *** change order of args in
- *	   fft_recenter and use fft_setup to speed up FFT's;
- *
- *	Revision 1.6  2003/01/31 15:58:32  eric
- *	 - Added new routines: fft_recenter, fft_smooth and reverse_dims.
- *
- *	Revision 1.5  2002/11/20 09:20:56  eric
- *	 - new keywords SQUARE and NYQUIST in fft_dist
- *	 - make use of grow_dimlist in "utils.i"
- *
- *	Revision 1.4  2002/11/14 10:59:38  eric
- *	 - new graphics routines: fft_plh, fft_plc, fft_plfc
- *	 - new routines: abs2, fft_roll_1d, fft_roll_2d, __fft & Co
- *	 - introduction documentation by: help, fft_utils;
- *
- *	Revision 1.3  2001/04/23 14:16:15  eric
- *	New routine: fft_symmetric_index.
- *
- *	Revision 1.2  2001/04/06 16:42:59  eric
- *	 - new routine: fft_plg
- *	 - fixed routine: fft_recenter_at_max
- *
- *	Revision 1.1  2001/03/23 16:45:54  eric
- *	Initial revision
- *
- *-----------------------------------------------------------------------------
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
+ * ---------------------------------------------------------------------------
  */
+
+_FFT_UTILS_VERSION = "$Date: 2014-10-21 09:54:38 +0200$";
 
 require, "utils.i";
 
@@ -154,7 +99,7 @@ func fft_best_dim(len)
   return best;
 }
 
-func fft_indgen(dim) { return (u= indgen(0:dim-1)) - dim*(u > dim/2); }
+func fft_indgen(dim) { return (u = indgen(0:dim-1)) - dim*(u > dim/2); }
 /* DOCUMENT fft_indgen(len)
      Return FFT frequencies along a dimension of length LEN.
    SEE ALSO: indgen, span, fft_dist, fft_freqlist, fft_symmetric_index. */
@@ -236,7 +181,7 @@ func fft_freqlist(dimlist)
   PI = 3.1415926535897932384626433832795029;
   ndims = dimlist(1);
   ptr = array(pointer, ndims);
-  for (k=1 ; k<=ndims ; ++k) {
+  for (k = 1; k <= ndims; ++k) {
     len = dimlist(k + 1);
     ws = array(1, k + 1); /* to build dimension list of k-th dimension */
     ws(1) = k;
@@ -299,16 +244,21 @@ local fft_gaussian_mtf;
 
 func fft_gaussian_psf(dims, fwhm)
 {
+  if (min(fwhm) <= 0.0) {
+    error, "bad FWHM";
+  }
+  CR = 0.9394372786996513337723403284101825868414; // sqrt(log(16)/pi)
+  CS = 1.6651092223153955127063292897904020952612; // sqrt(log(16))
   ndims = fft_get_ndims(dims);
   if (ndims <= 0L) {
-    if (ndims == 0L) return (1.6651092223153955127063292897904020952612/fwhm);
+    if (ndims == 0L) return (CS/fwhm);
     error, "bad dimension list";
   }
 
   //r = (sqrt(log(16.0)/pi)/fwhm) + array(0.0, ndims);
   //s = (sqrt(log(16.0))/fwhm) + array(0.0, ndims);
-  r = (0.9394372786996513337723403284101825868414/fwhm) + array(0.0, ndims);
-  s = (1.6651092223153955127063292897904020952612/fwhm) + array(0.0, ndims);
+  r = (CR/fwhm) + array(0.0, ndims);
+  s = (CS/fwhm) + array(0.0, ndims);
   j = ndims;
   u = s(j)*fft_indgen(dims(j));
   p = exp(-u*u);
@@ -346,7 +296,7 @@ func fft_get_ndims(&dims)
      Returns the number of dimensions in dimension list DIMLIST and modify
      (in-place) DIMLIST to be only the list of dimensions (that is without
      the number of dimensions).  If DIMLIST is invalid, -1 is returned.
-     
+
    SEE ALSO: dimsof.
  */
 {
@@ -407,7 +357,7 @@ func __fft_init(dimlist)
   ndims = numberof(dims);
   __fft_setup = array(pointer, ndims);
   __fft_number = 0;
-  for (i=1 ; i<=ndims ; ++i) {
+  for (i = 1; i <= ndims; ++i) {
     if (! __fft_setup(i)) {
       dim = dims(i);
       ws = array(double, 6*dim + 15);
@@ -444,7 +394,7 @@ func __fft(x, dir)
   len = 6*dims + 15; // expected length of workspace vectors
   std = 1;
   top = numberof(x);
-  for (i=1 ; i<=ndims ; i++) {
+  for (i = 1; i <= ndims; ++i) {
     dim = dims(i);
     ws = __fft_setup(i);
     if (numberof(*ws) != len(i) || structof(*ws) != double)
@@ -455,7 +405,7 @@ func __fft(x, dir)
   }
 
   /* increment counter and return result */
-  if (is_void(__fft_number)) __fft_number= 0;
+  if (is_void(__fft_number)) __fft_number = 0;
   ++__fft_number;
   return x;
 }
@@ -468,12 +418,12 @@ func fft_symmetric_index(..)
      Returns  indices  of  hermitian-symmetry  transform  for  a  FFT  with
      dimension list DIMLIST.  For instance,  if A is a N-dimensional array,
      then:
-        AP= A(fft_symmetric_index(dimsof(A)))
+        AP = A(fft_symmetric_index(dimsof(A)))
      is  equal to array  A with  its coordinates  negated according  to FFT
      convention:
         AP(X1, X2, ..., XN) = A(-X1, -X2, ..., -XN)
      consequently if A is hermitian then:
-        AP= conj(A).
+        AP = conj(A).
 
    SEE ALSO: fft_indgen. */
 {
@@ -484,10 +434,10 @@ func fft_symmetric_index(..)
   /* Compute result starting by last dimension. */
   local u;
   if ((n = numberof(dimlist)) == 1) return 1; /* scalar array */
-  for (k=n ; k>1 ; --k) {
+  for (k = n; k > 1; --k) {
     dim = dimlist(k);
     (q = indgen(dim:1:-1))(1) = 0; // neg. of freq along that dim
-    u= k<n ? dim*u(-,..) + q : q;
+    u = (k < n ? dim*u(-,..) + q : q);
   }
   return u + 1; /* <== indices start at 1 in Yorick */
 }
@@ -502,16 +452,16 @@ func _fft_centroid(a1, repeat)
 
    SEE ALSO fft_centroid. */
 {
-  dim= numberof(a1);
-  u= fft_indgen(dim);
-  x0= u(a1(mxx));
-  x= double(u);
+  dim = numberof(a1);
+  u = fft_indgen(dim);
+  x0 = u(a1(mxx));
+  x = double(u);
   do {
-    w= x0==0 ? a1 : roll(a1, -x0);
+    w = (x0 == 0 ? a1 : roll(a1, -x0));
     if (dim%2 == 0) w(dim/2+1)= 0.0; // remove Nyquist frequency
-    x1= x0+sum(w*x)/sum(w);
-    x0p= x0;
-    x0= long(floor(x1+0.5));
+    x1 = x0+sum(w*x)/sum(w);
+    x0p = x0;
+    x0 = long(floor(x1+0.5));
   } while (--repeat>0 && abs(x0-x0p)>=1);
   return x1;
 }
@@ -530,21 +480,21 @@ func fft_centroid(a, repeat)
 
    SEE ALSO fft_indgen. */
 {
-  if (is_void(repeat)) repeat= 3;
-  dims= dimsof(a);
-  if ((ndims= dims(1)) <= 2) {
-    if (ndims==2) return [_fft_centroid(a(,sum), repeat),
-			 _fft_centroid(a(sum,), repeat)];
-    if (ndims==1) return _fft_centroid(a, repeat);
-    return 0.0; // ndims==0
+  if (is_void(repeat)) repeat = 3;
+  dims = dimsof(a);
+  if ((ndims = dims(1)) <= 2) {
+    if (ndims == 2) return [_fft_centroid(a(,sum), repeat),
+                            _fft_centroid(a(sum,), repeat)];
+    if (ndims == 1) return _fft_centroid(a, repeat);
+    return 0.0; // ndims == 0
   }
-  result= array(double, ndims);
-  for (i=1 ; i<=ndims ; ++i) {
-    dim= dims(i+1);
-    a1= array(double, numberof(a)/dim, dim);
-    a1(*)= (i==ndims ? a(*) : transpose(a, [ndims,i])(*));
-    a1= a1(sum,);
-    result(i)= _fft_centroid(a1, repeat);
+  result = array(double, ndims);
+  for (i = 1; i <= ndims; ++i) {
+    dim = dims(i+1);
+    a1 = array(double, numberof(a)/dim, dim);
+    a1(*) = (i==ndims ? a(*) : transpose(a, [ndims,i])(*));
+    a1 = a1(sum,);
+    result(i) = _fft_centroid(a1, repeat);
   }
   return result;
 }
@@ -620,7 +570,7 @@ func fft_recenter(x, template, reverse)
   ndims = dims(1);
   dims = dims(2:);
   offset = array(long, ndims);
-  for (i=1 ; i<=ndims ; ++i) {
+  for (i = 1; i <= ndims; ++i) {
     dim = dims(i);
     offset(i) = index % dim;
     index /= dim;
@@ -645,7 +595,7 @@ func fft_recenter_at_max(z, middle=)
   ndims = dims(1);
   dims = dims(2:);
   offset = array(long, ndims);
-  for (i=1 ; i<=ndims ; ++i) {
+  for (i = 1; i <= ndims; ++i) {
     dim = dims(i);
     offset(i) = index % dim;
     index /= dim;
@@ -726,7 +676,7 @@ func fft_shift_phasor(off, u)
 {
   if (structof(u) != pointer) u = fft_freqlist(u);
   ndims = numberof(u);
-  for (i=1 ; i<=ndims ; ++i) {
+  for (i = 1; i <= ndims; ++i) {
     a = (*u(i))*off(i);
     if (i == 1) p  =  cos(a) + 1i*sin(a);
     else        p *= (cos(a) + 1i*sin(a));
@@ -817,13 +767,13 @@ func fft_plg(y, scale=, legend=, hide=, type=, width=, color=, smooth=,
 
    SEE ALSO plh, plg, roll. */
 {
-  if (is_void(scale)) scale= 1.0;
+  if (is_void(scale)) scale = 1.0;
   else if (! is_array(scale) || dimsof(scale)(1)!=0)
     error, "expecting a scalar for SCALE";
-  if (! is_array(y) || (dims= dimsof(y))(1)!=1) error, "expecting 1-D array";
+  if (! is_array(y) || (dims = dimsof(y))(1)!=1) error, "expecting 1-D array";
 
-  dim1= dims(2);
-  min1= (max1= dim1/2) - dim1 + 1;
+  dim1 = dims(2);
+  min1 = (max1= dim1/2) - dim1 + 1;
 
   if (stair) {
     // just=
@@ -980,16 +930,16 @@ func fft_of_two_real_arrays(a, b, &ft_a, &ft_b, ljdir, rjdir, setup=)
 
 func fft_paste(a, b)
 /* DOCUMENT fft_paste(a, b)
- *     -or- fft_paste, a, b;
- *   Paste array B into array A in the sense of FFT indexing.  All
- *   dimensions of A must be greater or equal the corresponding dimension
- *   of B.  When called as a subroutine, the operation is done in-place.
- *
- * RESTRICTIONS:
- *   For even dimensions, the Nyquist frequency from B is not pasted
- *   into A.
- *
- * SEE ALSO: fft_indgen.
+         or fft_paste, a, b;
+     Paste array B into array A in the sense of FFT indexing.  All dimensions
+     of A must be greater or equal the corresponding dimension of B.  When
+     called as a subroutine, the operation is done in-place.
+
+   RESTRICTIONS:
+     For even dimensions, the Nyquist frequency from B is not pasted
+     into A.
+
+   SEE ALSO: fft_indgen.
  */
 {
   if (! is_array(a) || ! is_array(b))
@@ -1010,7 +960,7 @@ func fft_paste(a, b)
   ia = ib = 1L; /* indices start at one in Yorick */
   sa = numberof(a); /* stride in A */
   sb = numberof(b); /* stride in B */
-  for (k=n ; k>=2 ; --k) {
+  for (k = n; k >= 2; --k) {
     alen = adim(k);
     sa /= alen;
     blen = bdim(k);
@@ -1038,13 +988,14 @@ func fft_paste(a, b)
   return a;
 }
 
-
-/*---------------------------------------------------------------------------*
- * Local Variables:                                                          *
- * mode: Yorick                                                              *
- * tab-width: 8                                                              *
- * fill-column: 75                                                           *
- * c-basic-offset: 2                                                         *
- * coding: latin-1                                                           *
- * End:                                                                      *
- *---------------------------------------------------------------------------*/
+/*
+ * Local Variables:
+ * mode: Yorick
+ * tab-width: 8
+ * indent-tabs-mode: nil
+ * c-basic-offset: 2
+ * fill-column: 79
+ * coding: utf-8
+ * ispell-local-dictionary: "american"
+ * End:
+ */
