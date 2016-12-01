@@ -5,7 +5,7 @@
  *
  *-----------------------------------------------------------------------------
  *
- * Copyright (C) 2001-2010, Éric Thiébaut <thiebaut@obs.univ-lyon1.fr>
+ * Copyright (C) 2001-2016, Éric Thiébaut <thiebaut@obs.univ-lyon1.fr>
  *
  * This file is part of MiRA: a Multi-aperture Image Reconstruction
  * Algorithm.
@@ -24,8 +24,8 @@
 
 require, "yeti.i";
 MIRA_HOME = setup_package();
-include, MIRA_HOME + "options.i", 1;
 include, MIRA_HOME + "mira.i", 1;
+mira_require, MIRA_HOME + ["", "../lib/ylib/"] + "options.i";
 
 func mira_save_result(master, initial, final, filename, overwrite=, bitpix=)
 {
@@ -36,7 +36,7 @@ func mira_save_result(master, initial, final, filename, overwrite=, bitpix=)
   dim = mira_get_dim(master);
   pixelsize = mira_get_pixelsize(master);
   width = height = dim;
-  
+
   /* see http://heasarc.gsfc.nasa.gov/docs/fcg/standard_dict.html */
   crpix1 = crpix2 = 0.0;
   ctype1 = ctype2 = "milliarcsecond";
@@ -47,7 +47,7 @@ func mira_save_result(master, initial, final, filename, overwrite=, bitpix=)
   fits_set, fh, "CRVAL1", 0.0, "coordinate system value at reference pixel";
   fits_set, fh, "CDELT1", -delta, "coordinate increment along axis";
   fits_set, fh, "CTYPE1", "milliarcsecond", "name of the coordinate axis";
-  
+
   fits_set, fh, "CRPIX2", 0.5*dim, "coordinate system reference pixel";
   fits_set, fh, "CRVAL2", 0.0, "coordinate system value at reference pixel";
   fits_set, fh, "CDELT2", +delta, "coordinate increment along axis";
@@ -88,7 +88,7 @@ func mira_save_result(master, initial, final, filename, overwrite=, bitpix=)
  *    "totvar"     "mu"         real >= 0.0      regul_mu
  *                 "epsilon"    real > 0.0       regul_epsilon
  *                 "isotropic"  true/false       regul_isotropic
- *   
+ *
  *    "lpnorm"     "mu"         real >= 0.0      regul_mu
  *                 "power"      real > 0.0       regul_power
  *                 "epsilon"    real > 0.0       regul_epsilon
@@ -167,7 +167,7 @@ func mira_main(argv0, argv)
 {
   FALSE = 0n;
   TRUE = 1n;
-  
+
   //h_show,_MIRA_OPTIONS;
   opt = opt_parse(_MIRA_OPTIONS, argv);
   argc = numberof(argv);
@@ -216,7 +216,7 @@ func mira_main(argv0, argv)
       rgl_config, regul, name, value;
     }
   }
-  
+
   initial_random = FALSE;
   initial_dirac = FALSE;
   initial_gauss = FALSE;
@@ -256,7 +256,7 @@ func mira_main(argv0, argv)
     }
     dim = opt.dim;
   }
-  
+
   if (initial_filename) {
     fh = fits_open(initial_filename, 'r');
     naxis = fits_get(fh, "NAXIS");
@@ -285,7 +285,7 @@ func mira_main(argv0, argv)
     if (is_void(crval2)) crval2 = 0.0;
     cdelt2 = fits_get(fh, "CDELT2");
 
-    if (is_void(pixelsize)) {  
+    if (is_void(pixelsize)) {
       if (is_void(cdelt1) || is_void(cdelt2)) {
         opt_error, "PIXELSIZE must be specified (CDELT# missing in FITS file)";
       }
@@ -299,7 +299,7 @@ func mira_main(argv0, argv)
       cdelt1 = ((is_void(cdelt1) || cdelt1 < 0.0) ? -pixelsize :  pixelsize);
       cdelt2 = ((is_void(cdelt2) || cdelt2 > 0.0) ?  pixelsize : -pixelsize);
     }
-    
+
     initial = fits_read_array(fh);
     fits_close, fh;
     fh = [];
@@ -315,7 +315,7 @@ func mira_main(argv0, argv)
       require, MIRA_HOME+"img.i";
       initial = img_pad(initial, dim, dim, just=1);
     }
-    
+
   } else if (initial_random) {
     if (! is_void(opt.seed)) {
       if (opt.seed <= 0.0 || opt.seed >= 1.0) {
@@ -332,13 +332,13 @@ func mira_main(argv0, argv)
   }
 
   /* FIXME: take the default pixelsize from the data file */
-  
+
   master = mira_new(argv(1:-1),
                     target = opt.target,
                     eff_wave = mira_scale_option(opt.eff_wave, 1E-6),
                     eff_band = mira_scale_option(opt.eff_band, 1E-6),
                     monochromatic = 1n);
-  
+
   mira_config, master, dim=dim, pixelsize=pixelsize, xform=opt.xform;
 
   local maxeval, maxiter;
@@ -420,7 +420,7 @@ func mira_main(argv0, argv)
   fh = fits_create(final_filename, dimlist=dimlist,
                    overwrite=opt.overwrite,
                    bitpix=opt.bitpix, extend=1);
-  
+
   /* see http://heasarc.gsfc.nasa.gov/docs/fcg/standard_dict.html */
   cdelt1 = -pixelsize/MIRA_MILLIARCSECOND;
   cdelt2 =  pixelsize/MIRA_MILLIARCSECOND;
@@ -430,13 +430,13 @@ func mira_main(argv0, argv)
       fits_new_hdu, fh, "IMAGE";
       fits_set, fh, "BITPIX", opt.bitpix, "bits per pixel";
       fits_set_dims, fh, dimlist;
-      
+
     }
     fits_set, fh, "CRPIX1", 0.5*naxis1, "coordinate system reference pixel";
     fits_set, fh, "CRVAL1", 0.0, "coordinate system value at reference pixel";
     fits_set, fh, "CDELT1", cdelt1, "[rd] coordinate increment along axis";
     fits_set, fh, "CTYPE1", "RA", "right ascension";
-    
+
     fits_set, fh, "CRPIX2", 0.5*naxis2, "coordinate system reference pixel";
     fits_set, fh, "CRVAL2", 0.0, "coordinate system value at reference pixel";
     fits_set, fh, "CDELT2", cdelt2, "coordinate increment along axis";
@@ -456,7 +456,7 @@ func mira_main(argv0, argv)
   }
   fits_close, fh;
 
-  
+
   if (opt.view && batch()) {
     write, format="%s\n", "Hit Ctrl-C twice to finish.";
     while (1) {
@@ -464,7 +464,6 @@ func mira_main(argv0, argv)
     }
   }
 }
-
 
 if (batch()) {
   pldefault, style="boxed.gs", marks=0, width=1, palette="gray.gp",
@@ -474,14 +473,3 @@ if (batch()) {
   mira_main, current_include(), argv;
   quit;
 }
-
-/*
- * Local Variables:
- * mode: Yorick
- * tab-width: 8
- * c-basic-offset: 2
- * indent-tabs-mode: nil
- * fill-column: 78
- * coding: utf-8
- * End:
- */

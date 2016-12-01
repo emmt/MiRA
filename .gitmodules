@@ -1,0 +1,9 @@
+[submodule "lib/ipy"]
+	path = lib/ipy
+	url = git@github.com:emmt/IPY.git
+[submodule "lib/ylib"]
+	path = lib/ylib
+	url = git@github.com:emmt/ylib.git
+[submodule "lib/oifits"]
+	path = lib/yoifits
+	url = git@github.com:emmt/YOIFITS.git

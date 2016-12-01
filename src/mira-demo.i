@@ -1,13 +1,10 @@
-#! /usr/local/bin/yorick -i
-
-include, "yeti_fftw.i";
-include, "./mira.i";
+include, "mira.i";
 
 /* Load OI-FITS data file ('mh1' will be our MIRA instance for this
    data file; if there are several spectral channels in the data file,
    you must choose one with keyword EFF_WAVE or choose a spectral
    range with keywords EFF_WAVE and EFF_BAND): */
-mh1 = mira_new(MIRA_HOME+"data/data1.oifits");
+mh1 = mira_new(MIRA_HOME+"../data/data1.oifits");
 
 /* Configure data instance for image reconstruction parameters (DIM is
    the number of pixels along the width and height of the restored
@@ -18,12 +15,10 @@ mira_config, mh1, dim=256, pixelsize=0.1*MIRA_MILLIARCSECOND, xform="fft";
 
 /* Smooth support. */
 dim = mira_get_dim(mh1);
-r = abs(mira_get_x(mh1), mira_get_x(mh1)(-,));
+r = abs(mira_get_ra(mh1), mira_get_dec(mh1)(-,));
 prior = 1.0/(1.0 + (2.0*r/(5.0*MIRA_MILLIARCSECOND))^2);
 prior *= 1.0/sum(prior);
 rgl_config, (rgl = rgl_new("quadratic")), "W", linop_new("diagonal", 1.0/prior);
-
-
 
 if (! window_exists(0)) {
   window, 0, style="work.gs", dpi=75, width=550, height=450;
@@ -76,10 +71,10 @@ rdline, prompt="hit [Return] to start reconstruction";
  *   0.2  bad      6.95202e3
  *   0.3  bad      6.96364e3
  *   0.4  yes      4.96052e3
- *   0.5  bad      6.95272e3     1.173965308004727e+04 
+ *   0.5  bad      6.95272e3     1.173965308004727e+04
  *   0.6  no       7.27172e3     1.363081123728543e+04
- *   0.7  bad      6.67580e3     1.176493065068268e+04 
- *   0.8  no       4.94379e3     1.175854673628141e+04 
+ *   0.7  bad      6.67580e3     1.176493065068268e+04
+ *   0.8  no       4.94379e3     1.175854673628141e+04
  *   0.9  bad      5.62120e3     1.241042996781854e+04
  *   1.0  yes      4.91903e3     1.368804722873744e+04
  *   1.1  yes                    1.368804722873744e+04

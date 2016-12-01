@@ -6,7 +6,7 @@
  *
  *-----------------------------------------------------------------------------
  *
- * Copyright (C) 2001-2010, Éric Thiébaut <thiebaut@obs.univ-lyon1.fr>
+ * Copyright (C) 2001-2016, Éric Thiébaut <thiebaut@obs.univ-lyon1.fr>
  *
  * This file is part of MiRA: a Multi-aperture Image Reconstruction
  * Algorithm.
@@ -23,7 +23,9 @@
  *-----------------------------------------------------------------------------
  */
 
-MIRA_VERSION = "1.0.0";
+MIRA_VERSION = "1.1.0";
+MIRA_DEBUG = 0n; /* print out some debug messages */
+
 
 local MIRA_VERSION;
 local mira;
@@ -58,56 +60,74 @@ if (is_func(h_new) != 2) {
 
 local MIRA_HOME;
 /* DOCUMENT MIRA_HOME
- *   Global variable used to store the full path to the directory where MiRA
- *   software suite is installed.
- *
- * SEE ALSO: setup_package.
- */
-MIRA_HOME = setup_package();
+     Global variable used to store the full path to the directory where MiRA
+     software suite is installed.
 
-func mira_include(sym, src)
-/* DOCUMENT mira_include, sym, src;
- *   Include source file SRC if symbol SYM is not a function.  This is
- *   a shortcut to:
- *      if (! is_func(SYM)) include, SRC, 1;
- *
- * SEE ALSO: include, is_func, require.
+   SEE ALSO: current_include.
+ */
+
+func _mira_init
+{
+  extern MIRA_HOME;
+  path = current_include();
+  MIRA_HOME = ((path && (i = strfind("/", path, back=1)(2)) > 0) ?
+               strpart(path, 1:i) : cd("."));
+
+
+}
+_mira_init;
+_mira_init = [];
+
+func mira_require(fname, src)
+/* DOCUMENT mira_require, fname, src;
+
+     Include source file SRC if FNAME is not the name of an existing function.
+     If SRC is an array of strings, they are all tried in order.  An error is
+     raised if FNAME is not the name of an existing function after trying to
+     include each files in SRC.
+
+   SEE ALSO: include, is_func, require.
  */
 {
-  code = is_func(sym);
-  if (code != 1 && code != 2) {
-    include, src, 1;
+  i = 0;
+  n = numberof(src);
+  while (! symbol_exists(fname) || (c = is_func(symbol_def(fname))) == 0n ||
+         c == 3n) {
+    if (i == 0 && MIRA_DEBUG) {
+      write, format = "Symbol \"%s\" is not a function\n", fname;
+    }
+    if (++i > numberof(src)) {
+      error, "function \""+fname+"\" not found in any of: "+sum(print(src));
+    }
+    if (MIRA_DEBUG) {
+      write, format = "Trying to include \"%s\"...\n", src(i);
+    }
+    include, src(i), 3;
   }
 }
 
 /* Loading of utility functions: */
-mira_include, glob, MIRA_HOME + "utils.i";
+mira_require, "glob", MIRA_HOME + ["", "../lib/ylib/"] + "utils.i";
 
 /* MiRA requires OI-FITS support: */
-mira_include, fits_open, "fits.i";
-mira_include, oifits_load, MIRA_HOME + "oifits.i";
+mira_require, "fits_open", "fits.i";
+mira_require, "oifits_load", MIRA_HOME + ["", "../lib/yoifits/"] + "oifits.i";
 
-/* MiRA requires linear operator class: */
-mira_include, linop_new, MIRA_HOME + "linop.i";
+/* MiRA requires linear operator and regularizations from IPY: */
+mira_require, "linop_new", MIRA_HOME + ["", "../lib/ipy/"] + "linop.i";
+mira_require, "rgl_new",   MIRA_HOME + ["", "../lib/ipy/"] + "rgl.i";
 
-/* MiRA requires regularization operators: */
-mira_include, rgl_new, MIRA_HOME + "rgl.i";
-
-/* MiRA requires FFT_UTILS: */
-mira_include, fft_indgen, MIRA_HOME + "fft_utils.i";
+/* MiRA requires some files in YLib: */
+mira_require, "fft_indgen", MIRA_HOME + ["", "../lib/ylib/"] + "fft_utils.i";
+mira_require, "fmin",       MIRA_HOME + ["", "../lib/ylib/"] + "fmin.i";
+mira_require, "color_bar",  MIRA_HOME + ["", "../lib/ylib/"] + "plot.i";
 
 /* MiRA requires OptimPack1: */
-mira_include, op_vmlmb_next, "OptimPack1.i";
-mira_include, fmin, MIRA_HOME + "fmin.i";
-
-/* MiRA requires additional plot functions.  Unfortunately many people have
-   already included their own (old) "plot.i" file so we force loading the
-   version delivered with MiRA: */
-include, MIRA_HOME + "plot.i", 1;
+mira_require, "op_vmlmb_next", "OptimPack1.i";
 
 /* Load some files from the standard Yorick installation. */
-mira_include, bessj0, Y_SITE + "i/bessel.i";
-mira_include, random_n, Y_SITE + "i/random.i";
+mira_require, "bessj0",   Y_SITE + "i/bessel.i";
+mira_require, "random_n", Y_SITE + "i/random.i";
 
 /* Some constants. */
 local MIRA_PI, MIRA_MICRON;
@@ -129,7 +149,6 @@ MIRA_MICRON = 1e-6;
 
 /* Various global options. */
 MIRA_SPARSE = 1n; /* use Yeti sparse matrix */
-MIRA_DEBUG = 0n; /* print out some debug messages */
 MIRA_FLAGS = 0n;
 
 MIRA_USE_NORMALIZE      = 1;
@@ -186,8 +205,6 @@ MIRA_BISPECTRUM_PHASE             = 9; /* phase of bispectrum (phase closure) */
  * ~~~~~~~~~~~~~~~~~~~
  *   mira_bicubic_ft
  *   mira_bilinear_ft
- *   mira_cast_complex_as_real
- *   mira_cast_real_as_complex
  *   mira_color_bar
  *   mira_fit_profile
  *   mira_gauss_ft
@@ -1277,7 +1294,7 @@ func _mira_apply_nfft_xform(this, x, job)
   local z;
   if (job) {
     /* adjoint operator */
-    z = this.nfft(mira_cast_real_as_complex(x), 1n);
+    z = this.nfft(linop_cast_real_as_complex(x), 1n);
     if (this.sub) {
       return double(z)(this.r1, this.r2);
     } else {
@@ -1484,7 +1501,7 @@ func _mira_apply_fft_xform(this, x, job)
 {
   if (! job) {
     /* direct transform */
-    return this.s(mira_cast_complex_as_real(this.f(x)));
+    return this.s(linop_cast_complex_as_real(this.f(x)));
   } else if (job == 1) {
     /* transpose transform for the gradient */
     temp = this.s(x, 1);
@@ -1502,7 +1519,7 @@ func _mira_apply_fft_xform(this, x, job)
         temp(2,this.idx2) = -wim;
       }
     }
-    return this.f(mira_cast_real_as_complex(temp), 1);
+    return this.f(linop_cast_real_as_complex(temp), 1);
   } else {
     error, "unsupported value for JOB";
   }
@@ -3714,45 +3731,6 @@ func mira_dirac(dim)
   cen = dim - (dim/2); // position of center
   (img = array(double, dim, dim))(cen, cen) = 1.0;
   return img;
-}
-
-local mira_cast_real_as_complex, mira_cast_complex_as_real;
-/* DOCUMENT z = mira_cast_real_as_complex(x);
- *     -or- x = mira_cast_complex_as_real(z);
- *
- *   The first function converts a 2-by-any real array X into a complex
- *   array Z such that:
- *
- *      Z.re = X(1,..)
- *      Z.im = X(2,..)
- *
- *   the second function does the inverse operation.
- *
- * SEE ALSO: reshape.
- */
-func mira_cast_real_as_complex(x)
-{
-  local z;
-  if (structof(x) != double) {
-    if (! is_real(x) && ! is_integer(x)) {
-      error, "bad data type (expecting real or integer)";
-    }
-    x = double(unref(x));
-  }
-  if ((n = numberof((dimlist = dimsof(x)))) < 2 || dimlist(2) != 2) {
-    error, "incompatible dimension list";
-  }
-  reshape, z, &x, complex, (n == 2 ? [0] : grow(n - 2, dimlist(3:0)));
-  return z;
-}
-func mira_cast_complex_as_real(z)
-{
-  local x;
-  if (structof(z) != complex) {
-    error, "bad data type (expecting complex)";
-  }
-  reshape, x, &z, double, 2, dimsof(z);
-  return x;
 }
 
 func mira_glob(pat)
