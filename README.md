@@ -14,54 +14,54 @@ version 2.1), [Yeti](https://github.com/emmt/Yeti) (at least version 6.2.0) and
 Fast Fourier Transform*.
 
 
-1. launch Yorick and load `"mira.i"` (this should also load Yeti plugin):
+Launch Yorick and load `"mira.i"` (this should also load Yeti plugin):
 
     include, "mira.i";
 
-3. Load OI-FITS data file (`db` will be your MiRA instance for this data file;
-   in the data file, you may select a spectral range with keywords `eff_wave`
-   and `eff_band` or with keywords `wavemin` and `wavemax`):
+Load OI-FITS data file (`db` will be your MiRA instance for this data file; in
+the data file, you may select a spectral range with keywords `eff_wave` and
+`eff_band` or with keywords `wavemin` and `wavemax`):
 
     db = mira_new("data/data1.oifits");
 
-4. Configure data instance for image reconstruction parameters (keyword `dim`
-   is the number of pixels along the width and height of the restored image;
-   keyword `pixelsize` is the size of the pixel in radians; keyword `xform` is
-   the name of the method to approximate the Fourier transform, can be
-   `"exact"`, `"fft"` or `"nfft"`, default is `"exact"`):
+Configure data instance for image reconstruction parameters (keyword `dim` is
+the number of pixels along the width and height of the restored image; keyword
+`pixelsize` is the size of the pixel in radians; keyword `xform` is the name of
+the method to approximate the Fourier transform, can be `"exact"`, `"fft"` or
+`"nfft"`, default is `"exact"`):
 
     mira_config, db, dim=50, pixelsize=0.5*MIRA_MILLIARCSECOND,
             xform="nfft";
 
-5. Choose a suitable regularization method:
+Choose a suitable regularization method:
 
     rgl = rgl_new("smoothness");
 
-6. Attempt an image reconstruction (from scratch):
+Attempt an image reconstruction (from scratch):
 
     img1 = mira_solve(db, maxeval=500, verb=1, xmin=0.0, normalization=1,
                       regul=rgl, mu=1e6);
 
-   where `img1` is the output image, `db` is the data instance, `maxeval` is
-   the maximum number of evaluations of the cost function, `verb` is set to one
-   to display convergence information at every successful step (`verb=10` to
-   display this information every 10 steps and `verb=0` or nil to display no
-   information), `xmin=0` to enforce a positivity constraint (`xmin` is the
-   minimum allowed value in the restored image, you certainly do not to want to
-   omit this option), `regul` set the regularization method, `mu` is the global
-   weight of regularization (the higher its value the smoother the result),
-   `ftol` controls the stopping criterion of OptimPack1 (which to see).
+where `img1` is the output image, `db` is the data instance, `maxeval` is the
+maximum number of evaluations of the cost function, `verb` is set to one to
+display convergence information at every successful step (`verb=10` to display
+this information every 10 steps and `verb=0` or nil to display no information),
+`xmin=0` to enforce a positivity constraint (`xmin` is the minimum allowed
+value in the restored image, you certainly do not to want to omit this option),
+`regul` set the regularization method, `mu` is the global weight of
+regularization (the higher its value the smoother the result), `ftol` controls
+the stopping criterion of OptimPack1 (which to see).
 
-6. You can also try a reconstruction given an initial image `img0`:
+You can also try a reconstruction given an initial image `img0`:
 
     img2 = mira_solve(db, img0, maxeval=500, verb=1, xmin=0.0,
                         normalization=1, regul=rgl, mu=1e6);
 
-   Note that if `img0` is not of size `dim×dim` it will be resampled to that
-   size (*i.e.*, assuming the field of view is the same).
+Note that if `img0` is not of size `dim×dim` it will be resampled to that size
+(*i.e.*, assuming the field of view is the same).
 
-7. With keyword `zap_data`, you can just build the default image as imposed by
-   the regularization:
+With keyword `zap_data`, you can just build the default image as imposed by
+the regularization:
 
     img0 = mira_solve(db, maxeval=500, verb=1, xmin=0.0, normalization=1,
                       regul=rgl, mu=1e6, zap_data=1);
@@ -93,6 +93,7 @@ Fast Fourier Transform*.
   reconstruction (possibly after recentering by `mira_recenter`).  For
   instance:
 
+  ```
     img2 = mira_solve(db, img0, maxeval=500, verb=1, xmin=0.0,
                       normalization=1, regul=rgl, mu=1e6);
     img2 = mira_recenter(img2);
@@ -102,36 +103,10 @@ Fast Fourier Transform*.
     img2 = mira_solve(db, img2, maxeval=500, verb=1, xmin=0.0,
                       normalization=1, regul=rgl, mu=1e6);
     ...
+  ```
 
 * It is usually better to work with a purposely too high regularization level
   and then lower the value of `mu` as the image reconstruction converges.
-
-
-## Configuration guidelines
-
-### Pixel size
-
-The pixel size must not be too small:
-
-    pixel size < (1/2) wavelength / max(baseline)
-
-### Field of view
-
-The field of view must not be too small otherwise:
-
-- oversmoothing of the Fourier spectrum
-
-- risk of field aliasing
-
-The field of view must not be too large otherwise:
-
-- undersmoothing of the Fourier spectrum with respect to the (u,v) sampling
-  and, for real data, to the (u,v) smoothing due to the finite size of the
-  telescopes and to the tapering (spatial filtering by fiber optics).
-
-Typically:
-
-    FOV ~ a few times (wavelength / telescope diameter)
 
 
 # References
