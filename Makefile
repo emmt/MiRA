@@ -18,6 +18,11 @@ SOURCES = fft_utils.i \
           MiRA mira-batch.i \
           mira-demo.i mira-test1.i mira-test2.i
 
+IPY_DIR = /home/eric/work/code/yorick/ipy
+YOR_DIR = /home/eric/yorick
+YLIB_DIR = /home/eric/git/ylib
+YOIFITS_DIR = /home/eric/git/YOIFITS
+
 default:
 	@echo "There is no default target.  Try one of:"
 	@echo "    make update"
@@ -41,57 +46,65 @@ test:
 	./MiRA $(TEST_FLAGS)                     data/data1.oifits test1.fits
 	./MiRA $(TEST_FLAGS) -initial=test1.fits data/data1.oifits test2.fits
 
-fft_utils.i: /home/eric/yorick/fft_utils.i
-	test -e $@ && mv -f $@ $@.bak || true
+fft_utils.i: $(YLIB_DIR)/fft_utils.i
+	rm -f $@.bak
+	test -f $@ -o -h $@ && mv $@ $@.bak || true
 	cp -a $< $@
 
-#fits.i: /home/eric/yorick/fits.i
-# 	test -e $@ && mv -f $@ $@.bak || true
+#fits.i: $(YOR_DIR)/fits.i
+#	rm -f $@.bak
+#	test -f $@ -o -h $@ && mv $@ $@.bak || true
 # 	cp -a $< $@
 
-ipy.i: /home/eric/devel/ipy/ipy.i
-	test -e $@ && mv -f $@ $@.bak || true
+ipy.i: $(IPY_DIR)/ipy.i
+	rm -f $@.bak
+	test -f $@ -o -h $@ && mv $@ $@.bak || true
 	cp -a $< $@
 
-rgl.i: /home/eric/devel/ipy/rgl.i
-	test -e $@ && mv -f $@ $@.bak || true
+rgl.i: $(IPY_DIR)/rgl.i
+	rm -f $@.bak
+	test -f $@ -o -h $@ && mv $@ $@.bak || true
 	cp -a $< $@
 
-linop.i: /home/eric/devel/ipy/linop.i
-	test -e $@ && mv -f $@ $@.bak || true
+linop.i: $(IPY_DIR)/linop.i
+	rm -f $@.bak
+	test -f $@ -o -h $@ && mv $@ $@.bak || true
 	cp -a $< $@
 
-fmin.i: /home/eric/yorick/fmin.i
-	test -e $@ && mv -f $@ $@.bak || true
+fmin.i: $(YLIB_DIR)/fmin.i
+	rm -f $@.bak
+	test -f $@ -o -h $@ && mv $@ $@.bak || true
 	cp -a $< $@
 
-img.i: /home/eric/yorick/img.i
-	test -e $@ && mv -f $@ $@.bak || true
+img.i: $(YLIB_DIR)/img.i
+	rm -f $@.bak
+	test -f $@ -o -h $@ && mv $@ $@.bak || true
 	cp -a $< $@
 
 
-options.i: /home/eric/yorick/options.i
-	test -e $@ && mv -f $@ $@.bak || true
+options.i: $(YOR_DIR)/options.i
+	rm -f $@.bak
+	test -f $@ -o -h $@ && mv $@ $@.bak || true
 	cp -a $< $@
 
-optimpack.i: /home/eric/yorick/optimpack.i
-	test -e $@ && mv -f $@ $@.bak || true
+optimpack.i: $(YOR_DIR)/optimpack.i
+	rm -f $@.bak
+	test -f $@ -o -h $@ && mv $@ $@.bak || true
 	cp -a $< $@
 
-plot.i: /home/eric/yorick/plot.i
-	test -e $@ && mv -f $@ $@.bak || true
+plot.i: $(YLIB_DIR)/plot.i
+	rm -f $@.bak
+	test -f $@ -o -h $@ && mv $@ $@.bak || true
 	cp -a $< $@
 
 #oifits.i: /home/eric/work/mira/oifits.i
-#	test -e $@ && mv -f $@ $@.bak || true
+#	rm -f $@.bak
+#	test -f $@ -o -h $@ && mv $@ $@.bak || true
 #	cp -a $< $@
 
-#rgl.i: /home/eric/yorick/rgl.i
-#	test -e $@ && mv -f $@ $@.bak || true
-#	cp -a $< $@
-
-utils.i: /home/eric/yorick/utils.i
-	test -e $@ && mv -f $@ $@.bak || true
+utils.i: $(YLIB_DIR)/utils.i
+	rm -f $@.bak
+	test -f $@ -o -h $@ && mv $@ $@.bak || true
 	cp -a $< $@
 
 DISTRIB_FILES = $(SOURCES) Makefile AUTHOR COPYING README NEWS
@@ -119,7 +132,7 @@ distrib:
 	fi; \
 	mkdir "$$pkgdir"; \
 	for file in $(DISTRIB_FILES); do \
-	  cp -a "$$file" "$$pkgdir/."; \
+	  cp -p "$$file" "$$pkgdir/."; \
 	done; \
 	for dir in $(DISTRIB_SUBDIRS); do \
 	  cp -a "$$dir" "$$pkgdir/$$dir"; \
