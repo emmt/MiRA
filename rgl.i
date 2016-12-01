@@ -1477,7 +1477,7 @@ local rgl_totvar;
  *
  *       mu*sum(dx)
  *
- *   where DX is the lenght of the local gradient of X along its dimensions:
+ *   where DX is the length of the local gradient of X along its dimensions:
  *
  *      DX = sqrt(DX1^2 + DX2^2 + ... + EPSILON^2)
  *
@@ -1488,6 +1488,8 @@ local rgl_totvar;
  *     1 - "mu" = global regularization weight;
  *     2 - "epsilon" = small value to get rid of singularities;
  *     3 - "isotropic" = flag: use isotropic "Total Variation".
+ *     4 - "mask" = mask, an array of 0/1 where pixels are to be
+ *                  ignored/considered.
  *
  *   Note that by using a small but not negligible EPSILON, edge-preserving
  *   smoothness is achieved.
@@ -1508,24 +1510,37 @@ func _rgl_totvar_update(self, x)
 
 func _rgl_totvar_state1(self, x)
 {
+  local mask; eq_nocopy, mask, self.mask;
   w = self.mu/sqrt(2.0);
   eps = abs(self.epsilon);
-  r0 = 1:-1;
-  r1 = 2:0;
+  i0 = 1:-1;
+  i1 = 2:0;
   if (self.isotropic) {
-    x00 = x(r0, r0);
-    x10 = x(r1, r0);
-    x01 = x(r0, r1);
-    x11 = x(r1, r1);
+    x00 = x(i0,i0);
+    x10 = x(i1,i0);
+    x01 = x(i0,i1);
+    x11 = x(i1,i1);
     d1 = (x11 - x00);
     d2 = (x10 - x01);
-    d3 = (x00 - x01 - x10 + x11);
+    d3 = (unref(x00) - unref(x01) - unref(x10) + unref(x11));
+    if (! is_void(mask)) {
+      m1 = mask(i1,i1)*mask(i0,i0);
+      m2 = mask(i1,i0)*mask(i0,i1);
+      d1 = m1*unref(d1);
+      d2 = m2*unref(d2);
+      d3 = unref(m1)*unref(m2)*unref(d3);
+    }
     r = sqrt(d1*d1 + d2*d2 + (1.0/3.0)*d3*d3 + 2.0*eps*eps);
     err = w*(sum(r) - numberof(r)*eps);
     h_set, self, state=1, err=err, w=w, r=r, d1=d1, d2=d2, d3=d3;
   } else {
-    d1 = (x(r1, r1) - x(r0, r0));
-    d2 = (x(r1, r0) - x(r0, r1));
+    if (is_void(mask)) {
+      d1 = (x(i1,i1) - x(i0,i0));
+      d2 = (x(i1,i0) - x(i0,i1));
+    } else {
+      d1 = (x(i1,i1) - x(i0,i0))*mask(i1,i1)*mask(i0,i0);
+      d2 = (x(i1,i0) - x(i0,i1))*mask(i1,i0)*mask(i0,i1);
+    }
     r = sqrt(d1*d1 + d2*d2 + 2.0*eps*eps);
     err = w*(sum(r) - numberof(r)*eps);
     h_set, self, state=1, err=err, w=w, r=r, d1=d1, d2=d2;
@@ -1579,6 +1594,7 @@ func _rgl_totvar_get_attr(self, index)
   if (index == 1) return self.mu;
   if (index == 2) return self.epsilon;
   if (index == 3) return self.isotropic;
+  if (index == 4) return self.mask;
 }
 
 func _rgl_totvar_set_attr(self, index, value)
@@ -1607,10 +1623,20 @@ func _rgl_totvar_set_attr(self, index, value)
       h_set, self, isotropic = value, state = 0;
     }
   }
+  if (index == 4) {
+    if (is_void(value)) {
+      h_set, self, mask = [], state = 0;
+    } else if (numberof(dimsof(value)) == 3 && identof(value) <= Y_DOUBLE) {
+      zero = structof(value)(0);
+      h_set, self, mask = double(value != zero), state = 0;
+    } else {
+      error, "\"mask\" must be a 2-D boolean array";
+    }
+  }
 }
 
 /* After having defined all class methods, define the class itself: */
-_rgl_class, "totvar", ["mu", "epsilon", "isotropic"];
+_rgl_class, "totvar", ["mu", "epsilon", "isotropic", "mask"];
 
 /*---------------------------------------------------------------------------*/
 /* SMOOTHNESS W.R.T. AVERAGE ESTIMATE */
