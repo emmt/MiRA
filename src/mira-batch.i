@@ -25,7 +25,7 @@
 require, "yeti.i";
 MIRA_HOME = setup_package();
 include, MIRA_HOME + "mira.i", 1;
-mira_require, MIRA_HOME + ["", "../lib/ylib/"] + "options.i";
+mira_require, "opt_init", MIRA_HOME + ["", "../lib/ylib/"] + "options.i";
 
 func mira_save_result(master, initial, final, filename, overwrite=, bitpix=)
 {
@@ -154,7 +154,7 @@ _MIRA_OPTIONS = opt_init\
         _lst("sxtol",            NULL, "REAL",     OPT_REAL, ""), /* FIXME: */
         /* MISCELLANEOUS */
         _lst("help",             NULL, NULL, OPT_HELP,     "print out this help"),
-        _lst("version",       "1.0.0", NULL, OPT_VERSION, "print out version number")));
+        _lst("version",  MIRA_VERSION, NULL, OPT_VERSION, "print out version number")));
 /* FIXME: merge regul_cost and regul_type */
 
 func mira_scale_option(value, factor)

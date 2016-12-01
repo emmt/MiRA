@@ -15,7 +15,7 @@ SOURCES = fft_utils.i \
           plot.i \
           rgl.i \
           utils.i \
-          MiRA mira-batch.i \
+          mira mira-batch.i \
           mira-demo.i mira-test1.i mira-test2.i
 
 IPY_DIR = /home/eric/work/code/yorick/ipy

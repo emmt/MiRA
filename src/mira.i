@@ -1021,20 +1021,20 @@ func _mira_build_coordinate_list_pass1(this, key, idx, sgn, u, v, w)
 
 func mira_config(this, pixelsize=, dim=, xform=)
 /* DOCUMENT mira_config, this, keyword=value, ...;
- *
- *   Configure or change parameters of MiRA opaque handle THIS.  All
- *   configurable parameters are specified by keywords (see below).  Return
- *   THIS when called as a function.
- *
- * KEYWORDS:
- *   PIXELSIZE = size of pixel in radians;
- *   DIM       = number of pixels accross the field of view;
- *   XFORM     = method to compute the Fourier transform:
- *     "exact"    to use exact (but slow) transform;
- *     "nfft"     to use nonequispaced FFT;
- *     "fft"      to use FFT(W) followed by linear interpolation.
- *
- *  SEE ALSO: mira_new, mira_solve.
+
+     Configure or change parameters of MiRA opaque handle THIS.  All
+     configurable parameters are specified by keywords (see below).  Return
+     THIS when called as a function.
+
+   KEYWORDS:
+     PIXELSIZE = size of pixel in radians;
+     DIM       = number of pixels accross the field of view;
+     XFORM     = method to compute the Fourier transform:
+       "exact"    to use exact (but slow) transform;
+       "nfft"     to use nonequispaced FFT;
+       "fft"      to use FFT(W) followed by linear interpolation.
+
+    SEE ALSO: mira_new, mira_solve.
  */
 {
   update = 0n;

@@ -1,6 +1,6 @@
 #! /bin/sh
 #
-# This script launch MiRA via the comand line arguments parser in file
+# This script launch MiRA via the command line arguments parser in file
 # "mira-batch.i".
 #
 this=$(readlink -mn "$0")
