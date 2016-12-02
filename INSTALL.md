@@ -7,8 +7,12 @@ There are 2 possible ways to use MiRA:
 
 * from the command line with the `mira` command.
 
-In any cases, MiRA software is usable right after unpacking the archive or can
-be installed for easier access.
+Provided you have installed required software (see
+[*Prerequisites*](#prerequisites) below), MiRA software is usable right after
+unpacking the archive (see
+[*Using MiRA without installing*](#using-mira-without-installing) below) or can
+be installed for easier access (see
+[*Installation of MiRA software*](#installation-of-mira-software) below).
 
 
 ## Prerequisites
