@@ -1,4 +1,15 @@
-include, "mira.i";
+/*
+ * mira-demo.i -
+ *
+ * Demonstration of image reconstruction session with MiRA (Multi-aperture
+ * Image Reconstruction Algorithm) using the first dataset from the "The 2004
+ * Optical/IR Interferometry Imaging Beauty Contest" (Lawson et al., 2004).
+ */
+
+if (is_void(MIRA_HOME)) {
+  /* Load MiRA software. */
+  include, "../src/mira.i";
+}
 
 /* Load OI-FITS data file ('mh1' will be our MIRA instance for this
    data file; if there are several spectral channels in the data file,

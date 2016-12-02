@@ -23,28 +23,36 @@
  *-----------------------------------------------------------------------------
  */
 
-MIRA_VERSION = "1.1.0";
-MIRA_DEBUG = 0n; /* print out some debug messages */
+func mira_dirname(path)
+/* DOCUMENT mira_dirname(path)
 
+     Returns PATH with its trailing "/component" removed; if PATH contains no
+     /'s, returns "./" (meaning the current directory).  The result is always
+     terminated by a "/", so that dirname(dirname(PATH)) gives the same result
+     as dirname(PATH).
 
-local MIRA_VERSION;
+   SEE ALSO: strfind. */
+{
+  return (i = strfind("/", path, back=1)(2)) > 0 ? strpart(path, 1:i) : "./";
+}
+
+local MIRA_VERSION, MIRA_HOME;
 local mira;
 /* DOCUMENT MiRA: a Multi-aperture Image Reconstruction Algorithm.
 
-     MiRA (Multi-aperture Image Reconstruction Algorithm) is a software tool
-     for image reconstruction from interferometric data.
+     MiRA is a software tool for image reconstruction from interferometric
+     data.
 
-     Global variable MIRA_VERSION is a set with the current version of MiRA.
+     Global variable `MIRA_VERSION` is set with the current version of MiRA.
+
+     Global variable `MIRA_HOME` is set with the full path to the directory
+     where MiRA software suite is installed.
 
    SEE ALSO: mira_new, mira_config,
  */
-
-if (is_void(MIRA_HOME) && strcase(0, get_env("USER")) == "eric") {
-  write, format="*** FIXME: %s\n",
-    ["(auto)recentering to solve translation degeneracy",
-     "use OIFITS FLAGS for extracting relevant data",
-     "peek computation of diagonal of Hessian in old mira.i"];
-}
+MIRA_VERSION = "1.1.0";
+MIRA_HOME = mira_dirname(current_include());
+MIRA_DEBUG = 0n; /* print out some debug messages */
 
 /*---------------------------------------------------------------------------*/
 /* INITIALIZATION OF MIRA */
@@ -57,26 +65,6 @@ if (is_func(h_new) != 2) {
     error, "Yeti is mandatory to run MiRA.";
   }
 }
-
-local MIRA_HOME;
-/* DOCUMENT MIRA_HOME
-     Global variable used to store the full path to the directory where MiRA
-     software suite is installed.
-
-   SEE ALSO: current_include.
- */
-
-func _mira_init
-{
-  extern MIRA_HOME;
-  path = current_include();
-  MIRA_HOME = ((path && (i = strfind("/", path, back=1)(2)) > 0) ?
-               strpart(path, 1:i) : cd("."));
-
-
-}
-_mira_init;
-_mira_init = [];
 
 func mira_require(fname, src)
 /* DOCUMENT mira_require, fname, src;

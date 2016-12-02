@@ -1,22 +1,21 @@
 /*
  * mira-test2.i -
  *
- *	Example of image reconstruction session with MiRA (Multi-aperture
- *	Image Reconstruction Algorithm) using the second dataset from the "The
- *	2004 Optical/IR Interferometry Imaging Beauty Contest" (Lawson et al.,
- *	2004).
+ * Example of image reconstruction session with MiRA (Multi-aperture Image
+ * Reconstruction Algorithm) using the second dataset from the "The 2004
+ * Optical/IR Interferometry Imaging Beauty Contest" (Lawson et al., 2004).
  */
 
 if (is_void(MIRA_HOME)) {
   /* Load MiRA software. */
-  include, "mira.i", 1;
+  include, "../src/mira.i", 1;
 }
 
 /* Load OI-FITS data file ('db2' will be our MiRA instance for this data
    file; if there are several spectral channels in the data file, you
    must choose one with keyword EFF_WAVE or choose a spectral range
    with keywords EFF_WAVE and EFF_BAND): */
-db2 = mira_new(MIRA_HOME+"data/data2.oifits");
+db2 = mira_new(MIRA_HOME+"../data/data2.oifits");
 
 /* Configure data instance for image reconstruction parameters (DIM is
    the number of pixels along the width and height of the restored

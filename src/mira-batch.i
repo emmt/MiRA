@@ -22,9 +22,18 @@
  *-----------------------------------------------------------------------------
  */
 
-require, "yeti.i";
-MIRA_HOME = setup_package();
-include, MIRA_HOME + "mira.i", 1;
+/* The following initialization function is executed once. */
+func _mira_batch_init {
+  if (! is_func(mira_require) || is_void(MIRA_HOME)) {
+    /* Locate installation directory and include main MiRA code. */
+    path = current_include();
+    dir = (i = strfind("/", path, back=1)(2)) > 0 ? strpart(path, 1:i) : "./";
+    include, dir + "mira.i", 1;
+  }
+}
+_mira_batch_init;
+_mira_batch_init = [];
+
 mira_require, "opt_init", MIRA_HOME + ["", "../lib/ylib/"] + "options.i";
 
 func mira_save_result(master, initial, final, filename, overwrite=, bitpix=)
@@ -110,7 +119,7 @@ func mira_save_result(master, initial, final, filename, overwrite=, bitpix=)
 
 NULL = []; /* FIXME: make a private function to hide local variables */
 _MIRA_OPTIONS = opt_init\
-  ("Usage: MiRA [OPTIONS] INPUT [...] OUTPUT",
+  ("Usage: mira [OPTIONS] INPUT [...] OUTPUT",
    "Image reconstruction.  INPUT and [...] are the OI-FITS data file and OUTPUT" +
    "is the result saved into a FITS file.",
    _lst(

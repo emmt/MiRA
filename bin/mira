@@ -1,0 +1,18 @@
+#! /bin/sh
+#
+# This script launch MiRA via the command line arguments parser in file
+# "mira-batch.i".
+#
+
+# The following variables may be customized, INCDIR is the directory with
+# MiRA code source and YORICK is the path for Yorick interpreter.
+INCDIR=
+YORICK=yorick
+
+# If INCDIR is not specified, use the directory of this script.
+if test "x$INCDIR" = "x"; then
+    INCDIR=$(dirname "$0")/../src
+fi
+
+# Run the MiRA batch script.
+exec "$YORICK" -batch "${INCDIR}/mira-batch.i" "$@"
