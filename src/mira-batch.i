@@ -412,7 +412,7 @@ func mira_main(argv0, argv)
                     eff_wave = mira_scale_option(opt.effwave, 1E-6),
                     eff_band = mira_scale_option(opt.effband, 1E-6),
                     minwave = mira_scale_option(opt.minwave, 1E-6),
-                    maxband = mira_scale_option(opt.maxband, 1E-6),
+                    maxwave = mira_scale_option(opt.maxwave, 1E-6),
                     monochromatic = 1n);
 
   mira_config, master, dim=dim, pixelsize=pixelsize, xform=opt.xform;
