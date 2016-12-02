@@ -2,6 +2,9 @@
 .PHONY: clean default distclean distrib update install
 srcdir = .
 
+# DESTDIR can be overriden by package managers.
+DESTDIR=
+
 #------------------------------------------------------------------------------
 #
 
@@ -12,7 +15,8 @@ YLIB_FILES = fft_utils.i fmin.i img.i options.i plot.i utils.i
 YOIFITS_FILES = oifits.i
 TEST_FILES = mira-demo.i mira-test1.i mira-test2.i
 DATA_FILES = data1.oifits data2.oifits README
-OTHER_FILES = AUTHOR COPYING README.md NEWS
+OTHER_FILES = AUTHOR COPYING Makefile configure \
+    README.md INSTALL.md USAGE.md NEWS.md
 
 MIRA_SRC = $(srcdir)/src
 IPY_SRC = $(srcdir)/lib/ipy
@@ -23,9 +27,9 @@ default:
 	@echo "There is no default target.  Try one of:"
 	@echo "    make clean"
 	@echo "    make distclean"
-	@echo "    make distrib [VERSION=###]"
+	@echo "    make distrib [VERSION=...]"
+	@echo "    make install [INCDIR=...] [YORICK=...] [BINDIR=...]"
 	@echo "    make test"
-#	@echo "    make install"
 
 clean:
 	rm -f core *~ $(srcdir)/src/*~
@@ -70,7 +74,7 @@ install:
 	      mkdir -p "$$INCDIR"; \
 	      for file in $(MIRA_FILES); do \
 	          echo "Installing $$file in $$INCDIR"; \
-	          dst=$$INCDIR/$$file; \
+	          dst=$(DESTDIR)$$INCDIR/$$file; \
 	          src=$(srcdir)/src/$$file; \
 	          if ! test -f "$$src"; then \
 	              echo >&2 "Missing file \"$$file\""; \
@@ -81,7 +85,7 @@ install:
 	      done; \
 	      for file in $(IPY_FILES); do \
 	          echo "Installing $$file in $$INCDIR"; \
-	          dst=$$INCDIR/$$file; \
+	          dst=$(DESTDIR)$$INCDIR/$$file; \
 	          src=$(IPY_SRC)/$$file; \
 	          if ! test -f "$$src"; then \
 	              src=$(srcdir)/src/$$file; \
@@ -95,7 +99,7 @@ install:
 	      done; \
 	      for file in $(YLIB_FILES); do \
 	          echo "Installing $$file in $$INCDIR"; \
-	          dst=$$INCDIR/$$file; \
+	          dst=$(DESTDIR)$$INCDIR/$$file; \
 	          src=$(YLIB_SRC)/$$file; \
 	          if ! test -f "$$src"; then \
 	              src=$(srcdir)/src/$$file; \
@@ -109,7 +113,7 @@ install:
 	      done; \
 	      for file in $(YOIFITS_FILES); do \
 	          echo "Installing $$file in $$INCDIR"; \
-	          dst=$$INCDIR/$$file; \
+	          dst=$(DESTDIR)$$INCDIR/$$file; \
 	          src=$(YOIFITS_SRC)/$$file; \
 	          if ! test -f "$$src"; then \
 	              src=$(srcdir)/src/$$file; \
@@ -126,7 +130,7 @@ install:
 	      mkdir -p "$$BINDIR"; \
 	      for file in $(BIN_FILES); do \
 	          echo "Installing $$file in $$BINDIR"; \
-	          dst=$$BINDIR/$$file; \
+	          dst=$(DESTDIR)$$BINDIR/$$file; \
 	          src=$(srcdir)/bin/$$file; \
 	          if ! test -f "$$src"; then \
 	              echo >&2 "Missing file \"$$file\""; \

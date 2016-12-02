@@ -1,6 +1,9 @@
  * Use Git submodules (see
    https://chrisjean.com/git-submodules-adding-using-removing-and-updating/ for
    a tutorial) for YLib, YOIFITS, IPY to share files with other repositories.
+ * Provide a command line interface.
+ * Provide configuration and installation scripts.
+ * Now available on GitHub (https://github.com/emmt/MiRA).
 
 2015-05-04:
  * Version 1.0.1 released.

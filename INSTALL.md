@@ -64,7 +64,7 @@ to use MiRA in your Yorick code.  To have a description of available options:
 * If `BINDIR` is empty then `YORICK` may be empty and the MiRA executable is
   not installed.
 
-* `make clean` removes the file `install.cfg` where the configuration
+* `make distclean` removes the file `install.cfg` where the configuration
   script stores the installation parameters.
 
 
