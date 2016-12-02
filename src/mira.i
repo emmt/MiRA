@@ -6,7 +6,7 @@
  *
  *-----------------------------------------------------------------------------
  *
- * Copyright (C) 2001-2016, Éric Thiébaut <thiebaut@obs.univ-lyon1.fr>
+ * Copyright (C) 2001-2016, Éric Thiébaut <eric.thiebaut@univ-lyon1.fr>
  *
  * This file is part of MiRA: a Multi-aperture Image Reconstruction
  * Algorithm.
