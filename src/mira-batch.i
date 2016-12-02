@@ -36,28 +36,87 @@ _mira_batch_init = [];
 
 mira_require, "opt_init", MIRA_HOME + ["", "../lib/ylib/"] + "options.i";
 
-func mira_save_result(master, initial, final, filename, overwrite=, bitpix=)
-{
-  polychromatic = 0;
-  if (is_void(bitpix)) bitpix = -32;
-  fh = fits_create(filename, overwrite=overwrite, bitpix=bitpix, extend=1);
+func mira_central_index(dim) { return dim/2; }
+/* DOCUMENT mira_central_index(dim);
+     Get the index of the central element along a dimension of length DIM.
+     The same conventions as for fftshift are used.
+ */
 
+func mira_extract_region(arr, dim)
+/* DOCUMENT mira_extract_region(arr, dim);
+
+     Extract the central DIM-by-DIM region of 2D or 3D array ARR.
+*/
+{
+  if (is_array(arr)) {
+    dims = dimsof(arr);
+    rank = dims(1);
+  } else {
+    dims = [];
+    rank = -1;
+  }
+  if (rank != 2 && rank != 3) {
+    error, "expecting a 2D or 3D array";
+  }
+  if (! is_scalar(dim) || ! is_integer(dim) || dim < 1) {
+    error, "invalid dimension";
+  }
+
+  size = dims(1:2);
+  off = (size/2) - (dim/2);
+  i1 = max(   1 + off, 1);
+  i2 = min(size + off, size);
+  o1 = max(   1 - off, 1);
+  o2 = min( dim - off, dim);
+  if (max(o1) == 1 && min(o2) == dim) {
+    /* No needs for zero-padding. */
+    return arr(i1(1):i2(1),i1(2):i2(2),..);
+  } else {
+    dims(2:3) = dim;
+    dst = array(structof(arr), dims);
+    if (allof(o1 <= o2)) {
+      dst(o1(1):o2(1),o1(2):o2(2),..) = arr(i1(1):i2(1),i1(2):i2(2),..);
+    }
+    return dst;
+  }
+}
+
+func mira_save_result(master, img, filename, overwrite=, bitpix=)
+{
+  polychromatic = 0n;
   dim = mira_get_dim(master);
   pixelsize = mira_get_pixelsize(master);
-  width = height = dim;
+  dims = dimsof(img);
+  if (polychromatic) {
+    if (dims(1) != 3) {
+      error, "expecting a 3D array";
+    }
+  } else {
+    if (dims(1) != 2) {
+      error, "expecting a 2D array";
+    }
+  }
+  width = dims(2);
+  height = dims(3);
+  depth = (polychromatic ? dims(4) : 1);
+  if (width != dim || height != dim) {
+    error, "incompatible dimensions";
+  }
+
+  if (is_void(bitpix)) bitpix = -32;
+  fh = fits_create(filename, overwrite=overwrite, bitpix=bitpix, extend=1);
 
   /* see http://heasarc.gsfc.nasa.gov/docs/fcg/standard_dict.html */
   crpix1 = crpix2 = 0.0;
   ctype1 = ctype2 = "milliarcsecond";
-  cdelt1 = -pixelsize/MIRA_MILLIARCSECOND;
   delta =  pixelsize/MIRA_MILLIARCSECOND;
 
-  fits_set, fh, "CRPIX1", 0.5*dim, "coordinate system reference pixel";
+  fits_set, fh, "CRPIX1", mira_central_index(dim), "coordinate system reference pixel";
   fits_set, fh, "CRVAL1", 0.0, "coordinate system value at reference pixel";
   fits_set, fh, "CDELT1", -delta, "coordinate increment along axis";
   fits_set, fh, "CTYPE1", "milliarcsecond", "name of the coordinate axis";
 
-  fits_set, fh, "CRPIX2", 0.5*dim, "coordinate system reference pixel";
+  fits_set, fh, "CRPIX2", mira_central_index(dim), "coordinate system reference pixel";
   fits_set, fh, "CRVAL2", 0.0, "coordinate system value at reference pixel";
   fits_set, fh, "CDELT2", +delta, "coordinate increment along axis";
   fits_set, fh, "CTYPE2", "milliarcsecond", "name of the coordinate axis";
@@ -73,8 +132,14 @@ func mira_save_result(master, initial, final, filename, overwrite=, bitpix=)
     fits_set, fh, "CRVAL3", eff_wave(1), "coordinate system value at reference pixel";
     fits_set, fh, "CDELT3", stp_wave, "coordinate increment along axis";
     fits_set, fh, "CTYPE3", "wavelength", "name of the coordinate axis";
-
   }
+
+  fits_set, fh, "HISTORY", "This image has been reconstructed by MiRA";
+  fits_set, fh, "HISTORY", "freely available at <https://github.com/emmt/MiRA>";
+  fits_write_header, fh;
+  fits_write_array, fh, img;
+  fits_pad_hdu, fh;
+  fits_close, fh;
 }
 
 /* regularization
@@ -124,46 +189,48 @@ _MIRA_OPTIONS = opt_init\
    "is the result saved into a FITS file.",
    _lst(
         /* DATA SELECTION */
-        _lst("target",           NULL,  "NAME",   OPT_STRING,  "name of the astrophysical object"),
-        _lst("eff_wave",         NULL,  "VALUE",  OPT_REAL,    "effective wavelength (microns)"),
-        _lst("eff_band",         NULL,  "VALUE",  OPT_REAL,    "effective bandwidth (microns)"),
+        _lst("target",           NULL,  "NAME",   OPT_STRING,   "Name of the astrophysical object"),
+        _lst("effwave",          NULL,  "VALUE",  OPT_REAL,     "Effective wavelength (microns)"),
+        _lst("effband",          NULL,  "VALUE",  OPT_REAL,     "Effective bandwidth (microns)"),
+        _lst("minwave",          NULL,  "VALUE",  OPT_REAL,     "Minimum wavelength (microns)"),
+        _lst("maxwave",          NULL,  "VALUE",  OPT_REAL,     "Maximum wavelength (microns)"),
         /* IMAGE PARAMETERS */
-        _lst("pixelsize",        NULL,  "VALUE",  OPT_REAL,    "size of the pixel (milliarcseconds)"),
-        _lst("dim",              NULL,  "NUMBER", OPT_INTEGER, "number of pixels per side of the image"),
-        _lst("xform",          "exact", "NAME",   OPT_STRING,  "method to compute the Fourier transform"),
-        _lst("normalization",    NULL,  "VALUE",  OPT_REAL,    "flux normalization"),
-        _lst("xmin",             NULL,  "VALUE",  OPT_REAL,    "minimum flux"),
-        _lst("xmax",             NULL,  "VALUE",  OPT_REAL,    "maximum flux"),
-        _lst("overwrite",        NULL,  NULL,     OPT_FLAG,    "overwrite output if it exists"),
+        _lst("pixelsize",        NULL,  "VALUE",  OPT_REAL,     "Size of the pixel (milliarcseconds)"),
+        _lst("dim",              NULL,  "NUMBER", OPT_INTEGER,  "Number of pixels per side of the image"),
+        _lst("xform",           "nfft", "NAME",   OPT_STRING,   "Method to compute the Fourier transform"),
+        _lst("normalization",    NULL,  "VALUE",  OPT_REAL,     "Flux normalization"),
+        _lst("min",              NULL,  "LOWER",  OPT_REAL,     "Lower bound for the flux"),
+        _lst("max",              NULL,  "UPPER",  OPT_REAL,     "Upper bound for the flux"),
+        _lst("overwrite",        NULL,  NULL,     OPT_FLAG,     "Overwrite output if it exists"),
         /* REGULARIZATION SETTINGS */
-        _lst("regul",            NULL,  "NAME",  OPT_STRING,  "name of regularization method"),
-        _lst("regul_mu",         0.0,   "VALUE", OPT_REAL,    "global regularization weight"),
-        _lst("regul_epsilon",    1E-6,  "VALUE", OPT_REAL,    "small positive value to get rid of singularities near zero"),
-        _lst("regul_threshold",  1E-3,  "VALUE", OPT_REAL,    "threshold for the cost function"),
-        _lst("regul_power",      2.0,   "VALUE", OPT_REAL,    "power for the Lp-norm"),
-        _lst("regul_normalized", NULL,  NULL,    OPT_FLAG,    "image is normalized"), /* FIXME: */
-        _lst("regul_cost",       "l2",  "NAME",  OPT_STRING,  "cost function for the regularization"),
-        _lst("regul_type",       "log", "NAME",  OPT_STRING,  "subtype for the regularization"),
-        _lst("regul_periodic",   NULL,  NULL,    OPT_FLAG,    "use periodic conditions for the regularization"),
-        _lst("regul_isotropic",  NULL,  NULL,    OPT_FLAG,    "use isotropic version of the regularization"),
+        _lst("regul",            NULL,  "NAME",  OPT_STRING,    "Name of regularization method"),
+        _lst("regul_mu",         0.0,   "VALUE", OPT_REAL,      "Global regularization weight"),
+        _lst("regul_epsilon",    1E-6,  "VALUE", OPT_REAL,      "Edge preserving threshold"),
+        _lst("regul_threshold",  1E-3,  "VALUE", OPT_REAL,      "Threshold for the cost function"),
+        _lst("regul_power",      2.0,   "VALUE", OPT_REAL,      "Power for the Lp-norm"),
+        _lst("regul_normalized", NULL,  NULL,    OPT_FLAG,      "Image is normalized"), /* FIXME: */
+        _lst("regul_cost",       "l2",  "NAME",  OPT_STRING,    "Cost function for the regularization"),
+        _lst("regul_type",       "log", "NAME",  OPT_STRING,    "Subtype for the regularization"),
+        _lst("regul_periodic",   NULL,  NULL,    OPT_FLAG,      "Use periodic conditions for the regularization"),
+        _lst("regul_isotropic",  NULL,  NULL,    OPT_FLAG,      "Use isotropic version of the regularization"),
         /* ALGORITHM PARAMETERS */
         _lst("initial",          "random", "NAME", OPT_STRING, "FITS file or method for initial image"),
-        _lst("seed",             NULL, "VALUE",    OPT_REAL,   "seed for the random generator"),
+        _lst("seed",             NULL, "VALUE",    OPT_REAL,   "Seed for the random generator"),
         /* can also be "random", "Dirac", "Gauss", or "Cauchy-Lorentz" */
-        _lst("bootstrap",        20,   "COUNT",    OPT_INTEGER, "number of bootstrapping iterations"),
-        _lst("maxiter",          NULL, "COUNT",    OPT_INTEGER, "maximum number of iterations"),
-        _lst("maxeval",          NULL, "COUNT",    OPT_INTEGER, "maximum number of evaluations of the objective function"),
-        _lst("verb",             NULL, "COUNT",    OPT_INTEGER, "verbose level"),
-        _lst("view",             0,    "MASK",     OPT_INTEGER, "bitwise mask to specify which graphics to show"),
-        _lst("mem",              NULL, "COUNT",    OPT_INTEGER, "number of previous steps to memorize in VMLMB"),
-        _lst("ftol",             NULL, "REAL",     OPT_REAL, ""), /* FIXME: */
-        _lst("gtol",             NULL, "REAL",     OPT_REAL, ""), /* FIXME: */
-        _lst("sftol",            NULL, "REAL",     OPT_REAL, ""), /* FIXME: */
-        _lst("sgtol",            NULL, "REAL",     OPT_REAL, ""), /* FIXME: */
-        _lst("sxtol",            NULL, "REAL",     OPT_REAL, ""), /* FIXME: */
+        _lst("bootstrap", 20,   "COUNT", OPT_INTEGER, "Number of bootstrapping iterations"),
+        _lst("maxiter",   NULL, "COUNT", OPT_INTEGER, "Maximum number of iterations"),
+        _lst("maxeval",   NULL, "COUNT", OPT_INTEGER, "Maximum number of evaluations of the objective function"),
+        _lst("verb",      NULL, "COUNT", OPT_INTEGER, "Verbose level"),
+        _lst("view",      0,    "MASK",  OPT_INTEGER, "Bitwise mask to specify which graphics to show"),
+        _lst("mem",       NULL, "COUNT", OPT_INTEGER, "Number of previous steps to memorize in VMLMB"),
+        _lst("ftol",      NULL, "REAL",  OPT_REAL,    "Function tolerance for the global convergence"),
+        _lst("gtol",      NULL, "REAL",  OPT_REAL,    "Gradient tolerance for the global convergence"),
+        _lst("sftol",     NULL, "REAL",  OPT_REAL,    "Function tolerance for the line search"),
+        _lst("sgtol",     NULL, "REAL",  OPT_REAL,    "Gradient tolerance for the line search"),
+        _lst("sxtol",     NULL, "REAL",  OPT_REAL,    "Step tolerance for the line search"),
         /* MISCELLANEOUS */
-        _lst("help",             NULL, NULL, OPT_HELP,     "print out this help"),
-        _lst("version",  MIRA_VERSION, NULL, OPT_VERSION, "print out version number")));
+        _lst("help",     NULL, NULL, OPT_HELP, "Print out this help"),
+        _lst("version",  MIRA_VERSION, NULL, OPT_VERSION, "Print out version number")));
 /* FIXME: merge regul_cost and regul_type */
 
 func mira_scale_option(value, factor)
@@ -177,14 +244,12 @@ func mira_main(argv0, argv)
   FALSE = 0n;
   TRUE = 1n;
 
-  //h_show,_MIRA_OPTIONS;
   opt = opt_parse(_MIRA_OPTIONS, argv);
-  argc = numberof(argv);
-  //h_show,opt;
   if (is_void(opt)) {
     /* Options "--help", or "--usage", or "--version" have been set. */
     return;
   }
+  argc = numberof(argv);
   if (argc < 2) {
     opt_usage, _MIRA_OPTIONS;
     return;
@@ -195,16 +260,16 @@ func mira_main(argv0, argv)
   regul_name = opt.regul;
   if (! is_void(regul_name)) {
     if (opt.regul_mu < 0.0) {
-      opt_error, "REGUL_MU must be >= 0.0";
+      opt_error, "value of `--regul_mu` must be >= 0.0";
     }
     if (opt.regul_threshold <= 0.0) {
-      opt_error, "REGUL_THRESHOLD must be > 0.0";
+      opt_error, "value of `--regul_threshold` must be > 0.0";
     }
     if (opt.regul_epsilon <= 0.0) {
-      opt_error, "REGUL_EPSILON must be > 0.0";
+      opt_error, "value of `--regul_epsilon` must be > 0.0";
     }
     if (opt.regul_power <= 0.0) {
-      opt_error, "REGUL_POWER must be > 0.0";
+      opt_error, "value of `--regul_power` must be > 0.0";
     }
     regul = rgl_new(regul_name);
     regul_keywords = rgl_info(regul_name);
@@ -283,13 +348,13 @@ func mira_main(argv0, argv)
     }
 
     crpix1 = fits_get(fh, "CRPIX1");
-    if (is_void(crpix1)) crpix1 = 0.5*dim;
+    if (is_void(crpix1)) crpix1 = mira_central_index(dim);
     crval1 = fits_get(fh, "CRVAL1");
     if (is_void(crval1)) crval1 = 0.0;
     cdelt1 = fits_get(fh, "CDELT1");
 
     crpix2 = fits_get(fh, "CRPIX2");
-    if (is_void(crpix2)) crpix2 = 0.5*dim;
+    if (is_void(crpix2)) crpix2 = mira_central_index(dim);
     crval2 = fits_get(fh, "CRVAL2");
     if (is_void(crval2)) crval2 = 0.0;
     cdelt2 = fits_get(fh, "CDELT2");
@@ -344,8 +409,10 @@ func mira_main(argv0, argv)
 
   master = mira_new(argv(1:-1),
                     target = opt.target,
-                    eff_wave = mira_scale_option(opt.eff_wave, 1E-6),
-                    eff_band = mira_scale_option(opt.eff_band, 1E-6),
+                    eff_wave = mira_scale_option(opt.effwave, 1E-6),
+                    eff_band = mira_scale_option(opt.effband, 1E-6),
+                    minwave = mira_scale_option(opt.minwave, 1E-6),
+                    maxband = mira_scale_option(opt.maxband, 1E-6),
                     monochromatic = 1n);
 
   mira_config, master, dim=dim, pixelsize=pixelsize, xform=opt.xform;
@@ -385,8 +452,8 @@ func mira_main(argv0, argv)
                                      maxiter = maxiter0,
                                      verb = opt.verb,
                                      view = opt.view,
-                                     xmin = opt.xmin,
-                                     xmax = opt.xmax,
+                                     xmin = opt("min"),
+                                     xmax = opt("max"),
                                      normalization = opt.normalization,
                                      regul = regul,
                                      mem = opt.mem,
@@ -405,8 +472,8 @@ func mira_main(argv0, argv)
                      maxiter = opt.maxiter,
                      verb = opt.verb,
                      view = opt.view,
-                     xmin = opt.xmin,
-                     xmax = opt.xmax,
+                     xmin = opt("min"),
+                     xmax = opt("max"),
                      normalization = opt.normalization,
                      regul = regul,
                      mem = opt.mem,
