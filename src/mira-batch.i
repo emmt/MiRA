@@ -5,10 +5,10 @@
  *
  *-----------------------------------------------------------------------------
  *
- * Copyright (C) 2001-2016, Éric Thiébaut <eric.thiebaut@univ-lyon1.fr>
- *
  * This file is part of MiRA: a Multi-aperture Image Reconstruction
- * Algorithm.
+ * Algorithm <https://github.com/emmt/MiRA>.
+ *
+ * Copyright (C) 2001-2016, Éric Thiébaut <eric.thiebaut@univ-lyon1.fr>
  *
  * MiRA is free software; you can redistribute it and/or modify it under the
  * terms of the GNU General Public License version 2 as published by the Free
@@ -159,6 +159,11 @@ func mira_save_result(master, img, filename, overwrite=, bitpix=)
  *
  *    regul
  *
+ *    "hyperbolic" "mu"   real >= 0.0      --mu
+ *                 "tau"  real > 0.0       --tau
+ *                 "eta"  values           --eta // FIXME:
+ *                 "mask" image
+ *
  *    "totvar"     "mu"         real >= 0.0      regul_mu
  *                 "epsilon"    real > 0.0       regul_epsilon
  *                 "isotropic"  true/false       regul_isotropic
@@ -192,8 +197,8 @@ _MIRA_OPTIONS = opt_init\
         _lst("target",           NULL,  "NAME",   OPT_STRING,   "Name of the astrophysical object"),
         _lst("effwave",          NULL,  "VALUE",  OPT_REAL,     "Effective wavelength (microns)"),
         _lst("effband",          NULL,  "VALUE",  OPT_REAL,     "Effective bandwidth (microns)"),
-        _lst("minwave",          NULL,  "VALUE",  OPT_REAL,     "Minimum wavelength (microns)"),
-        _lst("maxwave",          NULL,  "VALUE",  OPT_REAL,     "Maximum wavelength (microns)"),
+        _lst("wavemin",          NULL,  "VALUE",  OPT_REAL,     "Minimum wavelength (microns)"),
+        _lst("wavemax",          NULL,  "VALUE",  OPT_REAL,     "Maximum wavelength (microns)"),
         /* IMAGE PARAMETERS */
         _lst("pixelsize",        NULL,  "VALUE",  OPT_REAL,     "Size of the pixel (milliarcseconds)"),
         _lst("dim",              NULL,  "NUMBER", OPT_INTEGER,  "Number of pixels per side of the image"),
@@ -203,23 +208,27 @@ _MIRA_OPTIONS = opt_init\
         _lst("max",              NULL,  "UPPER",  OPT_REAL,     "Upper bound for the flux"),
         _lst("overwrite",        NULL,  NULL,     OPT_FLAG,     "Overwrite output if it exists"),
         /* REGULARIZATION SETTINGS */
-        _lst("regul",            NULL,  "NAME",  OPT_STRING,    "Name of regularization method"),
-        _lst("regul_mu",         0.0,   "VALUE", OPT_REAL,      "Global regularization weight"),
-        _lst("regul_epsilon",    1E-6,  "VALUE", OPT_REAL,      "Edge preserving threshold"),
-        _lst("regul_threshold",  1E-3,  "VALUE", OPT_REAL,      "Threshold for the cost function"),
-        _lst("regul_power",      2.0,   "VALUE", OPT_REAL,      "Power for the Lp-norm"),
-        _lst("regul_normalized", NULL,  NULL,    OPT_FLAG,      "Image is normalized"), /* FIXME: */
-        _lst("regul_cost",       "l2",  "NAME",  OPT_STRING,    "Cost function for the regularization"),
-        _lst("regul_type",       "log", "NAME",  OPT_STRING,    "Subtype for the regularization"),
-        _lst("regul_periodic",   NULL,  NULL,    OPT_FLAG,      "Use periodic conditions for the regularization"),
-        _lst("regul_isotropic",  NULL,  NULL,    OPT_FLAG,      "Use isotropic version of the regularization"),
+        _lst("regul",            NULL,  "NAME",   OPT_STRING,    "Name of regularization method"),
+        _lst("mu",               0.0,   "VALUE",  OPT_REAL,      "Global regularization weight"),
+        _lst("tau",              1E-6,  "VALUE",  OPT_REAL,      "Edge preserving threshold"),
+        _lst("eta",              1.0,   "VALUES", OPT_REAL_LIST, "Gradient scales along dimensions"),
+        _lst("regul_epsilon",    1E-6,  "VALUE",  OPT_REAL,      "Edge preserving threshold"),
+        _lst("regul_threshold",  1E-3,  "VALUE",  OPT_REAL,      "Threshold for the cost function"),
+        _lst("regul_power",      2.0,   "VALUE",  OPT_REAL,      "Power for the Lp-norm"),
+        _lst("regul_normalized", NULL,  NULL,     OPT_FLAG,      "Image is normalized"), /* FIXME: */
+        _lst("regul_cost",       "l2",  "NAME",   OPT_STRING,    "Cost function for the regularization"),
+        _lst("regul_type",       "log", "NAME",   OPT_STRING,    "Subtype for the regularization"),
+        _lst("regul_periodic",   NULL,  NULL,     OPT_FLAG,      "Use periodic conditions for the regularization"),
+        _lst("regul_isotropic",  NULL,  NULL,     OPT_FLAG,      "Use isotropic version of the regularization"),
         /* ALGORITHM PARAMETERS */
         _lst("initial",          "random", "NAME", OPT_STRING, "FITS file or method for initial image"),
         _lst("seed",             NULL, "VALUE",    OPT_REAL,   "Seed for the random generator"),
         /* can also be "random", "Dirac", "Gauss", or "Cauchy-Lorentz" */
-        _lst("bootstrap", 20,   "COUNT", OPT_INTEGER, "Number of bootstrapping iterations"),
+        _lst("bootstrap", 2,    "COUNT", OPT_INTEGER, "Number of bootstrapping iterations"),
+        _lst("recenter",  NULL, NULL,    OPT_FLAG,    "Recenter result of bootstrapping iterations"),
         _lst("maxiter",   NULL, "COUNT", OPT_INTEGER, "Maximum number of iterations"),
         _lst("maxeval",   NULL, "COUNT", OPT_INTEGER, "Maximum number of evaluations of the objective function"),
+        _lst("quiet",     NULL, NULL,    OPT_FLAG,    "Suppress most messages"),
         _lst("verb",      NULL, "COUNT", OPT_INTEGER, "Verbose level"),
         _lst("view",      0,    "MASK",  OPT_INTEGER, "Bitwise mask to specify which graphics to show"),
         _lst("mem",       NULL, "COUNT", OPT_INTEGER, "Number of previous steps to memorize in VMLMB"),
@@ -259,35 +268,51 @@ func mira_main(argv0, argv)
   /* Setup the regularization. */
   regul_name = opt.regul;
   if (! is_void(regul_name)) {
-    if (opt.regul_mu < 0.0) {
-      opt_error, "value of `--regul_mu` must be >= 0.0";
+    if (opt.mu < 0.0) {
+      opt_error, "value of `--mu` must be >= 0.0";
     }
-    if (opt.regul_threshold <= 0.0) {
-      opt_error, "value of `--regul_threshold` must be > 0.0";
+    if (opt.tau <= 0.0) {
+      opt_error, "value of `--tau` must be > 0.0";
     }
-    if (opt.regul_epsilon <= 0.0) {
-      opt_error, "value of `--regul_epsilon` must be > 0.0";
+    if (min(opt.eta) <= 0.0) {
+      opt_error, "values of `--eta` must be > 0.0";
     }
-    if (opt.regul_power <= 0.0) {
-      opt_error, "value of `--regul_power` must be > 0.0";
-    }
-    regul = rgl_new(regul_name);
-    regul_keywords = rgl_info(regul_name);
-    for (k = numberof(regul_keywords); k >= 1; --k) {
-      name = regul_keywords(k);
-      option = "regul_"+name;
-      value = h_get(opt, option);
-      if (is_void(value)) {
-        if (! h_has(opt, option)) {
-          if (regul_name == "entropy" && name == "prior") {
-            /* skip this one */
-            continue;
-          }
-          opt_error, "unsupported regularization \""+regul_name+"\"";
-        }
-        value = FALSE;
+
+    if (regul_name == "hyperbolic") {
+      regul = rgl_new(regul_name);
+      rgl_config, regul, tau=opt.tau, eta=opt.eta;
+#if 0
+    } else {
+      if (opt.regul_threshold <= 0.0) {
+        opt_error, "value of `--regul_threshold` must be > 0.0";
       }
-      rgl_config, regul, name, value;
+      if (opt.regul_epsilon <= 0.0) {
+        opt_error, "value of `--regul_epsilon` must be > 0.0";
+      }
+      if (opt.regul_power <= 0.0) {
+        opt_error, "value of `--regul_power` must be > 0.0";
+      }
+      regul = rgl_new(regul_name);
+      regul_keywords = rgl_info(regul_name);
+      for (k = numberof(regul_keywords); k >= 1; --k) {
+        name = regul_keywords(k);
+        option = "regul_"+name;
+        value = h_get(opt, option);
+        if (is_void(value)) {
+          if (! h_has(opt, option)) {
+            if (regul_name == "entropy" && name == "prior") {
+              /* skip this one */
+              continue;
+            }
+            opt_error, "unsupported regularization \""+regul_name+"\"";
+          }
+          value = FALSE;
+        }
+        rgl_config, regul, name, value;
+      }
+#endif
+    } else {
+      opt_error, "unsupported regularization \""+regul_name+"\"";
     }
   }
 
@@ -411,78 +436,47 @@ func mira_main(argv0, argv)
                     target = opt.target,
                     eff_wave = mira_scale_option(opt.effwave, 1E-6),
                     eff_band = mira_scale_option(opt.effband, 1E-6),
-                    minwave = mira_scale_option(opt.minwave, 1E-6),
-                    maxwave = mira_scale_option(opt.maxwave, 1E-6),
-                    monochromatic = 1n);
+                    wavemin = mira_scale_option(opt.wavemin, 1E-6),
+                    wavemax = mira_scale_option(opt.wavemax, 1E-6),
+                    monochromatic = 1n, quiet = opt.quiet);
 
   mira_config, master, dim=dim, pixelsize=pixelsize, xform=opt.xform;
 
   local maxeval, maxiter;
   if (opt.bootstrap < 0) {
-    opt_error, "bad value for option --bootstrap";
+    opt_error, "bad value for option `--bootstrap`";
   }
-  maxiter0 = opt.bootstrap;
-  if (! is_void(opt.maxiter)) {
-    if (opt.maxiter < 0) {
-      opt_error, "bad value for option --maxiter";
-    }
-    maxiter = opt.maxiter;
-    if (maxiter > maxiter0) {
-      maxiter0 = maxiter;
-      maxiter = 0;
-    }
+  if (! is_void(opt.maxiter) && opt.maxiter < 0) {
+      opt_error, "bad value for option `--maxiter`";
   }
-  maxeval0 = 2*maxiter0;
-  if (! is_void(opt.maxeval)) {
-    if (opt.maxeval < 0) {
-      opt_error, "bad value for option --maxeval";
-    }
-    maxeval = opt.maxeval;
-    if (maxeval > maxeval0) {
-      maxeval0 = maxeval;
-      maxeval = 0;
-    }
+  if (! is_void(opt.maxeval) && opt.maxeval < 0) {
+    opt_error, "bad value for option `--maxeval`";
   }
 
-  /* Bootstrap. */
+  /* Reconstructions. */
   local final;
-  if (maxeval0 >= 1 && maxiter0 >= 1) {
-    final = mira_recenter(mira_solve(master, initial,
-                                     maxeval = maxeval0,
-                                     maxiter = maxiter0,
-                                     verb = opt.verb,
-                                     view = opt.view,
-                                     xmin = opt("min"),
-                                     xmax = opt("max"),
-                                     normalization = opt.normalization,
-                                     regul = regul,
-                                     mem = opt.mem,
-                                     ftol = 0.0,
-                                     gtol = 0.0,
-                                     sftol = opt.sftol,
-                                     sgtol = opt.sgtol,
-                                     sxtol = opt.sxtol));
-  } else {
-    eq_nocopy, final, initial;
+  eq_nocopy, final, initial;
+  for (k = 1; k <= opt.bootstrap + 1; ++k) {
+    final = mira_solve(master, final,
+                       maxeval = opt.maxeval,
+                       maxiter = opt.maxiter,
+                       verb = opt.verb,
+                       view = opt.view,
+                       xmin = opt("min"),
+                       xmax = opt("max"),
+                       normalization = opt.normalization,
+                       regul = regul,
+                       mu = opt.mu,
+                       mem = opt.mem,
+                       ftol = opt.ftol,
+                       gtol = opt.gtol,
+                       sftol = opt.sftol,
+                       sgtol = opt.sgtol,
+                       sxtol = opt.sxtol);
+    if (opt.recenter && k <= opt.bootstrap) {
+      final = mira_recenter(final, quiet=opt.quiet);
+    }
   }
-
-  /* Final reconstruction. */
-  final = mira_solve(master, final,
-                     maxeval = opt.maxeval,
-                     maxiter = opt.maxiter,
-                     verb = opt.verb,
-                     view = opt.view,
-                     xmin = opt("min"),
-                     xmax = opt("max"),
-                     normalization = opt.normalization,
-                     regul = regul,
-                     mem = opt.mem,
-                     ftol = opt.ftol,
-                     gtol = opt.gtol,
-                     sftol = opt.sftol,
-                     sgtol = opt.sgtol,
-                     sxtol = opt.sxtol);
-
 
   /* Save the result. */
 

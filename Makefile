@@ -1,5 +1,5 @@
 .SUFFIXES: .i
-.PHONY: clean default distclean distrib update install
+.PHONY: clean default distclean test distrib install
 srcdir = .
 
 # DESTDIR can be overriden by package managers.
@@ -37,10 +37,12 @@ clean:
 distclean: clean
 	rm -f $(CONFIG)
 
-TEST_FLAGS=-pixelsize=0.2 -dim=100 --regul=totvar -regul_isotropic -ftol=0 -gtol=0 -maxeval=2000 --overwrite -normalization=1.0 -xmin=0.0 --regul_mu=1E4
+TEST_FLAGS=-pixelsize=0.1 -dim=150 -regul=hyperbolic -mu=3e3 -tau=5e-5 -ftol=0 -gtol=0 -maxeval=2000 -overwrite -normalization=1.0 -min=0.0 -verb=10
 test:
-	(cd test; ../bin/mira $(TEST_FLAGS)			data/data1.oifits test1.fits)
-	(cd test; ../bin/mira $(TEST_FLAGS) -initial=test1.fits data/data1.oifits test2.fits)
+	$(srcdir)/bin/mira $(TEST_FLAGS) \
+	    $(srcdir)/data/data1.oifits test1.fits
+	$(srcdir)/bin/mira $(TEST_FLAGS) -initial=test1.fits \
+	    $(srcdir)/data/data1.oifits test2.fits
 
 # Installation parameters are variables so that they can be overwritten when
 # calling make (the installation script copies the make variables to avoid
