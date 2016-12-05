@@ -37,7 +37,7 @@ clean:
 distclean: clean
 	rm -f $(CONFIG)
 
-TEST_FLAGS=-pixelsize=0.1 -dim=150 -regul=hyperbolic -mu=3e3 -tau=5e-5 -ftol=0 -gtol=0 -maxeval=2000 -overwrite -normalization=1.0 -min=0.0 -verb=10
+TEST_FLAGS=-pixelsize=0.1mas -fov=20mas -regul=hyperbolic -mu=3e3 -tau=5e-5 -ftol=0 -gtol=0 -maxeval=2000 -overwrite -normalization=1.0 -min=0.0 -verb=10
 test:
 	$(srcdir)/bin/mira $(TEST_FLAGS) \
 	    $(srcdir)/data/data1.oifits test1.fits
