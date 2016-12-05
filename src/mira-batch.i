@@ -36,111 +36,8 @@ _mira_batch_init = [];
 
 mira_require, "opt_init", MIRA_HOME + ["", "../lib/ylib/"] + "options.i";
 
-func mira_central_index(dim) { return dim/2; }
-/* DOCUMENT mira_central_index(dim);
-     Get the index of the central element along a dimension of length DIM.
-     The same conventions as for fftshift are used.
- */
 
-func mira_extract_region(arr, dim)
-/* DOCUMENT mira_extract_region(arr, dim);
 
-     Extract the central DIM-by-DIM region of 2D or 3D array ARR.
-*/
-{
-  if (is_array(arr)) {
-    dims = dimsof(arr);
-    rank = dims(1);
-  } else {
-    dims = [];
-    rank = -1;
-  }
-  if (rank != 2 && rank != 3) {
-    error, "expecting a 2D or 3D array";
-  }
-  if (! is_scalar(dim) || ! is_integer(dim) || dim < 1) {
-    error, "invalid dimension";
-  }
-
-  size = dims(1:2);
-  off = (size/2) - (dim/2);
-  i1 = max(   1 + off, 1);
-  i2 = min(size + off, size);
-  o1 = max(   1 - off, 1);
-  o2 = min( dim - off, dim);
-  if (max(o1) == 1 && min(o2) == dim) {
-    /* No needs for zero-padding. */
-    return arr(i1(1):i2(1),i1(2):i2(2),..);
-  } else {
-    dims(2:3) = dim;
-    dst = array(structof(arr), dims);
-    if (allof(o1 <= o2)) {
-      dst(o1(1):o2(1),o1(2):o2(2),..) = arr(i1(1):i2(1),i1(2):i2(2),..);
-    }
-    return dst;
-  }
-}
-
-func mira_save_result(master, img, filename, overwrite=, bitpix=)
-{
-  polychromatic = 0n;
-  dim = mira_get_dim(master);
-  pixelsize = mira_get_pixelsize(master);
-  dims = dimsof(img);
-  if (polychromatic) {
-    if (dims(1) != 3) {
-      error, "expecting a 3D array";
-    }
-  } else {
-    if (dims(1) != 2) {
-      error, "expecting a 2D array";
-    }
-  }
-  width = dims(2);
-  height = dims(3);
-  depth = (polychromatic ? dims(4) : 1);
-  if (width != dim || height != dim) {
-    error, "incompatible dimensions";
-  }
-
-  if (is_void(bitpix)) bitpix = -32;
-  fh = fits_create(filename, overwrite=overwrite, bitpix=bitpix, extend=1);
-
-  /* see http://heasarc.gsfc.nasa.gov/docs/fcg/standard_dict.html */
-  crpix1 = crpix2 = 0.0;
-  ctype1 = ctype2 = "milliarcsecond";
-  delta =  pixelsize/MIRA_MILLIARCSECOND;
-
-  fits_set, fh, "CRPIX1", mira_central_index(dim), "coordinate system reference pixel";
-  fits_set, fh, "CRVAL1", 0.0, "coordinate system value at reference pixel";
-  fits_set, fh, "CDELT1", -delta, "coordinate increment along axis";
-  fits_set, fh, "CTYPE1", "milliarcsecond", "name of the coordinate axis";
-
-  fits_set, fh, "CRPIX2", mira_central_index(dim), "coordinate system reference pixel";
-  fits_set, fh, "CRVAL2", 0.0, "coordinate system value at reference pixel";
-  fits_set, fh, "CDELT2", +delta, "coordinate increment along axis";
-  fits_set, fh, "CTYPE2", "milliarcsecond", "name of the coordinate axis";
-
-  if (polychromatic) {
-    eff_wave = mira_get_eff_wave(master);
-    if (numberof(eff_wave) == 1) {
-      stp_wave = 0.0;
-    } else {
-      stp_wave = (eff_wave(0) - eff_wave(1))/(numberof(eff_wave) - 1.0);
-    }
-    fits_set, fh, "CRPIX3", 1.0, "coordinate system reference pixel";
-    fits_set, fh, "CRVAL3", eff_wave(1), "coordinate system value at reference pixel";
-    fits_set, fh, "CDELT3", stp_wave, "coordinate increment along axis";
-    fits_set, fh, "CTYPE3", "wavelength", "name of the coordinate axis";
-  }
-
-  fits_set, fh, "HISTORY", "This image has been reconstructed by MiRA";
-  fits_set, fh, "HISTORY", "freely available at <https://github.com/emmt/MiRA>";
-  fits_write_header, fh;
-  fits_write_array, fh, img;
-  fits_pad_hdu, fh;
-  fits_close, fh;
-}
 
 /* regularization
  * clique (mu, region)
@@ -200,7 +97,8 @@ _MIRA_OPTIONS = opt_init\
         _lst("wavemin",          NULL,  "VALUE",  OPT_REAL,     "Minimum wavelength (microns)"),
         _lst("wavemax",          NULL,  "VALUE",  OPT_REAL,     "Maximum wavelength (microns)"),
         /* IMAGE PARAMETERS */
-        _lst("pixelsize",        NULL,  "VALUE",  OPT_REAL,     "Size of the pixel (milliarcseconds)"),
+        _lst("pixelsize",        NULL,  "ANGLE",  OPT_STRING,   "Angular size of pixels, e.g. 0.1mas"),
+        _lst("fov",              NULL,  "ANGLE",  OPT_STRING,   "Angular size of the field of view, e.g. 20mas"),
         _lst("dim",              NULL,  "NUMBER", OPT_INTEGER,  "Number of pixels per side of the image"),
         _lst("xform",           "nfft", "NAME",   OPT_STRING,   "Method to compute the Fourier transform"),
         _lst("normalization",    NULL,  "VALUE",  OPT_REAL,     "Flux normalization"),
@@ -223,6 +121,7 @@ _MIRA_OPTIONS = opt_init\
         /* ALGORITHM PARAMETERS */
         _lst("initial",          "random", "NAME", OPT_STRING, "FITS file or method for initial image"),
         _lst("seed",             NULL, "VALUE",    OPT_REAL,   "Seed for the random generator"),
+        _lst("save_initial",  NULL, NULL,    OPT_FLAG,    "Save initial image"),
         /* can also be "random", "Dirac", "Gauss", or "Cauchy-Lorentz" */
         _lst("bootstrap", 2,    "COUNT", OPT_INTEGER, "Number of bootstrapping iterations"),
         _lst("recenter",  NULL, NULL,    OPT_FLAG,    "Recenter result of bootstrapping iterations"),
@@ -238,6 +137,7 @@ _MIRA_OPTIONS = opt_init\
         _lst("sgtol",     NULL, "REAL",  OPT_REAL,    "Gradient tolerance for the line search"),
         _lst("sxtol",     NULL, "REAL",  OPT_REAL,    "Step tolerance for the line search"),
         /* MISCELLANEOUS */
+        _lst("bitpix",   -32,   "BITPIX", OPT_INTEGER, "Bits per pixel"),
         _lst("help",     NULL, NULL, OPT_HELP, "Print out this help"),
         _lst("version",  MIRA_VERSION, NULL, OPT_VERSION, "Print out version number")));
 /* FIXME: merge regul_cost and regul_type */
@@ -248,10 +148,28 @@ func mira_scale_option(value, factor)
   return factor*value;
 }
 
+func _mira_cli_parse_angle(str, opt)
+{
+  if (is_void(opt)) {
+    opt = "angle";
+  }
+  dummy = units = string();
+  value = 0.0;
+  if (sread(str, value, units, dummy) != 2) {
+    opt_error, "expecting value and units for " + opt;
+  }
+  fact = mira_parse_angular_units(units, 0);
+  if (fact == 0) {
+    opt_error, "invalid units for " + opt;
+  }
+  return value*fact;
+}
+
 func mira_main(argv0, argv)
 {
   FALSE = 0n;
   TRUE = 1n;
+  monochromatic = TRUE;
 
   opt = opt_parse(_MIRA_OPTIONS, argv);
   if (is_void(opt)) {
@@ -265,6 +183,15 @@ func mira_main(argv0, argv)
   }
   final_filename = argv(0);
 
+  /* Check bitpix. */
+  if (opt.bitpix != 8 && opt.bitpix != 16 && opt.bitpix != 32 &&
+      opt.bitpix != -32 && opt.bitpix != -64) {
+    opt_error, "invalid value for `--bitpix`";
+  }
+
+  /* Initial comment. */
+  comment = ("Image reconstructed by MiRA algorithm" +
+             " <https://github.com/emmt/MiRA>");
   /* Setup the regularization. */
   regul_name = opt.regul;
   if (! is_void(regul_name)) {
@@ -281,6 +208,9 @@ func mira_main(argv0, argv)
     if (regul_name == "hyperbolic") {
       regul = rgl_new(regul_name);
       rgl_config, regul, tau=opt.tau, eta=opt.eta;
+      grow, comment, swrite(format="Regularization: \"%s\" with MU=%g, TAU=%g, ETA=%s",
+                            regul_name, opt.mu, opt.tau, sum(print(opt.eta)));
+
 #if 0
     } else {
       if (opt.regul_threshold <= 0.0) {
@@ -334,85 +264,84 @@ func mira_main(argv0, argv)
     initial_filename = initial_name;
   }
 
+  /* Get image dimensions and pixel size, if specified. */
   local dim, pixelsize;
-  if (is_void(opt.pixelsize)) {
-    if (! initial_filename) {
-      opt_error, "option -pixelsize=VALUE or -inital=FILENAME must be specified";
+  if (! is_void(opt.pixelsize)) {
+    pixelsize = _mira_cli_parse_angle(opt.pixelsize, "`--pixelsize=...`");
+    if (pixelsize <= 0) {
+      opt_error, "invalid value for `--pixelsize=...`";
     }
-  } else {
-    if (opt.pixelsize <= 0.0) {
-      opt_error, "bad value for PIXELSIZE";
-    }
-    pixelsize = opt.pixelsize*MIRA_MILLIARCSECOND;
   }
-  if (is_void(opt.dim)) {
-    if (! initial_filename) {
-      opt_error, "option -dim=NUMBER or -inital=FILENAME must be specified";
+  if (! is_void(opt.fov)) {
+    if (! is_void(opt.dim)) {
+      opt_error, "only one of `--fov=...` or `--dim=...` can be specified";
     }
-  } else {
+    if (is_void(opt.pixelsize)) {
+      opt_error, "option `--pixelsize=...` must be specified with `--fov=...`";
+    }
+    fov = _mira_cli_parse_angle(opt.fov, "`--fov=...`");
+    if (fov <= 0) {
+      opt_error, "invalid value for `--fov=...`";
+    }
+    dim = lround(fov/pixelsize);
+  } else if (! is_void(opt.dim)) {
     if (opt.dim <= 0) {
-      opt_error, "bad value for DIM";
+      opt_error, "bad value for `--dim=...`";
     }
     dim = opt.dim;
+  } else if (! initial_filename) {
+    opt_error, ("image dimension must be specified with `--dim=...` "
+                + "or `--fov=..` when no initial image is given");
   }
 
+  /* Initial image. */
+  local initial;
   if (initial_filename) {
-    fh = fits_open(initial_filename, 'r');
-    naxis = fits_get(fh, "NAXIS");
-    if (naxis != 2) {
-      opt_error, "expecting a 2-D initial image";
+    /* Read initial image. */
+    img = mira_read_image(initial_filename);
+    naxis = img.naxis;
+    naxis1 = img.naxis1;
+    naxis2 = img.naxis2;
+    naxis3 = (naxis >= 3 ? img.naxis3 : 1);
+    eq_nocopy, initial, img.arr;
+    if (monochromatic) {
+      if (naxis == 3) {
+        if (naxis3 != 1) {
+          opt_error, "expecting a 2D initial image";
+        }
+        initial = initial(,,avg);
+      }
     }
-    naxis1 = fits_get(fh, "NAXIS1");
-    naxis2 = fits_get(fh, "NAXIS2");
-    if (! is_void(dim) && dim != max(naxis1, naxis2)) {
-      opt_error, "option --dim cannot be specified with --initial=FILENAME";
-    }
-    dim = max(naxis1, naxis2);
-    if (dim % 2) {
-      ++dim;
-    }
+    // FIXME: only the pixel size is considered...
 
-    crpix1 = fits_get(fh, "CRPIX1");
-    if (is_void(crpix1)) crpix1 = mira_central_index(dim);
-    crval1 = fits_get(fh, "CRVAL1");
-    if (is_void(crval1)) crval1 = 0.0;
-    cdelt1 = fits_get(fh, "CDELT1");
-
-    crpix2 = fits_get(fh, "CRPIX2");
-    if (is_void(crpix2)) crpix2 = mira_central_index(dim);
-    crval2 = fits_get(fh, "CRVAL2");
-    if (is_void(crval2)) crval2 = 0.0;
-    cdelt2 = fits_get(fh, "CDELT2");
-
+    /* Figure out pixel size if not overriden by command line argument. */
     if (is_void(pixelsize)) {
-      if (is_void(cdelt1) || is_void(cdelt2)) {
-        opt_error, "PIXELSIZE must be specified (CDELT# missing in FITS file)";
+      /* Get pixel size from FITS header and fix the orientation of the
+         image. */
+      cdelt1 = img.cdelt1;
+      cdelt2 = img.cdelt2;
+      cunit1 = mira_parse_angular_unit(img.cunit1, 0);
+      cunit2 = mira_parse_angular_unit(img.cunit2, 0);
+      if (cunit1 == 0 || cunit2 == 0) {
+        opt_error, ("Unknown units in CUNIT1 or CUNIT2, "
+                    + "can be overriden by `--pixelsize`");
       }
-      pixelsize = avg(abs(cdelt1), abs(cdelt2));
-      if (max(abs(abs(cdelt1) - pixelsize),
-              abs(abs(cdelt2) - pixelsize)) > 1E-6*pixelsize) {
-        opt_error, "|CDELT1| and |CDELT2| must be equal in FITS file";
+      pixsiz1 = cdelt1*cunit1;
+      pixsiz2 = cdelt2*cunit2;
+      if (abs(pixsiz1 - pixsiz2) > 1e-7*max(abs(pixsiz1), abs(pixsiz2))) {
+        opt_error, "non-square pixels not supported";
       }
-    } else {
-      /* Overwrite the pixel size written in the FITS file. */
-      cdelt1 = ((is_void(cdelt1) || cdelt1 < 0.0) ? -pixelsize :  pixelsize);
-      cdelt2 = ((is_void(cdelt2) || cdelt2 > 0.0) ?  pixelsize : -pixelsize);
+      pixelsize = (abs(pixsiz1) + abs(pixsiz2))/2;
+      if (pixsiz1 < 0) initial = unref(initial)(::-1,..);
+      if (pixsiz2 < 0) initial = unref(initial)(,::-1,..);
     }
 
-    initial = fits_read_array(fh);
-    fits_close, fh;
-    fh = [];
-
-    /* Fix the orientation of the image and its size. */
-    if ((cdelt1 > 0.0) || (cdelt2 < 0.0)) {
-      local flip1, flip2;
-      if (cdelt1 > 0.0) flip1 = ::-1;
-      if (cdelt2 < 0.0) flip2 = ::-1;
-      initial = initial(flip1, flip2);
+    /* Fix dimensions of initial image. */
+    if (is_void(dim)) {
+      dim = max(img.naxis1, img.naxis2);
     }
-    if (dim > naxis1 || dim >= naxis2) {
-      require, MIRA_HOME+"img.i";
-      initial = img_pad(initial, dim, dim, just=1);
+    if (dim != img.naxis1 || dim != img.naxis2) {
+      initial = mira_extract_region(initial, dim);
     }
 
   } else if (initial_random) {
@@ -479,50 +408,13 @@ func mira_main(argv0, argv)
   }
 
   /* Save the result. */
-
-  polychromatic = 0;
-  if (is_void(opt.bitpix)) h_set, opt, bitpix = -32;  // FIXME:
-  dim = mira_get_dim(master);
-  pixelsize = mira_get_pixelsize(master);
-  naxis = 2;
-  naxis1 = naxis2 = dim;
-  dimlist = [naxis,naxis1,naxis2];
-  fh = fits_create(final_filename, dimlist=dimlist,
-                   overwrite=opt.overwrite,
-                   bitpix=opt.bitpix, extend=1);
-
-  /* see http://heasarc.gsfc.nasa.gov/docs/fcg/standard_dict.html */
-  cdelt1 = -pixelsize/MIRA_MILLIARCSECOND;
-  cdelt2 =  pixelsize/MIRA_MILLIARCSECOND;
-
-  for (hdu = 1; hdu <= 2; ++hdu) {
-    if (hdu > 1) {
-      fits_new_hdu, fh, "IMAGE";
-      fits_set, fh, "BITPIX", opt.bitpix, "bits per pixel";
-      fits_set_dims, fh, dimlist;
-
-    }
-    fits_set, fh, "CRPIX1", 0.5*naxis1, "coordinate system reference pixel";
-    fits_set, fh, "CRVAL1", 0.0, "coordinate system value at reference pixel";
-    fits_set, fh, "CDELT1", cdelt1, "[rd] coordinate increment along axis";
-    fits_set, fh, "CTYPE1", "RA", "right ascension";
-
-    fits_set, fh, "CRPIX2", 0.5*naxis2, "coordinate system reference pixel";
-    fits_set, fh, "CRVAL2", 0.0, "coordinate system value at reference pixel";
-    fits_set, fh, "CDELT2", cdelt2, "coordinate increment along axis";
-    fits_set, fh, "CTYPE2", "DEC", "declination";
-
-    if (hdu == 1) {
-      fits_set, fh, "COMMENT", "Image reconstructed by MiRA.";
-      // FIXME: add regularization parameters, etc.
-    } else {
-      fits_set, fh, "COMMENT", "Initial image used by MiRA.";
-      // FIXME: add regularization parameters, etc.
-    }
-
-    fits_write_header, fh;
-    fits_write_array, fh, (hdu == 1 ? final : initial);
-    fits_pad_hdu, fh;
+  fh = mira_save_image(mira_wrap_image(final, master), final_filename,
+                       overwrite=opt.overwrite, bitpix=opt.bitpix,
+                       comment=comment);
+  if (opt.save_initial) {
+    mira_save_image(initial, fh, bitpix=opt.bitpix,
+                    extname="INITIAL_IMAGE",
+                    comment="Initial image used by MiRA");
   }
   fits_close, fh;
 
