@@ -9,10 +9,44 @@ There are 2 possible ways to use MiRA:
 
 Provided you have installed required software (see
 [*Prerequisites*](#prerequisites) below), MiRA software is usable right after
-unpacking the archive (see
+unpacking the archive or cloning the repository and its sub-modules (see
 [*Using MiRA without installing*](#using-mira-without-installing) below) or can
 be installed for easier access (see
 [*Installation of MiRA software*](#installation-of-mira-software) below).
+
+
+## Getting MiRA software
+
+MiRA software can be retrieved in two ways: as a Git repository, or as an
+archive file.
+
+
+### Cloning Git repository
+
+MiRA Git repository has several sub-modules.  To retrieve a complete
+repository, you have to clone the master repostory and its sub-modules:
+
+    git clone git@github.com:emmt/MiRA.git
+
+then from the MiRA repository (*e.g.*, `cd MiRA`):
+
+    git submodule init
+    git submodule update
+
+In order to pull the last versions of the sources, you can do:
+
+    git pull
+    git submodule foreach 'git pull'
+
+
+### Getting a source archive
+
+Select a version in https://github.com/emmt/MiRA/releases, download it and
+unpack it.  For instance:
+
+    wget https://github.com/emmt/MiRA/releases/mira-${VERSION}.tar.bz2
+    tar jxvf mira-${VERSION}.tar.bz2
+    cd mira-${VERSION}
 
 
 ## Prerequisites
