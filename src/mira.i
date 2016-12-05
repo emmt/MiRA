@@ -118,22 +118,31 @@ mira_require, "bessj0",   Y_SITE + "i/bessel.i";
 mira_require, "random_n", Y_SITE + "i/random.i";
 
 /* Some constants. */
-local MIRA_PI, MIRA_MICRON;
-local MIRA_DEGREE, MIRA_ARCSECOND, MIRA_MILLIARCSECOND;
-/* DOCUMENT MIRA_PI             = 3.1415.....
- *     -or- MIRA_MICRON         = micron to meter conversion factor
- *     -or- MIRA_DEGREE         = degree to radian conversion factor
- *     -or- MIRA_ARCSECOND      = arcsecond to radian conversion factor
- *     -or- MIRA_MILLIARCSECOND = milliarcsecond to radian conversion factor
- *
- * SEE ALSO: mira.
+local MIRA_PI, MIRA_METER, MIRA_MICRON, MIRA_MICROMETER;
+local MIRA_DEGREE, MIRA_DEG, MIRA_ARCSECOND, MIRA_MILLIARCSECOND;
+/* DOCUMENT Mathematical constants and physical units defined in MiRA.
+
+     +-----------------------------------------------------------+
+     | Constants                       Description               |
+     +-----------------------------------------------------------+
+     | MIRA_PI                         3.1415...                 |
+     | MIRA_DEG, MIRA_DEGREE           degree to radian          |
+     | MIRA_ARCSEC, MIRA_ARCSECOND     arcsecond in SI units     |
+     | MIRA_MAS, MIRA_MILLIARCSEC,     millarcsecond in SI units |
+     | MIRA_MILLIARCSECOND                                       |
+     | MIRA_MICRON, MIRA_MICROMETER    micrometer in SI units    |
+     +-----------------------------------------------------------+
+
+   SEE ALSO: mira.
  */
 MIRA_PI = 3.141592653589793238462643383279503;
 MIRA_TWO_PI = 2.0*MIRA_PI;
-MIRA_DEGREE = MIRA_PI/180.0;
-MIRA_ARCSECOND = MIRA_DEGREE/3600.0;
-MIRA_MILLIARCSECOND = 1e-3*MIRA_ARCSECOND;
-MIRA_MICRON = 1e-6;
+MIRA_RAD = MIRA_RADIAN = 1.0;
+MIRA_DEG = MIRA_DEGREE = MIRA_PI*MIRA_RADIAN/180.0;
+MIRA_ARCSEC = MIRA_ARCSECOND = MIRA_DEGREE/3600.0;
+MIRA_MILLIARCSEC = MIRA_MAS = MIRA_MILLIARCSECOND = 1e-3*MIRA_ARCSECOND;
+MIRA_METER = 1.0;
+MIRA_MICRON = MIRA_MICROMETER = 1e-6*MIRA_METER;
 
 /* Various global options. */
 MIRA_SPARSE = 1n; /* use Yeti sparse matrix */
@@ -153,6 +162,60 @@ MIRA_BISPECTRUM                   = 6; /* real and imaginary parts of bispectrum
 MIRA_BISPECTRUM_POLAR             = 7; /* amplitude and phase of bispectrum */
 MIRA_BISPECTRUM_AMPLITUDE         = 8; /* amplitude of bispectrum */
 MIRA_BISPECTRUM_PHASE             = 9; /* phase of bispectrum (phase closure) */
+
+local _MIRA_ANGULAR_UNITS_TABLE, _MIRA_LENGTH_UNITS_TABLE, _mira_parse_units;
+local mira_parse_angular_units, mira_parse_length_units;
+/* DOCUMENT mira_parse_angular_units(cunit);
+         or mira_parse_angular_units(cunit, def);
+         or mira_parse_length_units(cunit);
+         or mira_parse_length_units(cunit, def);
+
+     Return the SI units corresponding to the angular or length units CUNIT.
+     If CUNIT is unknown, the value of DEF is returned.
+*/
+
+func mira_parse_angular_units(cunit, def)
+{
+  return _mira_parse_units(_MIRA_ANGULAR_UNITS_TABLE, cunit, def);
+}
+
+func mira_parse_length_units(cunit, def)
+{
+  return _mira_parse_units(_MIRA_LENGTH_UNITS_TABLE, cunit, def);
+}
+
+func _mira_parse_units(tab, cunit, def)
+{
+  str = strtrim(cunit, 3);
+  return (h_has(tab, str) ? h_get(tab, str) : def);
+}
+
+_MIRA_ANGULAR_UNITS_TABLE = h_new("mas",             MIRA_MAS,
+                                  "milliarcsec",     MIRA_MAS,
+                                  "milliarcsecond",  MIRA_MAS,
+                                  "milliarcseconds", MIRA_MAS,
+                                  "deg",             MIRA_DEGREE,
+                                  "degree",          MIRA_DEGREE,
+                                  "degrees",         MIRA_DEGREE,
+                                  "rad",             MIRA_RADIAN,
+                                  "radian",          MIRA_RADIAN,
+                                  "radians",         MIRA_RADIAN);
+
+_MIRA_LENGTH_UNITS_TABLE = h_new("m",           MIRA_METER,
+                                 "meter",       MIRA_METER,
+                                 "meters",      MIRA_METER,
+                                 "mm",          1e-3*MIRA_METER,
+                                 "millimeter",  1e-3*MIRA_METER,
+                                 "millimeters", 1e-3*MIRA_METER,
+                                 "µm",          1e-6*MIRA_METER,
+                                 "micron",      1e-6*MIRA_METER,
+                                 "microns",     1e-6*MIRA_METER,
+                                 "micrometer",  1e-6*MIRA_METER,
+                                 "micrometers", 1e-6*MIRA_METER,
+                                 "nm",          1e-9*MIRA_METER,
+                                 "nanometer",   1e-9*MIRA_METER,
+                                 "nanometers",  1e-9*MIRA_METER);
+
 
 /*---------------------------------------------------------------------------*/
 
@@ -1010,7 +1073,7 @@ func _mira_build_coordinate_list_pass1(this, key, idx, sgn, u, v, w)
 func mira_config(this, pixelsize=, dim=, xform=)
 /* DOCUMENT mira_config, this, keyword=value, ...;
 
-     Configure or change parameters of MiRA opaque handle THIS.  All
+     Configure or change parameters of MiRA data instance THIS.  All
      configurable parameters are specified by keywords (see below).  Return
      THIS when called as a function.
 
@@ -1118,61 +1181,119 @@ func mira_update(this)
 }
 
 /*---------------------------------------------------------------------------*/
-/* EXACT FOURIER TRANSFORM */
+/* COORDINATE SYSTEM */
 
-local mira_new_exact_xform, _mira_apply_exact_xform;
-/* DOCUMENT xform = mira_new_exact_xform(u, v, pixelsize, nx, ny)
+/*
+ * Complex visibility:
  *
- *   Creates a linear operator to compute the "exact" linear transform
- *   between an image and the measured complex visibilities.  Arguments U
- *   and V give the coordinates of the measured spatial frequencies,
- *   PIXELSIZE is the pixel size in the image plane, NX and NY are the
- *   number of pixels along the two first image dimensions.  The
- *   coordinates U and V must be vectors of same length and
- *   NFREQS=numberof(U)=numberof(V) is the number of measured complex
- *   visibilities.
+ *    V(u,v) = Sum(x,y) I(x,y)*exp(-i2π(x*u + y*v))
  *
- *   The returned operator can be used as follows:
+ * X = RA is the relative right ascension and Y = DEC is the relative
+ * declination.
  *
- *      vis = XFORM(img)
+ * The conventions in NFFT are:
  *
- *   to compute the model visibilities VIS, such that VIS(1,..)  and
- *   VIS(2,..) are respectively the real and imaginary parts of the complex
- *   visibilities.  The transpose of the operator can also be applied (for
- *   instance to compute the gradient of the likelihood):
+ *    x = [-(N/2):(N/2)-1]*pixelsize
  *
- *      XFORM(inp, 1)
+ * where `N` is the number of pixels (along a dimension) and is an even
+ * number.  The conventions in `fftshift` (in TiPi, NumPy, Matlab, etc.) and
+ * in `fftfreq` (or `fft_indgen`) are:
  *
- *   where input array INP is a 2-by-NFREQS array, with NFREQS the number
- *   of complex visibilities.
+ *    x = [-(N/2):(N/2)-1]*pixelsize     for `N` even
+ *    x = [-(N-1)/2:+(N-1)/2]*pixelsize  for `N` odd
  *
- *
- * SEE ALSO: mira_update, mira_new_fft_xform.
+ * For even dimensions these match NFFT conventions.
  */
 
+func mira_coordinates(dim, stp)
+/* DOCUMENT mira_coordinates(dim);
+         or mira_coordinates(dim, stp);
+
+     Yield the he coordinates along a spatial dimension of length DIM with a
+     step STP (1.0 by default). The same conventions as for
+     `mira_central_index` or `fftshift` are used.
+
+   SEE ALSO: mira_central_index, mira_limits.
+ */
+{
+  i = mira_central_index(dim);
+  c = double(indgen(1 - i : dim - i));
+  return (is_void(stp) ? c : stp*c);
+}
+
+func mira_central_index(dim) { return (dim/2) + 1; }
+/* DOCUMENT mira_central_index(dim);
+
+     Yield the index of the central element along a spatial dimension of
+     length DIM.  The same conventions as for `mira_coordinates` or `fftshift`
+     are used.
+
+   SEE ALSO: mira_coordinates, mira_limits.
+ */
+
+func mira_limits(dim, stp)
+/* DOCUMENT mira_limits(dim);
+         or mira_limits(dim, stp);
+
+     Yield the endpoints of the coordinates along a spatial dimension of
+     length DIM with a step STP (1.0 by default). The same conventions as for
+     `mira_central_index` or `fftshift` are used.
+
+   SEE ALSO: mira_coordinates, mira_central_index.
+ */
+{
+  c = double(mira_central_index(dim));
+  c0 = 1 - c;
+  c1 = dim - c;
+  return (is_void(stp) ? [c0,c1] : [stp*c0,stp*c1]);
+}
+
+/*---------------------------------------------------------------------------*/
+/* EXACT FOURIER TRANSFORM */
+
+local _mira_apply_exact_xform;
 func mira_new_exact_xform(u, v, pixelsize, nx, ny)
+/* DOCUMENT xform = mira_new_exact_xform(u, v, pixelsize, nx, ny);
+
+     Creates a linear operator to compute the "exact" linear transform between
+     an image and the measured complex visibilities.  Arguments U and V give
+     the coordinates of the measured spatial frequencies, PIXELSIZE is the
+     pixel size in the image plane, NX and NY are the number of pixels along
+     the two first image dimensions.  The coordinates U and V must be vectors
+     of same length and NFREQS=numberof(U)=numberof(V) is the number of
+     measured complex visibilities.
+
+     The returned operator can be used as follows:
+
+        vis = XFORM(img)
+
+     to compute the model visibilities VIS, such that VIS(1,..)  and VIS(2,..)
+     are respectively the real and imaginary parts of the complex
+     visibilities.  The transpose of the operator can also be applied (for
+     instance to compute the gradient of the likelihood):
+
+        XFORM(inp, 1)
+
+     where input array INP is a 2-by-NFREQS array, with NFREQS the number of
+     complex visibilities.
+
+
+   SEE ALSO: mira_update, mira_new_fft_xform.
+ */
 {
   /* The argument of the complex exponent in the Fourier transform is:
    *
-   *     Q = -2*PI*(RA*U + DEC*V)
+   *     Q = -2*PI*(X*U + Y*V)
    *
-   * FIXME:
-   * where RA is the relative right ascension and DEC is the relative
-   * declination.  The relationships with image coordinates (X,Y) are:
-   *
-   *     RA  = X
-   *     DEC = Y
-   *
-   * hence:
-   *
-   *   Q = -2*PI*(U*X + V*Y)
+   * where X = RA is the relative right ascension and Y = DEC is the relative
+   * declination.
    */
   if (! is_vector(u) || ! is_vector(v) || numberof(u) != numberof(v)) {
     error, "arguments U and V must be vectors of same length";
   }
-  x = mira_xstep(pixelsize)*(indgen(nx) - (nx/2 + 1));
-  y = mira_ystep(pixelsize)*(indgen(ny) - (ny/2 + 1));
-  q = (-2.0*MIRA_PI)*(u*x(-,) + v*y(-,-,));
+  x = mira_coordinates(nx, pixelsize);
+  y = mira_coordinates(ny, pixelsize);
+  q = (-2*MIRA_PI)*(u*x(-,) + v*y(-,-,));
   a = array(double, 2, dimsof(q));
   a(1,..) = cos(q);
   a(2,..) = sin(unref(q));
@@ -1186,50 +1307,38 @@ func _mira_apply_exact_xform(this, x, job)
   return mvmult(this.a, x, job);
 }
 
-local mira_xstep, mira_ystep;
-func mira_xstep(pixelsize) { return -pixelsize; } // RA = -X
-func mira_ystep(pixelsize) { return +pixelsize; } // DEC = +Y
-/* DOCUMENT xstep = mira_xstep(pixelsize);
-         or ystep = mira_ystep(pixelsize);
-     These functions respectively return the coordinate increment along the
-     horizontal and vertical axis per pixel of the image.  PIXELSIZE is the
-     size of the pixel (in radians).  These functions are needed to convert
-     pixel coordinates (X,Y) into sky coordinates (RA,DEC).  */
-
 /*---------------------------------------------------------------------------*/
 /* NONEQUISPACED FAST FOURIER TRANSFORM */
 
-local mira_new_nfft_xform, _mira_apply_nfft_xform;
-/* DOCUMENT xform = mira_new_nfft_xform(u, v, pixelsize, nx, ny)
- *
- *   Creates a linear operator to compute the "exact" linear transform
- *   between an image and the measured complex visibilities.  Arguments U
- *   and V give the coordinates of the measured spatial frequencies,
- *   PIXELSIZE is the pixel size in the image plane, NX and NY are the
- *   number of pixels along the two first image dimensions.  The
- *   coordinates U and V must be vectors of same length and
- *   NFREQS=numberof(U)=numberof(V) is the number of measured complex
- *   visibilities.
- *
- *   The returned operator can be used as follows:
- *
- *      vis = XFORM(img)
- *
- *   to compute the model visibilities VIS, such that VIS(1,..)  and
- *   VIS(2,..) are respectively the real and imaginary parts of the complex
- *   visibilities.  The transpose of the operator can also be applied (for
- *   instance to compute the gradient of the likelihood):
- *
- *      XFORM(inp, 1)
- *
- *   where input array INP is a 2-by-NFREQS array, with NFREQS the number
- *   of complex visibilities.
- *
- *
- * SEE ALSO: mira_update, mira_new_exact_xform, mira_new_fft_xform.
- */
-
+local _mira_apply_nfft_xform;
 func mira_new_nfft_xform(u, v, pixelsize, nx, ny)
+/* DOCUMENT xform = mira_new_nfft_xform(u, v, pixelsize, nx, ny);
+
+     Creates a linear operator to compute the "exact" linear transform between
+     an image and the measured complex visibilities.  Arguments U and V give
+     the coordinates of the measured spatial frequencies, PIXELSIZE is the
+     pixel size in the image plane, NX and NY are the number of pixels along
+     the two first image dimensions.  The coordinates U and V must be vectors
+     of same length and NFREQS=numberof(U)=numberof(V) is the number of
+     measured complex visibilities.
+
+     The returned operator can be used as follows:
+
+        vis = XFORM(img)
+
+     to compute the model visibilities VIS, such that VIS(1,..)  and VIS(2,..)
+     are respectively the real and imaginary parts of the complex
+     visibilities.  The transpose of the operator can also be applied (for
+     instance to compute the gradient of the likelihood):
+
+        XFORM(inp, 1)
+
+     where input array INP is a 2-by-NFREQS array, with NFREQS the number of
+     complex visibilities.
+
+
+   SEE ALSO: mira_update, mira_new_exact_xform, mira_new_fft_xform.
+ */
 {
   if (! is_func(nfft_new)) {
     include, "nfft.i", 1;
@@ -1238,36 +1347,27 @@ func mira_new_nfft_xform(u, v, pixelsize, nx, ny)
     error, "arguments U and V must be vectors of same length";
   }
 
-  /* The coordinate system is slighlty different between NFFT and MiRA.
-   *
-   * In MiRA, (0,0) is at the geometrical center of the field of view (FOV):
-   *   x = xstep*(indgen(nx) - (nx + 1)/2.0);
-   *   y = ystep*(indgen(ny) - (ny + 1)/2.0);
-   *
-   * with:
-   *   xstep = mira_xstep(pixelsize)
-   *   ystep = mira_ystep(pixelsize)
-   *
+  /*
    * In NFFT:
-   *   x = [-nx/2, 1-nx/2, ..., nx/2-1]*xstep
-   *   y = [-ny/2, 1-ny/2, ..., ny/2-1]*ystep
+   *   x = [-nx/2, 1-nx/2, ..., nx/2-1]*step
+   *   y = [-ny/2, 1-ny/2, ..., ny/2-1]*step
    * plus NX and NY must be even.
    */
   local r1, r2;
-  if (nx % 2 == 1) {
+  if ((nx & 1) == 1) {
     n1 = nx + 1;
     r1 = 2 : n1;
   } else {
     n1 = nx;
   }
-  if (ny % 2 == 1) {
+  if ((ny & 1) == 1) {
     n2 = ny + 1;
     r2 = 2 : n2;
   } else {
     n2 = ny;
   }
   flags = NFFT_SORT_NODES;
-  nodes = [u*mira_xstep(pixelsize), v*mira_ystep(pixelsize)];
+  nodes = [u, v]*pixelsize;
   dims = [n1, n2];
   obj = h_new(nfft = nfft_new(dims, nodes, flags=flags),
               n1 = n1, r1 = r1,
@@ -1280,15 +1380,7 @@ func mira_new_nfft_xform(u, v, pixelsize, nx, ny)
 func _mira_apply_nfft_xform(this, x, job)
 {
   local z;
-  if (job) {
-    /* adjoint operator */
-    z = this.nfft(linop_cast_real_as_complex(x), 1n);
-    if (this.sub) {
-      return double(z)(this.r1, this.r2);
-    } else {
-      return double(z);
-    }
-  } else {
+  if (! job) {
     /* direct operator */
     if (this.sub) {
       tmp = array(complex, this.n1, this.n2);
@@ -1297,6 +1389,16 @@ func _mira_apply_nfft_xform(this, x, job)
     }
     reshape, z, &this.nfft(x), double, 2, this.nfft.num_nodes;
     return z;
+  } else if (job == 1) {
+    /* adjoint operator */
+    z = this.nfft(linop_cast_real_as_complex(x), 1n);
+    if (this.sub) {
+      return double(z)(this.r1, this.r2);
+    } else {
+      return double(z);
+    }
+  } else {
+    error, "unsupported value for JOB";
   }
 }
 
@@ -1349,8 +1451,8 @@ func mira_new_fft_xform(u, v, pixelsize, nx, ny)
       || (nfreqs = numberof(u)) != numberof(v)) {
     error, "arguments U and V must be vectors of same length";
   }
-  u *= (nx*mira_xstep(pixelsize));
-  v *= (ny*mira_ystep(pixelsize));
+  u *= (nx*pixelsize);
+  v *= (ny*pixelsize);
 
   /* Compute integer bounding box of frequencies such that:
    *   U0 <= U < U0 + 1
@@ -1708,7 +1810,7 @@ func mira_data_penalty(master, model, &grd)
 /* DOCUMENT mira_data_penalty(data, model, grd)
  *
  *   Compute misfit penalty w.r.t. to interferometric data.  DATA is MiRA
- *   opaque handle which stores the interferometric data.  MODEL is a 2-D
+ *   data instance which stores the interferometric data.  MODEL is a 2-D
  *   or 3-D model of the brightness distribution.  GRD is an optional
  *   output variable to store the gradient of the penalty w.r.t. the model
  *   parameters.
@@ -2132,12 +2234,11 @@ func _mira_solve_viewer(x, extra)
     //if (min(x) != cmax) {
     //  cmax = max(x(where(x != cmax)));
     //}
-    pixelsize = extra.master.pixelsize;
+    pixelsize = extra.master.pixelsize/MIRA_MILLIARCSECOND;
     dim = extra.master.dim;
-    xstep = mira_xstep(pixelsize)/MIRA_MILLIARCSECOND;
-    ystep = mira_ystep(pixelsize)/MIRA_MILLIARCSECOND;
-    x0 = -(x1 = xstep*dim/2);
-    y0 = -(y1 = ystep*dim/2);
+    lim = mira_limits(dim, pixelsize);
+    y0 = x0 = lim(1) - 0.5*pixelsize;
+    y1 = x1 = lim(2) + 0.5*pixelsize;
     pli, x, cmin=cmin, cmax=cmax, x0,y0, x1,y1;
     mira_fix_image_axis;
     mira_plot_title, "Image", height=title_height, offset=title_offset, anchor="n";
@@ -2880,62 +2981,76 @@ func mira_projected_gradient_norm(x, gx, xmin=, xmax=)
 
 local mira_get;
 local mira_get_w, mira_get_ra, mira_get_dec;
-/* DOCUMENT mira_get_w(this)   - returns wavelength(s)
- *     -or- mira_get_ra(this)  - returns sky RA-coordinates (Right Ascension)
- *     -or- mira_get_dec(this) - returns sky DEC-coordinates (Declination)
- *
- *   These functions can be used to query internals of MiRA master
- *   object THIS.
- *
- * SEE ALSO:
- */
-func mira_get_w(this) { return this.w; }
-func mira_get_ra(this)
-{
-  if (this.update_pending) mira_update, this;
-  return mira_xstep(this.pixelsize)*(indgen(this.dim) - 0.5*(this.dim + 1));
+/* DOCUMENT mira_get_ra(dat);
+         or mira_get_dec(dat);
+         or mira_get_w(dat);
+         or mira_get_x(dat);
+         or mira_get_y(dat);
+
+     These functions query pixel coordinates for MiRA data instance DAT:
+
+      * `mira_get_x(dat)` and `mira_get_ra(dat)` yield the pixel offsets along
+        the right ascension axis (1st dimension) relative to the center of the
+        field of view;
+
+      * `mira_get_y(dat)` and `mira_get_dec(dat)` yield pixel offsets along the
+        declination axis (2nd dimension) relative to the center of the
+        field of view;
+
+      * `mira_get_w(dat)` yields the wavelength along the spectral axis (3rd
+        dimension).
+
+
+  SEE ALSO: mira_coordinates.
+*/
+func mira_get_w(dat) { return dat.w; }
+func mira_get_x(dat) {
+  if (dat.update_pending) mira_update, dat;
+  return mira_coordinates(dat.dim, dat.pixelsize);
 }
-func mira_get_dec(this)
+mira_get_y = mira_get_x;
+mira_get_ra = mira_get_x;
+mira_get_dec = mira_get_y;
+
+func mira_get_ndata(dat)
+/* DOCUMENT mira_get_ndata(dat);
+
+     Get the number of valid measurements which have been used during last fit
+     or image reconstruction (e.g. by the mira_solve routine) involving MiRA
+     data instance DAT.
+
+   SEE ALSO: mira_solve.
+*/
 {
-  if (this.update_pending) mira_update, this;
-  return mira_ystep(this.pixelsize)*(indgen(this.dim) - 0.5*(this.dim + 1));
+  return ((ndata = dat.ndata) ? ndata : 0);
 }
 
-func mira_get_ndata(this)
-/* DOCUMENT mira_get_ndata(this);
- *   Get the number of valid measurements which have been used during last
- *   fit or image reconstruction (e.g. by the mira_solve routine) involving
- *   MiRA opaque handle THIS.
- *
- * SEE ALSO: mira_solve.
- */
-{
-  return ((ndata = this.ndata) ? ndata : 0);
-}
+func mira_get_dim(dat) { return dat.dim; }
+/* DOCUMENT mira_get_dim(dat);
 
-func mira_get_dim(this) { return this.dim; }
-/* DOCUMENT mira_get_dim(this);
- *   Get the number of pixels per side for the model image assumed by MiRA
- *   opaque handle THIS.
- *
- * SEE ALSO: mira_config, mira_get_fov, mira_get_pixelsize.
- */
+     Get the number of pixels per side for the model image assumed by MiRA
+     data instance DAT.
 
-func mira_get_fov(this) { return this.fov; }
-/* DOCUMENT mira_get_fov(this);
- *   Get the width of the field of view (in radians) for the model image
- *   assumed by MiRA opaque handle THIS.
- *
- * SEE ALSO: mira_config, mira_get_dim, mira_get_pixelsize.
- */
+   SEE ALSO: mira_config, mira_get_fov, mira_get_pixelsize.
+*/
 
-func mira_get_pixelsize(this) { return this.pixelsize; }
-/* DOCUMENT mira_get_pixelsize(this);
- *   Get the pixel size (in radians) for the model image assumed by MiRA
- *   opaque handle THIS.
- *
- * SEE ALSO: mira_config, mira_get_dim, mira_get_pixelsize.
- */
+func mira_get_fov(dat) { return dat.fov; }
+/* DOCUMENT mira_get_fov(dat);
+
+     Get the width of the field of view (in radians) for the model image
+     assumed by MiRA data instance DAT.
+
+   SEE ALSO: mira_config, mira_get_dim, mira_get_pixelsize.
+*/
+
+func mira_get_pixelsize(dat) { return dat.pixelsize; }
+/* DOCUMENT mira_get_pixelsize(dat);
+
+     Get the pixel size (in radians) for the model image assumed by MiRA data
+     instance DAT.
+
+   SEE ALSO: mira_config, mira_get_dim, mira_get_pixelsize.
+*/
 
 /*---------------------------------------------------------------------------*/
 /* PRIVATE UTILITIES */
@@ -2958,40 +3073,86 @@ func _mira_add(master, key, value, index)
 /*---------------------------------------------------------------------------*/
 /* UTILITIES */
 
-func mira_plot_image(img, this, clear=, cmin=, cmax=, zformat=, keeplimits=,
+func mira_extract_region(arr, dim)
+/* DOCUMENT mira_extract_region(arr, dim);
+
+     Extract the central DIM-by-DIM region of 2D or 3D array ARR.  The 3rd
+     dimension of ARR is preserved, if any.  The "center" is defined accroding
+     to the conventions of `mira_coordinates`.
+
+   SEE ALSO: mira_coordinates.
+*/
+{
+  if (is_array(arr)) {
+    dims = dimsof(arr);
+    rank = dims(1);
+  } else {
+    dims = [];
+    rank = -1;
+  }
+  if (rank != 2 && rank != 3) {
+    error, "expecting a 2D or 3D array";
+  }
+  if (! is_scalar(dim) || ! is_integer(dim) || dim < 1) {
+    error, "invalid dimension";
+  }
+
+  inp = dims(2:3);
+  out = [dim, dim];
+  off = (out/2) - (inp/2);
+  i1 = max(  1 - off, 1);
+  i2 = min(out - off, inp);
+  o1 = max(  1 + off, 1);
+  o2 = min(inp + off, out);
+  write, sum(print(i1)), sum(print(i2));
+  write, sum(print(o1)), sum(print(o2));
+  if (max(o1) == 1 && min(o2) == dim) {
+    /* No needs for zero-padding. */
+    return arr(i1(1):i2(1),i1(2):i2(2),..);
+  } else {
+    dims(2:3) = dim;
+    dst = array(structof(arr), dims);
+    if (allof(o1 <= o2)) {
+      dst(o1(1):o2(1),o1(2):o2(2),..) = arr(i1(1):i2(1),i1(2):i2(2),..);
+    }
+    return dst;
+  }
+}
+
+func mira_plot_image(img, dat, clear=, cmin=, cmax=, zformat=, keeplimits=,
                      normalize=, pixelsize=, pixelunits=)
 /* DOCUMENT mira_plot_image, img;
- *     -or- mira_plot_image, img, this;
- *
- *   Plot image IMG in current graphics window.  The pixelsize is taken
- *   from MiRA instance THIS if it is provided.
- *
- *   Unless keyword KEEPLIMITS is true, the axis orientations are set to
- *   match conversions in astronomy (see mira_fix_image_axis).
- *
- *   Keyword CLEAR can be used to call fma command (which see): if CLEAR >
- *   0, fma is called prior to drawing the image; if CLEAR < 0, fma is
- *   called after drawing the image (useful in animate mode); if CLEAR = 0
- *   or undefined, then fma is not called.
- *
- *   Keyword ZFORMAT can be used to specify the format for the color bar
- *   labels (see mira_color_bar).
- *
- *   Keyword PIXELSIZE and PIXELUNITS can be used to specify the size of
- *   the pixel in given angular units and the name of these units.  Both
- *   must be specified to be taken into account.  If MiRA instance THIS is
- *   provided, these keywords are ignored.
- *
- *   Keywords CMIN and CMAX can be used to specify cut levels for the
- *   display (see pli).  If keyword NORMALIZE (see below) is true, CMIN and
- *   CMAX are in units of normalized intensity.
+         or mira_plot_image, img, dat;
 
- *   If keyword NORMALIZE is true, the flux is normalized (divided by
- *   PIXELSIZE^2).
- *
- *
- * SEE ALSO:
- *   pli, fma, animate, mira_color_bar, mira_fix_image_axis, xytitles.
+     Plot image IMG in current graphics window.  The pixelsize is taken from
+     MiRA data instance DAT if it is provided.
+
+     Unless keyword KEEPLIMITS is true, the axis orientations are set to match
+     conversions in astronomy (see mira_fix_image_axis).
+
+     Keyword CLEAR can be used to call fma command (which see): if CLEAR > 0,
+     fma is called prior to drawing the image; if CLEAR < 0, fma is called
+     after drawing the image (useful in animate mode); if CLEAR = 0 or
+     undefined, then fma is not called.
+
+     Keyword ZFORMAT can be used to specify the format for the color bar
+     labels (see mira_color_bar).
+
+     Keyword PIXELSIZE and PIXELUNITS can be used to specify the size of the
+     pixel in given angular units and the name of these units.  Both must be
+     specified to be taken into account.  If MiRA instance DAT is provided,
+     these keywords are ignored.
+
+     Keywords CMIN and CMAX can be used to specify cut levels for the display
+     (see pli).  If keyword NORMALIZE (see below) is true, CMIN and CMAX are
+     in units of normalized intensity.
+
+     If keyword NORMALIZE is true, the flux is normalized (divided by
+     PIXELSIZE^2).
+
+
+   SEE ALSO: pli, fma, animate, mira_limits, mira_color_bar,
+     mira_fix_image_axis, xytitles.
  */
 {
   dims = dimsof(img);
@@ -3001,8 +3162,8 @@ func mira_plot_image(img, this, clear=, cmin=, cmax=, zformat=, keeplimits=,
   width = dims(2);
   height = dims(3);
 
-  if (is_hash(this)) {
-    pixelsize = this.pixelsize/MIRA_MILLIARCSECOND;
+  if (is_hash(dat)) {
+    pixelsize = dat.pixelsize/MIRA_MILLIARCSECOND;
     pixelunits = "milliarcseconds";
   } else {
     if (is_void(pixelsize) || is_void(pixelunits)) {
@@ -3022,8 +3183,13 @@ func mira_plot_image(img, this, clear=, cmin=, cmax=, zformat=, keeplimits=,
   if (is_void(cmin)) cmin = min(img);
   if (is_void(cmax)) cmax = max(img);
 
-  x0 = -(x1 = 0.5*pixelsize*width);
-  y0 = -(y1 = 0.5*pixelsize*height);
+  xlim = mira_limits(width, pixelsize);
+  x0 = xlim(1) - 0.5*pixelsize;
+  x1 = xlim(2) + 0.5*pixelsize;
+  ylim = mira_limits(height, pixelsize);
+  y0 = ylim(1) - 0.5*pixelsize;
+  y1 = ylim(2) + 0.5*pixelsize;
+
   if (clear && clear > 0) {
     fma;
   }
@@ -3043,6 +3209,7 @@ func mira_plot_image(img, this, clear=, cmin=, cmax=, zformat=, keeplimits=,
 
 func mira_fix_image_axis
 /* DOCUMENT mira_fix_image_axis;
+
      Fix orientation of horizontal axis (right ascension, RA) and vertical
      axis (declination, DEC) in current window to match the conventions in
      astronomy to display RA positive toward East (that is left of graphics)
@@ -3066,41 +3233,41 @@ func mira_color_bar(z, cmin=, cmax=, vert=, nlabs=, adjust=,
                     color=, font=, height=, opaque=, orient=,
                     width=, ticklen=, thickness=, vport=, format=)
 /* DOCUMENT mira_color_bar, z;
- *     -or- mira_color_bar, cmin=CMIN, cmax=CMAX;
- *
- *   Draw a color bar below the current coordinate system the colors and
- *   the associated label values are from min(Z) to max(Z) -- alternatively
- *   keywords CMIN and CMAX can be specified.  With the VERT=1 keyword the
- *   color bar appears to the left of the current coordinate system (vert=0
- *   is the default).
- *
- *   Keyword NLABS can be used to choose the number of displayed labels; by
- *   default, NLABS=11 which correspond to a label every 10% of the
- *   dynamic; use NLABS=0 to suppress all labels.  The format of the labels
- *   can be specified with keyword FORMAT; by default FORMAT= "%.3g".  The
- *   font type, font height and text orientation for the labels can be set
- *   with keywords FONT (default "helvetica"), HEIGHT (default 14 points)
- *   and ORIENT respectively.
- *
- *   By default the colorbar is drawn next to the current viewport; other
- *   viewport coordinates can be given by VPORT=[xmin,xmax,ymin,ymax].
- *   Keyword ADJUST can be used to move the bar closer to (adjust<0) or
- *   further from (adjust>0) the viewport.
- *
- *   Keyword COLOR can be used to specify the color of the labels, the
- *   ticks and the frame of the colorbar.  Default is foreground color.
- *
- *   Keyword WIDTH can be used to set the width of the lines used to draw
- *   the frame and the ticks of the colorbar.
- *
- *   Keyword TICKLEN can be used to set the lenght (in NDC units) of the
- *   ticks.  Default is 0.007 NDC.
- *
- *   Keyword THICKNESS can be used to set the thickness of the colorbar
- *   (in NDC units).  Default is 0.020 NDC.
- *
- *
- *  SEE ALSO: pli, plt, pldj, plg, viewport.
+         or mira_color_bar, cmin=CMIN, cmax=CMAX;
+
+     Draw a color bar below the current coordinate system the colors and the
+     associated label values are from min(Z) to max(Z) -- alternatively
+     keywords CMIN and CMAX can be specified.  With the VERT=1 keyword the
+     color bar appears to the left of the current coordinate system (vert=0 is
+     the default).
+
+     Keyword NLABS can be used to choose the number of displayed labels; by
+     default, NLABS=11 which correspond to a label every 10% of the dynamic;
+     use NLABS=0 to suppress all labels.  The format of the labels can be
+     specified with keyword FORMAT; by default FORMAT= "%.3g".  The font type,
+     font height and text orientation for the labels can be set with keywords
+     FONT (default "helvetica"), HEIGHT (default 14 points) and ORIENT
+     respectively.
+
+     By default the colorbar is drawn next to the current viewport; other
+     viewport coordinates can be given by VPORT=[xmin,xmax,ymin,ymax].
+     Keyword ADJUST can be used to move the bar closer to (adjust<0) or
+     further from (adjust>0) the viewport.
+
+     Keyword COLOR can be used to specify the color of the labels, the ticks
+     and the frame of the colorbar.  Default is foreground color.
+
+     Keyword WIDTH can be used to set the width of the lines used to draw the
+     frame and the ticks of the colorbar.
+
+     Keyword TICKLEN can be used to set the lenght (in NDC units) of the
+     ticks.  Default is 0.007 NDC.
+
+     Keyword THICKNESS can be used to set the thickness of the colorbar (in
+     NDC units).  Default is 0.020 NDC.
+
+
+    SEE ALSO: pli, plt, pldj, plg, viewport.
  */
 {
   if (is_void(cmin)) cmin = min(z);
@@ -3181,18 +3348,19 @@ func mira_color_bar(z, cmin=, cmax=, vert=, nlabs=, adjust=,
 
 func mira_dirty_beam(this)
 /* DOCUMENT mira_dirty_beam(this);
- *   Computes dirty beam for MiRA instance THIS.  The result has the same
- *   geometry as an image reconstructed from THIS, i.e. it depends on the
- *   u-v coverage and on the synthetic field of view parameters as set by
- *   mira_config.  There is however a small (1/2 pixel) offset in the X and
- *   Y (RA and dec) directions for for even dimensions.
- *
- * EXAMPLE:
- *   mira_config, this, dim=128, pixelsize=0.3*MIRA_MILLIARCSECOND;
- *   dirty = mira_dirty_beam(this);
- *   mira_plot_image, dirty, this;
- *
- * SEE ALSO: mira_plot_image, mira_config, fft, roll.
+
+     Compute dirty beam for MiRA instance THIS.  The result has the same
+     geometry as an image reconstructed from THIS, i.e. it depends on the u-v
+     coverage and on the synthetic field of view parameters as set by
+     mira_config.  There is however a small (1/2 pixel) offset in the X and Y
+     (RA and dec) directions for for even dimensions.
+
+   EXAMPLE:
+     mira_config, this, dim=128, pixelsize=0.3*MIRA_MILLIARCSECOND;
+     dirty = mira_dirty_beam(this);
+     mira_plot_image, dirty, this;
+
+   SEE ALSO: mira_plot_image, mira_config, fft, roll.
  */
 {
   /* Get sky coordinates (in radians). */
@@ -3229,25 +3397,25 @@ func mira_dirty_beam(this)
 
 local mira_plot_baselines, mira_plot_frequencies;
 /* DOCUMENT mira_plot_baselines, this;
- *     -or- mira_plot_frequencies, this;
- *
- *   Plot all observed baselines or spatial frequencies in MiRA opaque
- *   handle THIS.  The (U,V) coordinates are baselines projected onto the
- *   sky in meters or spatial frequencies projected onto the sky in cycles
- *   per radian.
- *
- *
- * KEYWORDS
- *
- *   Unless keyword KEEPLIMITS is true, the axis orientations are set to
- *   match conversions in astronomy (see mira_fix_image_axis).
- *
- *   Keywords COLOR, SYMBOL and SIZE are passed to plp (which see).
- *
- *   Keyword NOTITLE can be set true to disable axis titles.
- *
- *
- * SEE ALSO: plp, mira_new, mira_plot_baselines.
+         or mira_plot_frequencies, this;
+
+     Plot all observed baselines or spatial frequencies in MiRA opaque
+     handle THIS.  The (U,V) coordinates are baselines projected onto the
+     sky in meters or spatial frequencies projected onto the sky in cycles
+     per radian.
+
+
+   KEYWORDS
+
+     Unless keyword KEEPLIMITS is true, the axis orientations are set to
+     match conversions in astronomy (see mira_fix_image_axis).
+
+     Keywords COLOR, SYMBOL and SIZE are passed to plp (which see).
+
+     Keyword NOTITLE can be set true to disable axis titles.
+
+
+   SEE ALSO: plp, mira_new, mira_plot_baselines.
  */
 
 func mira_plot_frequencies(this, color=, symbol=, size=, fill=,
@@ -3783,66 +3951,448 @@ func mira_is_func(f){ return (is_func(f) || (is_hash(f) && h_evaluator(f))); }
 
 /*---------------------------------------------------------------------------*/
 /* SAVE/LOAD IMAGES */
-func mira_save_image(filename, img, master, single=, overwrite=,
-                     comment=, history=)
+
+func _mira_get_fits_axis(tab, fh, n, crval=, crpix=, cdelt=, ctype=, cunit=)
 {
-  fix_axis = 1n;
-  if (is_void(comment)) {
-    comment = "Image created by MiRA.";
+  sfx = swrite(format="%d", n);
+
+  /* Get NAXISn */
+  key = "NAXIS" + sfx;
+  naxis = fits_get(fh, key);
+  if (! is_scalar(naxis) || ! is_integer(naxis)) {
+    error, "value of " + key + " must be an integer";
   }
-  if (single) {
-    bitpix = -32;
-    type = float;
+  naxis += 0;
+
+  /* Get CRVALn */
+  key = "CRVAL" + sfx;
+  value = fits_get(fh, key);
+  if (! is_void(value)) {
+    crval = value;
+  } else if (is_void(crval)) {
+    crval = 0.0;
+  }
+  if (! is_scalar(crval) || identof(crval) > Y_DOUBLE) {
+    error, "value of " + key + " must be a real";
+  }
+  crval += 0.0;
+
+  /* Get CRPIXn */
+  key = "CRPIX" + sfx;
+  value = fits_get(fh, key);
+  if (! is_void(value)) {
+    crpix = value;
+  } else if (is_void(crpix)) {
+    crpix = 0.0;
+  }
+  if (! is_scalar(crpix) || identof(crpix) > Y_DOUBLE) {
+    error, "value of " + key + " must be a real";
+  }
+  crpix += 0.0;
+
+  /* Get CDELTn */
+  key = "CDELT" + sfx;
+  value = fits_get(fh, key);
+  if (! is_void(value)) {
+    cdelt = value;
+  } else if (is_void(cdelt)) {
+    cdelt = 1.0;
+  }
+  if (! is_scalar(cdelt) || identof(cdelt) > Y_DOUBLE) {
+    error, "value of " + key + " must be a real";
+  }
+  cdelt += 0.0;
+
+  /* Get CTYPEn */
+  key = "CTYPE" + sfx;
+  value = fits_get(fh, key);
+  if (! is_void(value)) {
+    ctype = value;
+  } else if (is_void(ctype)) {
+    ctype = "";
+  }
+  if (! is_scalar(ctype) || ! is_string(ctype)) {
+    error, "value of " + key + " must be a string";
+  }
+  ctype = strcase(1, strtrim(ctype, 3));
+
+  /* Get CUNITn */
+  key = "CUNIT" + sfx;
+  value = fits_get(fh, key);
+  if (! is_void(value)) {
+    cunit = value;
+  } else if (is_void(cunit)) {
+    cunit = "";
+  }
+  if (! is_scalar(cunit) || ! is_string(cunit)) {
+    error, "value of " + key + " must be a string";
+  }
+  cunit = strtrim(cunit, 3);
+
+  return h_set(tab,
+               "naxis"+sfx, naxis,
+               "crval"+sfx, crval,
+               "crpix"+sfx, crpix,
+               "cdelt"+sfx, cdelt,
+               "ctype"+sfx, ctype,
+               "cunit"+sfx, cunit);
+}
+
+func mira_read_image(inp, hdu)
+/* DOCUMENT img = mira_read_image(inp);
+         or img = mira_read_image(inp, hdu);
+         or img = mira_read_image(inp, extname);
+
+     Read an image in input FITS file INP which can be a file name or a FITS
+     handle.  Optional second argument (an integer HDU number or an extension
+     name) may be used to read the image in a specific FITS Header Data Unit.
+     By default the image from the primary HDU is read.
+
+     The returned value is a hash table with the following members:
+
+       img.arr    = array of pixel values (2D or 3D)
+       img.naxis  = number of dimensions
+
+       img.naxis1 = length of the 1st axis
+       img.crval1 = 1st coordinate of the reference pixel
+       img.crpix1 = index along 1st axis of the reference pixel
+       img.cdelt1 = coordinate increment along 1st axis
+       img.ctype1 = coordinate name along 1st axis
+       img.cunit1 = coordinate units along 1st axis
+
+       img.naxis2 = length of the 2nd axis
+       img.crval2 = 2nd coordinate of the reference pixel
+       img.crpix2 = index along 2nd axis of the reference pixel
+       img.cdelt2 = coordinate increment along 2nd axis
+       img.ctype2 = coordinate name along 2nd axis
+       img.cunit2 = coordinate units along 2nd axis
+
+   If image is 3D:
+
+       img.naxis3 = length of the 3rd axis
+       img.crval3 = 3rd coordinate of the reference pixel
+       img.crpix3 = index along 3rd axis of the reference pixel
+       img.cdelt3 = coordinate increment along 3rd axis
+       img.ctype3 = coordinate name along 3rd axis
+       img.cunit3 = coordinate units along 3rd axis
+
+    The conventions for MiRA are to use the first 2 axes for spatial
+    coordinates while the 3rd axis, if any, is for the spectral channel.  The
+    values of members ctype1..3 are upper case strings with leading and
+    trailing spaces stripped.  The values of members cunit1..3 are strings with
+    leading and trailing spaces stripped.  Other c... members are scalar
+    doubles and dimensions are scalar long.
+
+  SEE ALSO: mira_wrap_image, mira_save_image, fits_read_array.
+ */
+{
+  /* Open FITS file if necessary. */
+  local fh;
+  if (is_string(inp)) {
+    fh = fits_open(inp, 'r');
+    close_on_exit = 1n;
   } else {
-    bitpix = -64;
-    type = double;
+    eq_nocopy, fh, inp;
+    close_on_exit = 0n;
   }
-  dims = dimsof(img);
+
+  /* Move to given HDU/EXTNAME. */
+  if (! is_void(hdu)) {
+    if (is_scalar(hdu) && is_integer(hdu)) {
+      if (hdu != 1) {
+        fits_goto_hdu, fh, hdu;
+        if (fits_current_hdu(fh) != hdu) {
+          error, "cannot read given HDU";
+        }
+      }
+      xtension = fits_get_xtension(fh);
+      if (xtension != "IMAGE") {
+        error, swrite(format="HDU=%d is not a FITS 'IMAGE' extension", hdu);
+      }
+    } else if (is_scalar(hdu) && is_string(hdu)) {
+      extname = strcase(1, strtrim(hdu, 2));
+      while (1n) {
+        if (fits_eof(fh)) {
+          error, swrite(format="EXTNAME='%s' not found in FITS file", extname);
+        }
+        fits_next_hdu, fh;
+        value = fits_get(fh, "EXTNAME");
+        if (is_string(value) && strcase(1, strtrim(value, 2)) == extname) {
+          break;
+        }
+      }
+    } else {
+      error, "HDU/EXTNAME must be a scalar integer/string";
+    }
+  }
+
+  /* Get coordinates (FIXME: deal with PCij and CDij). */
+  naxis = fits_get(fh, "NAXIS");
+  if (naxis != 2 && naxis != 3) {
+    error, "expecting a 2-D or 3-D image";
+  }
+  naxis1 = fits_get(fh, "NAXIS1");
+  naxis2 = fits_get(fh, "NAXIS2");
+  naxis3 = (naxis >= 3 ? fits_get(fh, "NAXIS3") : 1);
+  img = h_new();
+  _mira_get_fits_axis, img, fh, 1, crpix=mira_central_index(naxis1);
+  _mira_get_fits_axis, img, fh, 2, crpix=mira_central_index(naxis2);
+  if (naxis >= 3) {
+    _mira_get_fits_axis, img, fh, 3;
+  }
+
+  /* Read image, close FITS file and return data. */
+  h_set, img, naxis = naxis, arr = fits_read_array(fh);
+  if (close_on_exit) {
+    fits_close, fh;
+  }
+
+  /* Fix axis orientation so that axis coordinates are all increasing as
+     assumed by MiRA software.  */
+  if (img.naxis >= 1 && img.cdelt1 < 0) {
+    h_set, img,
+      arr = img.arr(::-1,..),
+      cdelt1 = -img.cdelt1,
+      crpix1 = img.naxis1 - img.crpix1 + 1;
+  }
+  if (img.naxis >= 2 && img.cdelt2 < 0) {
+    h_set, img,
+      arr = img.arr(,::-1,..),
+      cdelt2 = -img.cdelt2,
+      crpix2 = img.naxis2 - img.crpix2 + 1;
+  }
+  if (img.naxis >= 3 && img.cdelt3 < 0) {
+    h_set, img,
+      arr = img.arr(,,::-1,..),
+      cdelt3 = -img.cdelt3,
+      crpix3 = img.naxis3 - img.crpix3 + 1;
+  }
+
+  return img;
+}
+
+func mira_wrap_image(arr, dat)
+/* DOCUMENT img = mira_wrap_image(arr);
+         or img = mira_wrap_image(arr, dat);
+
+     Wrap array ARR in an image with the same structure as the one returned by
+     `mira_read_image`.  Optional argument DAT is MiRA data instance needed to
+     retrieve image settings such as the pixel size.
+
+   SEE ALSO: mira_read_image, mira_save_image.
+ */
+{
+  if (! is_array(arr) || identof(arr) > Y_DOUBLE) {
+    error, "expecting an array of non-complex numerical values";
+  }
+  dims = dimsof(arr);
   naxis = dims(1);
-  fh = fits_create(filename, bitpix=bitpix, dimlist=dims,
-                   comment=comment, history=history, overwrite=overwrite);
-  // FIXME: check/simplify this
-  cr1 = mira_get_ra(master);
-  cr2 = mira_get_dec(master);
-  pixelsize = mira_get_pixelsize(master);
-  cdelt1 = (cr1(1) < cr1(0) ? pixelsize : -pixelsize);
-  cdelt2 = (cr2(1) < cr2(0) ? pixelsize : -pixelsize);
-  if (fix_axis) {
-    /* Change axis coordinates according to astronomical conventions
-       (CDELT1 < 0 and CDELT2 > 0). */
-    flip = ((cdelt1 > 0.0 ? 1n : 0n) | (cdelt2 < 0.0 ? 2n : 0n));
+  if (naxis != 2 && naxis != 3) {
+    error, "expecting a 2D or 3D array";
+  }
+  naxis1 = dims(2);
+  naxis2 = dims(3);
+  naxis3 = (naxis >= 3 ? dims(4) : 1);
+  if (is_hash(dat)) {
+    w = mira_get_w(dat);
+    x = mira_get_x(dat);
+    y = mira_get_y(dat);
+    if (naxis1 != numberof(x) ||
+        naxis2 != numberof(y) ||
+        naxis3 != numberof(w)) {
+      error, "image dimensions incompatible with MiRA data";
+    }
+    i1 = mira_central_index(naxis1);
+    i2 = mira_central_index(naxis2);
+    img = h_new(arr = arr,
+                naxis = naxis,
+                naxis1 = naxis1,
+                crpix1 = double(i1),
+                crval1 = x(i1)/MIRA_MILLIARCSECOND,
+                cdelt1 = avg(x(dif))/MIRA_MILLIARCSECOND,
+                ctype1 = "RA---TAN",
+                cunit1 = "mas",
+                naxis2 = naxis2,
+                crpix2 = double(i2),
+                crval2 = y(i2)/MIRA_MILLIARCSECOND,
+                cdelt2 = avg(y(dif))/MIRA_MILLIARCSECOND,
+                ctype2 = "DEC--TAN",
+                cunit2 = "mas");
+    if (naxis < 3) {
+      return img;
+    }
+    return h_set(img,
+                 naxis3 = naxis3,
+                 crpix3 = 1.0,
+                 crval3 = w(1)/MIRA_MICROMETER,
+                 cdelt3 = (numberof(w) > 1 ? avg(w(dif)) : 1.0)/MIRA_MICROMETER,
+                 ctype3 = "WAVELENGTH",
+                 cunit3 = "micrometer");
+  } else if (is_void(dat)) {
+    i1 = mira_central_index(naxis1);
+    i2 = mira_central_index(naxis2);
+    img = h_new(arr = arr,
+                naxis = naxis,
+                naxis1 = naxis1,
+                crpix1 = double(i1),
+                crval1 = 0.0,
+                cdelt1 = 1.0,
+                ctype1 = "X",
+                cunit1 = "",
+                naxis2 = naxis2,
+                crpix2 = double(i2),
+                crval2 = 0.0,
+                cdelt2 = 1.0,
+                ctype2 = "Y",
+                cunit2 = "");
+    if (naxis < 3) {
+      return img;
+    }
+    return h_set(img,
+                 naxis3 = naxis3,
+                 crpix3 = 1.0,
+                 crval3 = 1.0,
+                 cdelt3 = 1.0,
+                 ctype3 = "SPECTRAL CHANNEL",
+                 cunit3 = "");
   } else {
-    flip = 0n;
+    error, "optional second argument must be a MiRA data instance";
   }
-  if (flip == 1n) {
-    cr1 = cr1(::-1);
-    cdelt1 = -cdelt1;
-    img = type(img)(::-1,..);
-  } else if (flip == 2n) {
-    cr2 = cr2(::-1);
-    cdelt2 = -cdelt2;
-    img = type(img)(,::-1,..);
-  } else if (flip == 3n) {
-    cr1 = cr1(::-1);
-    cdelt1 = -cdelt1;
-    cr2 = cr2(::-1);
-    cdelt2 = -cdelt2;
-    img = type(img)(::-1,::-1,..);
-  } else if (structof(img) != type) {
-    img = type(img);
+}
+
+func mira_save_image(img, dest, overwrite=, bitpix=, data=,
+                     comment=, history=, extname=)
+/* DOCUMENT mira_save_image, img, dest;
+         or fh = mira_save_image(img, dest);
+
+     Save image IMG in FITS file DEST (can be a file name or a FITS handle).
+     Image IMG can be a structured object as returned by `mira_read_image` or
+     `mira_wrap_image` or an array of pixel values.  In the latter case,
+     keyword DATA can be set with the MiRA data instance form which the image
+     has been reconstructed (see `mira_wrap_image`).  When called as a
+     function, the FITS handle is returned and can be used, for instance, to
+     append more FITS extensions.
+
+     Keywords COMMENT and HISTORY can be set with an array of strings to
+     specify comments and history records.
+
+     If DEST is a string, keyword OVERWRITE can be set true to allow for
+     overwriting file DEST if it already exists.
+
+     Keyword EXTNAME can be used to specify the name of the FITS extension.
+
+     Keyword BITPIX (by default -32, that is single precision floating point)
+     can be used to specify the binary format of pixel values written in the
+     file.
+
+
+   SEE ALSO: fits, mira_read_image, mira_wrap_image.
+ */
+{
+  /* Check input image. */
+  if (is_array(img)) {
+    img = mira_wrap_image(unref(img), data);
+  } else if (is_hash(img)) {
+    if (! is_void(data)) {
+      write, format="WARNING - %s\n", "MiRA data ignored";
+    }
+  } else {
+    error, "unexpected image type";
   }
-  i1 = abs(cr1)(mnx);
-  fits_set, fh, "CRPIX1", i1, "1-based index of reference pixel along 1st axis";
-  fits_set, fh, "CRVAL1", cr1(i1), "coordinate of reference pixel along 1st axis";
-  fits_set, fh, "CDELT1", cdelt1, "increment along 1st axis";
-  fits_set, fh, "CTYPE1", "radian", "units for 1st axis";
-  i2 = abs(cr2)(mnx);
-  fits_set, fh, "CRPIX2", i2, "1-based index of reference pixel along 2nd axis";
-  fits_set, fh, "CRVAL2", cr2(i2), "coordinate of reference pixel along 2nd axis";
-  fits_set, fh, "CDELT2", cdelt2, "increment along 2nd axis";
-  fits_set, fh, "CTYPE2", "radian", "units for 2nd axis";
+
+  naxis = img.naxis;
+  if (naxis != 2 && naxis != 3) {
+    error, "expecting a 2D or 3D image";
+  }
+
+  /* Get FITS handle. */
+  local fh;
+  if (is_void(bitpix)) {
+    bitpix = -32;
+  }
+  if (is_string(dest)) {
+    fh = fits_open(dest, 'w', overwrite=overwrite);
+  } else {
+    eq_nocopy, fh, dest;
+    fits_new_hdu, fh, "IMAGE", "Image extension";
+  }
+  hdu = fits_current_hdu(fh);
+  if (hdu == 1) {
+    fits_set, fh, "SIMPLE", 'T', "true FITS file";
+  }
+  fits_set, fh, "BITPIX", bitpix, "Bits per pixel";
+  fits_set, fh, "NAXIS",  naxis,  "number of dimensions";
+  for (k = 1; k <= naxis; ++k) {
+    sfx = swrite(format="%d", k);
+    fits_set, fh, "NAXIS"+sfx, h_get(img, "naxis"+sfx),
+      "number of elements along axis";
+  }
+  fits_set, fh, "EXTEND", 'T', "this file may contain FITS extensions";
+
+  /* Save axis information. Manage to have the image correctly displayed with
+     most viewers (East toward left and North toward top).  */
+  if ((img.ctype1 == "RA---TAN" && img.cdelt1 > 0.0) ||
+      (img.ctype2 == "DEC--TAN" && img.cdelt2 < 0.0)) {
+    /* Modify orientation paramaters. */
+    local flip1, flip2;
+    cdelt1 = img.cdelt1;
+    crpix1 = img.crpix1;
+    if (img.ctype1 == "RA---TAN" && cdelt1 > 0.0) {
+      flip1 = ::-1;
+      cdelt1 = -cdelt1;
+      crpix1 = img.naxis1 - crpix1 + 1;
+    }
+    cdelt2 = img.cdelt2;
+    crpix2 = img.crpix2;
+    if (img.ctype2 == "DEC--TAN" && cdelt2 < 0.0) {
+      flip2 = ::-1;
+      cdelt2 = -cdelt2;
+      crpix2 = img.naxis2 - crpix2 + 1;
+    }
+
+    /* Clone image structure before modifying it. */
+    keys = h_keys(img);
+    cpy = h_new();
+    for (k = 1; k <= numberof(keys); ++k) {
+      key = keys(k);
+      h_set, cpy, key, h_get(img, key);
+    }
+    img = h_set(cpy, arr=img.arr(flip1,flip2,..),
+                cdelt1=cdelt1, crpix1=crpix1,
+                cdelt2=cdelt2, crpix2=crpix2);
+  }
+  for (k = 1; k <= naxis; ++k) {
+    sfx = swrite(format="%d", k);
+    fits_set, fh, "CRPIX"+sfx, h_get(img, "crpix"+sfx),
+      "coordinate system reference pixel";
+    fits_set, fh, "CRVAL"+sfx, h_get(img, "crval"+sfx),
+      "coordinate system value at reference pixel";
+    fits_set, fh, "CDELT"+sfx, h_get(img, "cdelt"+sfx),
+      "coordinate increment along axis";
+    fits_set, fh, "CTYPE"+sfx, h_get(img, "ctype"+sfx),
+      "name of the coordinate axis";
+    fits_set, fh, "CUNIT"+sfx, h_get(img, "cunit"+sfx),
+      "units of the coordinate axis";
+  }
+  if (hdu > 1 && ! is_void(extname)) {
+    fits_set, fh, "EXTNAME", extname, "Name of this HDU";
+  }
+  if (! is_void(comment)) {
+    for (k = 1; k <= numberof(comment); ++k) {
+      fits_set, fh, "COMMENT", comment(k);
+    }
+  }
+  if (! is_void(history)) {
+    for (k = 1; k <= numberof(history); ++k) {
+      fits_set, fh, "HISTORY", history(k);
+    }
+  }
+
+  /* Write the header, the data and pad the HDU. */
   fits_write_header, fh;
-  fits_write_array, fh, img;
+  fits_write_array, fh, img.arr;
+  fits_pad_hdu, fh;
+  return fh;
 }
 
 /*---------------------------------------------------------------------------*/
