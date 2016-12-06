@@ -1,3 +1,4 @@
+ * Options in command line now have units.
  * Use Git submodules (see
    https://chrisjean.com/git-submodules-adding-using-removing-and-updating/ for
    a tutorial) for YLib, YOIFITS, IPY to share files with other repositories.

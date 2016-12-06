@@ -6,10 +6,10 @@
  *
  *-----------------------------------------------------------------------------
  *
- * Copyright (C) 2001-2016, Éric Thiébaut <eric.thiebaut@univ-lyon1.fr>
+ * This file is part of MiRA, a "Multi-aperture Image Reconstruction
+ * Algorithm", <https://github.com/emmt/MiRA>.
  *
- * This file is part of MiRA: a Multi-aperture Image Reconstruction
- * Algorithm.
+ * Copyright (C) 2001-2016, Éric Thiébaut <eric.thiebaut@univ-lyon1.fr>
  *
  * MiRA is free software; you can redistribute it and/or modify it under the
  * terms of the GNU General Public License version 2 as published by the Free
@@ -236,8 +236,8 @@ _MIRA_LENGTH_UNITS_TABLE = h_new("m",           MIRA_METER,
  *   mira_get_dim - get number of pixels per side of model image
  *   mira_get_pixelsize - get the pixel size (in radians) for the model image
  *   mira_get_w - returns wavelength(s)
- *   mira_get_ra - returns sky RA-coordinates (Right Ascension)
- *   mira_get_dec - returns sky DEC-coordinates (Declination)
+ *   mira_get_x, mira_get_ra - returns sky RA-coordinates (Right Ascension)
+ *   mira_get_y, mira_get_dec - returns sky DEC-coordinates (Declination)
  *   mira_get_ndata - get number of measurements used in last fit
  *
  *   mira_dirac - make an image of a point-like object
@@ -3465,6 +3465,28 @@ func mira_plot_baselines(this, color=, symbol=, size=, fill=,
 }
 
 /*---------------------------------------------------------------------------*/
+/* REGULARIZATIONS */
+
+func mira_new_compactness_prior(dat, fwhm)
+/* DOCUMENT rgl = mira_new_compactness_prior(dat, fwhm);
+
+     Yield a regularization which implements a compactness prior.  The default
+     shape is isotropic with a Cauchy profile of full-width at half maximum
+     FWHM (in radians).
+
+   SEE ALSO rgl_quadratic.
+ */
+{
+  s = 2.0/fwhm;
+  x = s*mira_get_x(dat);
+  y = s*mira_get_y(dat);
+  w = 1.0 + (x*x + (y*y)(-,));
+  rgl = rgl_new("quadratic");
+  rgl_config, rgl, "W", linop_new("diagonal", w);
+  return rgl;
+}
+
+/*---------------------------------------------------------------------------*/
 /* UTILITIES */
 
 func mira_polar_to_cartesian(amp, amperr, phi, phierr, what, goodman=)
@@ -4208,16 +4230,16 @@ func mira_wrap_image(arr, dat)
                 naxis = naxis,
                 naxis1 = naxis1,
                 crpix1 = double(i1),
-                crval1 = x(i1)/MIRA_MILLIARCSECOND,
-                cdelt1 = avg(x(dif))/MIRA_MILLIARCSECOND,
+                crval1 = x(i1)/MIRA_ARCSECOND,
+                cdelt1 = avg(x(dif))/MIRA_ARCSECOND,
                 ctype1 = "RA---TAN",
-                cunit1 = "mas",
+                cunit1 = "arcsec",
                 naxis2 = naxis2,
                 crpix2 = double(i2),
-                crval2 = y(i2)/MIRA_MILLIARCSECOND,
-                cdelt2 = avg(y(dif))/MIRA_MILLIARCSECOND,
+                crval2 = y(i2)/MIRA_ARCSECOND,
+                cdelt2 = avg(y(dif))/MIRA_ARCSECOND,
                 ctype2 = "DEC--TAN",
-                cunit2 = "mas");
+                cunit2 = "arcsec");
     if (naxis < 3) {
       return img;
     }
@@ -4320,7 +4342,7 @@ func mira_save_image(img, dest, overwrite=, bitpix=, data=,
   if (hdu == 1) {
     fits_set, fh, "SIMPLE", 'T', "true FITS file";
   }
-  fits_set, fh, "BITPIX", bitpix, "Bits per pixel";
+  fits_set, fh, "BITPIX", bitpix, "bits per pixel";
   fits_set, fh, "NAXIS",  naxis,  "number of dimensions";
   for (k = 1; k <= naxis; ++k) {
     sfx = swrite(format="%d", k);
@@ -4560,14 +4582,3 @@ if (is_func(h_grow)) {
   _mira_warn, "h_grow provided by MiRA (consider upgrading Yeti).";
   h_grow = _mira_grow_members;
 }
-
-/*
- * Local Variables:
- * mode: Yorick
- * tab-width: 8
- * c-basic-offset: 2
- * indent-tabs-mode: nil
- * fill-column: 78
- * coding: utf-8
- * End:
- */

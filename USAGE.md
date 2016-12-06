@@ -46,7 +46,7 @@ the stopping criterion of OptimPack1 (which to see).
 You can also try a reconstruction given an initial image `img0`:
 
     img2 = mira_solve(db, img0, maxeval=500, verb=1, xmin=0.0,
-                        normalization=1, regul=rgl, mu=1e6);
+                      normalization=1, regul=rgl, mu=1e6);
 
 Note that if `img0` is not of size `dim×dim` it will be resampled to that size
 (*i.e.*, assuming the field of view is the same).
@@ -66,7 +66,114 @@ MiRA can be run from the command line:
 
 where `[OPTIONS]` are optional settings, `INPUT [...]` are any number of OIFITS
 input data files and `OUTPUT` is the name of the output FITS file to save the
-resulting image.
+resulting image.  Option `-help` can be used for a short description of all
+options.
+
+
+### Data selection
+
+MiRA reconstruct a gray image from the interferometric data.  The wavelengths
+of the selected data can be specified as the end points of the spectral range:
+
+    ... -wavemin=MINVAL -wavemax=MAXVAL
+
+or as the central wavelength and bandwidth:
+
+    ... -effwave=CENTER -effband=WIDTH
+
+The arguments of these options have length units.  For instance:
+
+    ... -wavemin=1.6µm -wavemax=1.8microns
+
+is the same as:
+
+    ... -effwave=1700nm -effband=200nm
+
+If the input data files contain observations for more than one object, the
+target to consider can be specified as:
+
+    ... -target=NAME
+
+
+### Image parameters
+
+An initial image for the reconstruction can be provided as:
+
+    ... -initial=FILENAME
+
+where `FILENAME` is the name of the FITS file with the image to start with.
+
+If no initial image is provided, the reconstruction starts with a random image
+and option `-seed=NUMBER` can be used to seed the random generator.
+
+By default, the reconstructed image will have the same pixel size and
+dimensions as the initial image if provided.  Otherwise, the pixel size can be
+specified with option `-pixelsize=PIXSIZ` and the image dimensions can be chosen
+with `-dim=NUMBER` or `-fov=ANGLE`, where `PIXSIZ` and `ANGLE` are in angular units and `NUMBER` is a number of pxiels.  For instance:
+
+    ... -pixelsize=0.25mas -fov=100ms
+
+or
+
+    ... -pixelsize=250e-6arcsec -dim=400
+
+
+both yield a 400×400 image with a pixel size of 0.25 milliarcsecond.
+
+
+### Fourier transform
+
+The nonequispaced Fourier transform of the pixels can be computed by different
+methods: `-xform=exact` uses an exact transform, `-xform=nfft` use a precise
+approximation by the NFFT algorithm while `-xform=fft` uses a built-in
+algorithm which is less precise.  The exact transform can be very slow if the
+image is large and/or if there are many data.  The two others exploits an FFT
+algorithm and are faster.  If you have installed
+[Yorick NFFT plug-in](https://github.com/emmt/ynfft), `-xform=nfft` is
+certainly the method of choice.
+
+
+### Image constraints
+
+The total flux of the sought image, and the lower and upper bounds for pixel
+values can be specified with options `-normalization=SUM`, `-min=LOWER` and
+`-max=UPPER` respectively.  For instance:
+
+    ... -normalization=1 -min=0
+
+is a must for processing OIFITS data.
+
+
+### Regularization
+
+The regularization is the kind of prior imposed to the reconstructed image.
+For all implemented reularizations, the relative strength of the prior
+(compared to the data) is specified with option `-mu=µ` where `µ ≥ 0`.
+
+The following regularizations are available:
+
+* **Edge-preserving smoothness** is selected with the following options:
+
+  ````
+  -regul=hyperbolic -mu=µ -tau=τ -eta=η
+  ````
+
+  where `τ` is the edge threshold and `η` the scale of the finite differences
+  to estimate the local gradient of the image.  Different scales can be set for
+  different dimensions by providing a list of values to `-eta`, *e.g.*
+  `-eta=1,1,0.3`. By default, `-eta=1`.  Using a very small edge threshold,
+  compared to the norm of the local gradients, mimics the effects of *total
+  variation* (TV) regularizations.  Conversely, using a very small edge
+  threshold yields a regularization comparable to *quadratic smoothness*.
+
+* **Quadratic compactness** is selected with the following options:
+
+  ````
+  -regul=compactness -mu=µ -gamma=γ
+  ````
+
+  where `γ` is the full width at half maximum (FWHM) of the prior distribution
+  of light.  This parameter has angular units.  For instance `-gamma=15mas`.
 
 
 ## Caveats

@@ -5,8 +5,8 @@
  *
  *-----------------------------------------------------------------------------
  *
- * This file is part of MiRA: a Multi-aperture Image Reconstruction
- * Algorithm <https://github.com/emmt/MiRA>.
+ * This file is part of MiRA, a "Multi-aperture Image Reconstruction
+ * Algorithm", <https://github.com/emmt/MiRA>.
  *
  * Copyright (C) 2001-2016, Éric Thiébaut <eric.thiebaut@univ-lyon1.fr>
  *
@@ -92,24 +92,25 @@ _MIRA_OPTIONS = opt_init\
    _lst(
         /* DATA SELECTION */
         _lst("target",           NULL,  "NAME",   OPT_STRING,   "Name of the astrophysical object"),
-        _lst("effwave",          NULL,  "VALUE",  OPT_REAL,     "Effective wavelength (microns)"),
-        _lst("effband",          NULL,  "VALUE",  OPT_REAL,     "Effective bandwidth (microns)"),
-        _lst("wavemin",          NULL,  "VALUE",  OPT_REAL,     "Minimum wavelength (microns)"),
-        _lst("wavemax",          NULL,  "VALUE",  OPT_REAL,     "Maximum wavelength (microns)"),
+        _lst("effwave",          NULL,  "VALUE",  OPT_STRING,   "Effective wavelength, e.g. 1.6micron"),
+        _lst("effband",          NULL,  "VALUE",  OPT_STRING,   "Effective bandwidth, e.g. 200nm"),
+        _lst("wavemin",          NULL,  "VALUE",  OPT_STRING,   "Minimum wavelength, e.g. 1.5µm"),
+        _lst("wavemax",          NULL,  "VALUE",  OPT_STRING,   "Maximum wavelength, e.g. 1.7µm"),
         /* IMAGE PARAMETERS */
         _lst("pixelsize",        NULL,  "ANGLE",  OPT_STRING,   "Angular size of pixels, e.g. 0.1mas"),
         _lst("fov",              NULL,  "ANGLE",  OPT_STRING,   "Angular size of the field of view, e.g. 20mas"),
         _lst("dim",              NULL,  "NUMBER", OPT_INTEGER,  "Number of pixels per side of the image"),
         _lst("xform",           "nfft", "NAME",   OPT_STRING,   "Method to compute the Fourier transform"),
-        _lst("normalization",    NULL,  "VALUE",  OPT_REAL,     "Flux normalization"),
-        _lst("min",              NULL,  "LOWER",  OPT_REAL,     "Lower bound for the flux"),
-        _lst("max",              NULL,  "UPPER",  OPT_REAL,     "Upper bound for the flux"),
+        _lst("normalization",    NULL,  "VALUE",  OPT_REAL,     "Flux normalization (sum of pixels = VALUE)"),
+        _lst("min",              NULL,  "LOWER",  OPT_REAL,     "Lower bound for the pixel values"),
+        _lst("max",              NULL,  "UPPER",  OPT_REAL,     "Upper bound for the pixel values"),
         _lst("overwrite",        NULL,  NULL,     OPT_FLAG,     "Overwrite output if it exists"),
         /* REGULARIZATION SETTINGS */
         _lst("regul",            NULL,  "NAME",   OPT_STRING,    "Name of regularization method"),
         _lst("mu",               0.0,   "VALUE",  OPT_REAL,      "Global regularization weight"),
         _lst("tau",              1E-6,  "VALUE",  OPT_REAL,      "Edge preserving threshold"),
         _lst("eta",              1.0,   "VALUES", OPT_REAL_LIST, "Gradient scales along dimensions"),
+        _lst("gamma",            NULL,  "FWHM",   OPT_STRING,    "A priori full half width at half maximum, e.g. 15mas"),
         _lst("regul_epsilon",    1E-6,  "VALUE",  OPT_REAL,      "Edge preserving threshold"),
         _lst("regul_threshold",  1E-3,  "VALUE",  OPT_REAL,      "Threshold for the cost function"),
         _lst("regul_power",      2.0,   "VALUE",  OPT_REAL,      "Power for the Lp-norm"),
@@ -121,7 +122,7 @@ _MIRA_OPTIONS = opt_init\
         /* ALGORITHM PARAMETERS */
         _lst("initial",          "random", "NAME", OPT_STRING, "FITS file or method for initial image"),
         _lst("seed",             NULL, "VALUE",    OPT_REAL,   "Seed for the random generator"),
-        _lst("save_initial",  NULL, NULL,    OPT_FLAG,    "Save initial image"),
+        _lst("save_initial",  NULL, NULL,    OPT_FLAG,    "Save initial image as a secondary HDU in result"),
         /* can also be "random", "Dirac", "Gauss", or "Cauchy-Lorentz" */
         _lst("bootstrap", 2,    "COUNT", OPT_INTEGER, "Number of bootstrapping iterations"),
         _lst("recenter",  NULL, NULL,    OPT_FLAG,    "Recenter result of bootstrapping iterations"),
@@ -142,12 +143,6 @@ _MIRA_OPTIONS = opt_init\
         _lst("version",  MIRA_VERSION, NULL, OPT_VERSION, "Print out version number")));
 /* FIXME: merge regul_cost and regul_type */
 
-func mira_scale_option(value, factor)
-{
-  if (is_void(value)) return;
-  return factor*value;
-}
-
 func _mira_cli_parse_angle(str, opt)
 {
   if (is_void(opt)) {
@@ -159,6 +154,23 @@ func _mira_cli_parse_angle(str, opt)
     opt_error, "expecting value and units for " + opt;
   }
   fact = mira_parse_angular_units(units, 0);
+  if (fact == 0) {
+    opt_error, "invalid units for " + opt;
+  }
+  return value*fact;
+}
+
+func _mira_cli_parse_length(str, opt)
+{
+  if (is_void(opt)) {
+    opt = "length";
+  }
+  dummy = units = string();
+  value = 0.0;
+  if (sread(str, value, units, dummy) != 2) {
+    opt_error, "expecting value and units for " + opt;
+  }
+  fact = mira_parse_length_units(units, 0);
   if (fact == 0) {
     opt_error, "invalid units for " + opt;
   }
@@ -193,23 +205,37 @@ func mira_main(argv0, argv)
   comment = ("Image reconstructed by MiRA algorithm" +
              " <https://github.com/emmt/MiRA>");
   /* Setup the regularization. */
+  regul_post = FALSE;
   regul_name = opt.regul;
   if (! is_void(regul_name)) {
     if (opt.mu < 0.0) {
       opt_error, "value of `--mu` must be >= 0.0";
     }
-    if (opt.tau <= 0.0) {
-      opt_error, "value of `--tau` must be > 0.0";
-    }
-    if (min(opt.eta) <= 0.0) {
-      opt_error, "values of `--eta` must be > 0.0";
-    }
-
     if (regul_name == "hyperbolic") {
-      regul = rgl_new(regul_name);
+      /* Edge-preserving smoothness prior. */
+      if (opt.tau <= 0.0) {
+        opt_error, "value of `--tau` must be > 0.0";
+      }
+      if (min(opt.eta) <= 0.0) {
+        opt_error, "values of `--eta` must be > 0.0";
+      }
+      regul = rgl_new("hyperbolic");
       rgl_config, regul, tau=opt.tau, eta=opt.eta;
       grow, comment, swrite(format="Regularization: \"%s\" with MU=%g, TAU=%g, ETA=%s",
                             regul_name, opt.mu, opt.tau, sum(print(opt.eta)));
+    } else if (regul_name == "compactness") {
+      /* Compactness prior. */
+      if (is_void(opt.gamma)) {
+        opt_error, "option `--gamma=...` must be specified with \"compactness\" regularization";
+      }
+      value = _mira_cli_parse_angle(opt.gamma, "`--gamma=...`");
+      if (value <= 0) {
+        opt_error, "invalid value for `--gamma=...`";
+      }
+      h_set, opt, gamma=value;
+      grow, comment, swrite(format="Regularization: \"%s\" with GAMMA=%g",
+                            regul_name, opt.gamma);
+      regul_post = TRUE;
 
 #if 0
     } else {
@@ -359,17 +385,40 @@ func mira_main(argv0, argv)
     opt_error, "option --initial=\""+initial_name+"\" not yet implemented";
   }
 
-  /* FIXME: take the default pixelsize from the data file */
+  /* Parse wavelenght settings. */
+  keys = ["effband", "effwave", "wavemin", "wavemax"];
+  for (k = 1; k <= numberof(keys); ++k) {
+    local str;
+    key = keys(k);
+    eq_nocopy, str, h_get(opt, key);
+    if (! is_void(str)) {
+      value = _mira_cli_parse_length(str, "`--"+key+"=...`");
+      if (value <= 0) {
+        opt_error, "invalid value for `--"+key+"=...`";
+      }
+      h_set, opt, key, value;
+    }
+  }
 
+  /* Read input data. */
   master = mira_new(argv(1:-1),
                     target = opt.target,
-                    eff_wave = mira_scale_option(opt.effwave, 1E-6),
-                    eff_band = mira_scale_option(opt.effband, 1E-6),
-                    wavemin = mira_scale_option(opt.wavemin, 1E-6),
-                    wavemax = mira_scale_option(opt.wavemax, 1E-6),
-                    monochromatic = 1n, quiet = opt.quiet);
+                    eff_wave = opt.effwave,
+                    eff_band = opt.effband,
+                    wavemin = opt.wavemin,
+                    wavemax = opt.wavemax,
+                    monochromatic = monochromatic,
+                    quiet = opt.quiet);
 
   mira_config, master, dim=dim, pixelsize=pixelsize, xform=opt.xform;
+
+
+  /* Post operations for the regularization. */
+  if (regul_post) {
+    if (regul_name == "compactness") {
+      regul = mira_new_compactness_prior(master, opt.gamma);
+    }
+  }
 
   local maxeval, maxiter;
   if (opt.bootstrap < 0) {
@@ -412,9 +461,9 @@ func mira_main(argv0, argv)
                        overwrite=opt.overwrite, bitpix=opt.bitpix,
                        comment=comment);
   if (opt.save_initial) {
-    mira_save_image(initial, fh, bitpix=opt.bitpix,
-                    extname="INITIAL_IMAGE",
-                    comment="Initial image used by MiRA");
+    mira_save_image, initial, fh, bitpix=opt.bitpix,
+      extname="INITIAL_IMAGE",
+      comment="Initial image used by MiRA";
   }
   fits_close, fh;
 
