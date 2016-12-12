@@ -26,12 +26,17 @@ archive file.
 MiRA Git repository has several sub-modules.  To retrieve a complete
 repository, you have to clone the master repostory and its sub-modules:
 
+    git clone https://github.com/emmt/MiRA.git
+    
+or (depending what work best for you):
+
     git clone git@github.com:emmt/MiRA.git
 
 then from the MiRA repository (*e.g.*, `cd MiRA`):
 
     git submodule init
     git submodule update
+    git submodule foreach 'git checkout master'
 
 In order to pull the last versions of the sources, you can do:
 
