@@ -111,7 +111,7 @@ dimensions as the initial image if provided.  Otherwise, the pixel size can be
 specified with option `-pixelsize=PIXSIZ` and the image dimensions can be chosen
 with `-dim=NUMBER` or `-fov=ANGLE`, where `PIXSIZ` and `ANGLE` are in angular units and `NUMBER` is a number of pxiels.  For instance:
 
-    ... -pixelsize=0.25mas -fov=100ms
+    ... -pixelsize=0.25mas -fov=100mas
 
 or
 
@@ -121,7 +121,7 @@ or
 both yield a 400×400 image with a pixel size of 0.25 milliarcsecond.
 
 
-### Fourier transform
+### Non-uniform Fourier transform
 
 The nonequispaced Fourier transform of the pixels can be computed by different
 methods: `-xform=exact` uses an exact transform, `-xform=nfft` use a precise
@@ -159,12 +159,19 @@ The following regularizations are available:
   ````
 
   where `τ` is the edge threshold and `η` the scale of the finite differences
-  to estimate the local gradient of the image.  Different scales can be set for
-  different dimensions by providing a list of values to `-eta`, *e.g.*
-  `-eta=1,1,0.3`. By default, `-eta=1`.  Using a very small edge threshold,
-  compared to the norm of the local gradients, mimics the effects of *total
-  variation* (TV) regularizations.  Conversely, using a very small edge
-  threshold yields a regularization comparable to *quadratic smoothness*.
+  to estimate the local gradient of the image.
+
+  Different scales can be set for different dimensions by providing a list of
+  values to `-eta`, *e.g.* `-eta=1,1,0.3`.  By default, `-eta=1` which implies
+  that all finite differences are scaled the same.  If any of the scales set by
+  `-eta=...` is zero, then no regularity is imposed along the corresponding
+  dimensions.
+
+  Using a very small edge threshold `τ`, compared to the norm of the local
+  gradients, mimics the effects of *total variation* (TV) regularizations.
+  Conversely, using a very small edge threshold yields a regularization
+  comparable to *quadratic smoothness*.
+
 
 * **Quadratic compactness** is selected with the following options:
 
@@ -174,6 +181,31 @@ The following regularizations are available:
 
   where `γ` is the full width at half maximum (FWHM) of the prior distribution
   of light.  This parameter has angular units.  For instance `-gamma=15mas`.
+
+
+### Tuning the reconstruction
+
+The image reconstruction amounts to minimizing a criterion which is the sum of
+two terms: a data fidelity term and a regularization term.  Given these two
+terms and an initial image, the algorithm proceeds by iteratively improving the
+solution so as to reduce the criterion.
+
+
+There are parameters to control the convergence of the algorithm and the amount
+of computation.
+
+* Options `--maxiter=NUMBER` and `--maxeval=NUMBER` control the maximum number
+  of iterations and evaluations of the criterion respectively.  By default,
+  there are no limits on these numbers.
+
+* Options `--sftol=SFTOL`, `--sgtol=SGTOL` and `--sxtol=SXTOL` control the line
+  search convergence.  `SFTOL` and `SGTOL` correspond to the first Wolfe
+  condition (Armijo's criterion) and to the second Wolfe condition.
+
+* Options `--ftol=FTOL` and `--gtol=GTOL` control the global convergence of the
+  reconstruction.  The algorithm stops when the relative function change is
+  less than `FTOL` between two successive iterations or when the norm of the
+  gradient becomes smaller than `GTOL`.
 
 
 ## Caveats
