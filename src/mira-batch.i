@@ -88,7 +88,7 @@ NULL = []; /* FIXME: make a private function to hide local variables */
 _MIRA_OPTIONS = opt_init\
   ("Usage: mira [OPTIONS] INPUT [...] OUTPUT",
    "Image reconstruction.  INPUT and [...] are the OI-FITS data file and OUTPUT" +
-   "is the result saved into a FITS file.",
+   " is the result saved into a FITS file.",
    _lst(
         /* DATA SELECTION */
         _lst("target",           NULL,  "NAME",   OPT_STRING,   "Name of the astrophysical object"),
