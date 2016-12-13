@@ -112,6 +112,13 @@ mira_require, "color_bar",  MIRA_HOME + ["", "../lib/ylib/"] + "plot.i";
 
 /* MiRA requires OptimPack1: */
 mira_require, "op_vmlmb_next", "OptimPack1.i";
+if (! is_func(op_vmlmb)) {
+  write, format="*** WARNING *** %s\n",
+    "You should update OptimPack (https://github.com/emmt/OptimPackLegacy)";
+  mira_vmlmb = op_mnb;
+} else {
+  mira_vmlmb = op_vmlmb;
+}
 
 /* Load some files from the standard Yorick installation. */
 mira_require, "bessj0",   Y_SITE + "i/bessel.i";
@@ -2459,13 +2466,13 @@ local mira_solve; /* only to provide the documentation */
  *          convergence properties.
  *   MEM  - control the memory usage by the optimizer; the value is the
  *          number of corrections and gradient differences memorized by the
- *          variable metric algorithm; by default, MEM=7 (see op_mnb).
+ *          variable metric algorithm; by default, MEM=7 (see op_vmlmb).
  *   FTOL - relative function tolerance for the stopping criterion of
- *          the optimizer; default value is: FTOL = 1e-15 (see op_mnb).
- *   GTOL - gradient tolerance for the stopping criterion of the
- *          optimizer; default value is: GTOL = 0.0 (see op_mnb).
+ *          the optimizer; default value is: FTOL = 1e-15 (see op_vmlmb).
+ *   GTOL - relative gradient tolerance for the stopping criterion of the
+ *          optimizer; default value is: GTOL = 0.0 (see op_vmlmb).
  *   SFTOL, SGTOL, SXTOL - control the stopping criterion of the
- *          line-search method in the optimizer (see op_mnb).
+ *          line-search method in the optimizer (see op_vmlmb).
  *
  * SEE ALSO:
  *   mira_new, mira_config.
@@ -2483,7 +2490,7 @@ func mira_solve(master, x, &penalty, reset=, fix=,
                 colortable=, movie_file=, movie_fps=,
                 /* options for OptimPack */
                 xmin=, xmax=,
-                method=, mem=, verb=, factor=, wait=,
+                mem=, verb=, factor=, wait=,
                 maxiter=, maxeval=, output=,
                 ftol=, gtol=, sftol=, sgtol=, sxtol=,
                 gpnormconv=, get_cost=)
@@ -2596,12 +2603,12 @@ func mira_solve(master, x, &penalty, reset=, fix=,
     x = double(x); // force copy and conversion
   }
 
-  x = mira_mnb(cost, x, penalty, extra=extra,
-               xmin=xmin, xmax=xmax, method=method, mem=mem,
-               verb=verb, viewer=viewer, printer=printer,
-               maxiter=maxiter, maxeval=maxeval, output=,
-               frtol=ftol, fatol=0.0, sftol=sftol, sgtol=sftol, sxtol=sftol,
-               gpnormconv=gpnormconv);
+  x = mira_vmlmb(cost, x, penalty, extra=extra,
+                 xmin=xmin, xmax=xmax, mem=mem,
+                 verb=verb, viewer=viewer, printer=printer,
+                 maxiter=maxiter, maxeval=maxeval, output=,
+                 frtol=ftol, fatol=0.0, gatol=0.0, grtol=gtol,
+                 sftol=sftol, sgtol=sftol, sxtol=sftol);
 
   /* Re-normalization. */
   if (normalization && (xsum = sum(x)) > 0) {
@@ -2635,328 +2642,6 @@ func _mira_solve_printer(output, iter, eval, cpu, fx, gnorm, steplen, x, extra)
     extra.regul_err, gnorm, step;
   if (extra.wait) {
     pause, extra.wait;
-  }
-}
-
-func mira_mnb(f, x, &fx, &gx, fmin=,
-              xmin=, xmax=, method=, mem=, verb=, quiet=,
-              viewer=, printer=, extra=,
-              maxiter=, maxeval=, output=,
-              frtol=, fatol=, sftol=, sgtol=, sxtol=,
-              gpnormconv=)
-/* DOCUMENT mira_mnb(f, x)
- *     -or- mira_mnb(f, x, fout, gout)
- *
- *   Returns a minimum of a multivariate function by an iterative
- *   minimization algorithm (conjugate gradient or limited memory variable
- *   metric) possibly with simple bound constraints on the parameters.
- *   Arguments are:
- *
- *     F - User defined function to optimize.
- *         The prototype of F is:
- *           func F(x, &gx) {
- *             fx = ....; // compute function value at X
- *             gx = ....; // store gradient of F in GX
- *             return fx; // return F(X)
- *           }
- *
- *     X - Starting solution (a floating point array).
- *
- *     FOUT - Optional output variable to store the value of F at the
- *         minimum.
- *
- *     GOUT - optional output variable to store the value of the gradient
- *         of F at the minimum.
- *
- *   If the multivariate function has more than one minimum, which minimum
- *   is returned is undefined (although it depends on the starting
- *   parameters X).
- *
- *   In case of early termination, the best solution found so far is
- *   returned.
- *
- *
- * KEYWORDS
- *
- *   EXTRA - Supplemental argument for F; if non-nil, F is called as
- *       F(X,GX,EXTRA) so its prototype must be: func F(x, &gx, extra).
- *
- *   XMIN, XMAX  - Lower/upper bounds for  X.  Must be  conformable with X.
- *       For instance with XMIN=0, the non-negative solution will be
- *       returned.
- *
- *   METHOD - Scalar integer which  defines the optimization method to use.
- *       Conjugate  gradient   algorithm  is  used  if  one   of  the  bits
- *       OP_FLAG_POLAK_RIBIERE,         OP_FLAG_FLETCHER_REEVES,         or
- *       OP_FLAG_HESTENES_STIEFEL  is  set;  otherwise,  a  limited  memory
- *       variable  metric algorithm  (VMLM-B) is  used.  If  METHOD  is not
- *       specified and  if MEM=0, a conjugate gradient  search is attempted
- *       with flags: (OP_FLAG_UPDATE_WITH_GP |
- *                    OP_FLAG_SHANNO_PHUA    |
- *                    OP_FLAG_MORE_THUENTE   |
- *                    OP_FLAG_POLAK_RIBIERE  |
- *                    OP_FLAG_POWELL_RESTART)
- *       otherwise VMLM-B is used with flags: (OP_FLAG_UPDATE_WITH_GP |
- *                                             OP_FLAG_SHANNO_PHUA    |
- *                                             OP_FLAG_MORE_THUENTE).
- *       See documentation  of op_get_flags to  figure out the  allowed bit
- *       flags and their meaning.
- *
- *   MEM - Number of previous directions used in variable metric limited
- *       memory method (default min(7, numberof(X))).
- *
- *   MAXITER - Maximum number of iterations (default: no limits).
- *
- *   MAXEVAL - Maximum number of function evaluations (default: no limits).
- *
- *   FTOL - Relative function change tolerance for convergence (default:
- *       1.5e-8).
- *
- *   GTOL - Gradient tolerance for convergence (default: 3.7e-11).
- *
- *   VERB - Verbose mode?  If non-nil and non-zero, print out information
- *       every VERB iterations and for the final one.
- *
- *   QUIET - If true and not in verbose mode, do not print warning nor
- *       convergence error messages.
- *
- *   OUPTPUT - Output for verbose mode.  For instance, text file stream
- *       opened for writing.
- *
- *   VIEWER - User defined subroutine to call every VERB iterations (see
- *       keyword VERB above)to display the solution X.  The subroutine will
- *       be called as:
- *          viewer, x, extra;
- *       where X is the current solutio and EXTRA is the value of keyword
- *       EXTRA (which to see).  If the viewer uses Yorick graphics
- *       window(s) it may call "pause, 1;" before returning to make sure
- *       that graphics get correctly updated.
- *
- *   PRINTER - User defined subroutine to call every VERB iterations (see
- *       keyword VERB above) to printout iteration information.
- *       The subroutine will be called as:
- *          printer, output, iter, eval, cpu, fx, gnorm, steplen, x, extra;
- *       where OUTPUT is the value of keyword OUTPUT (which to see), ITER
- *       is the number of iterations, EVAL is the number of function
- *       evaluations, CPU is the elapsed CPU time in seconds, FX is the
- *       function value at X, GNORM is the Euclidean norm of the gradient
- *       at X, STEPLEN is the length of the step along the search
- *       direction, X is the current solution and EXTRA is the value of
- *       keyword EXTRA (which to see).
- *
- *   SFTOL, SGTOL, SXTOL, SXBIG - Line   search   tolerance  and  safeguard
- *      parameters (see op_csrch).
- *
- * SEE ALSO: op_get_flags, op_csrch,
- *           op_cgmnb_setup, op_cgmnb_next,
- *           op_vmlmb_setup, op_vmlmb_next.
- */
-{
-  local result, gx;
-
-  /* Get function. */
-  if (! is_func(f)) {
-    error, "expecting a function for argument F";
-  }
-  use_extra = (! is_void(extra));
-
-  /* Starting parameters. */
-  if ((s = structof(x)) != double && s != float && s != long &&
-      s != int && s != short && s != char) {
-    error, "expecting a numerical array for initial parameters X";
-  }
-  n = numberof(x);
-  dims = dimsof(x);
-
-  /* Bounds on parameters. */
-  bounds = 0;
-  if (! is_void(xmin)) {
-    if (is_void((t = dimsof(x, xmin))) || t(1) != dims(1)
-        || anyof(t != dims)) {
-      error, "bad dimensions for lower bound XMIN";
-    }
-    if ((convert = (s = structof(xmin)) != double) && s != float &&
-        s != long && s != int && s != short && s != char) {
-      error, "bad data type for lower bound XMIN";
-    }
-    if (convert || (t = dimsof(xmin))(1) != dims(1) || anyof(t != dims)) {
-      xmin += array(double, dims);
-    }
-    bounds |= 1;
-  }
-  if (! is_void(xmax)) {
-    if (is_void((t = dimsof(x, xmax))) || t(1) != dims(1)
-        || anyof(t != dims)) {
-      error, "bad dimensions for lower bound XMAX";
-    }
-    if ((convert = (s = structof(xmax)) != double) && s != float &&
-        s != long && s != int && s != short && s != char) {
-      error, "bad data type for lower bound XMAX";
-    }
-    if (convert || (t = dimsof(xmax))(1) != dims(1) || anyof(t != dims)) {
-      xmax += array(double, dims);
-    }
-    bounds |= 2;
-  }
-
-  /* Output stream. */
-  if (! is_void(output)) {
-    if (structof(output) == string) {
-      output = open(output, "a");
-    } else if (typeof(output) != "text_stream") {
-      error, "bad value for keyword OUTPUT";
-    }
-  }
-
-  /* Maximum number of iterations and function evaluations. */
-  check_iter = (! is_void(maxiter));
-  check_eval = (! is_void(maxeval));
-
-  /* Viewer and printer subroutines. */
-  if (is_void(printer)) {
-    use_printer = 0n;
-  } else if (mira_is_func(printer)) {
-    use_printer = 1n;
-  } else {
-    error, "bad value for keyword PRINTER";
-  }
-  if (is_void(viewer)) {
-    use_viewer = 0n;
-  } else if (mira_is_func(viewer)) {
-    use_viewer = 1n;
-  } else {
-    error, "bad value for keyword VIEWER";
-  }
-
-
-  /* Choose minimization method. */
-  //if (is_void(frtol)) frtol = 1e-10;
-  //if (is_void(fatol)) fatol = 1e-10;
-  if (! method) {
-    /* Variable metric. */
-    if (is_void(mem)) mem = min(n, 7);
-    if (is_void(fmin)) fmin = 0.0;
-    method = 0;
-    method_name = swrite(format="Limited Memory BFGS (VMLM with MEM=%d)",
-                         mem);
-    ws = op_vmlmb_setup(n, mem, /*fmin=fmin,*/
-                        fatol=fatol, frtol=frtol,
-                        sftol=sftol, sgtol=sgtol, sxtol=sxtol);
-  } else if (method < 0) {
-    if (is_void(mem)) mem = min(n, 7);
-    method_name = swrite(format="Limited Memory BFGS (LBFGS with MEM=%d)",
-                         mem);
-    ws = op_lbfgs_setup(n, mem);
-  } else if (method >= 1 && method <= 15) {
-    /* Conjugate gradient. */
-    mem = 2;
-    error, "conjugate-gradient method not yet implemented";
-    method_name = swrite(format="Conjugate Gradient (%s)",
-                         ["Fletcher-Reeves", "Polak-Ribiere",
-                          "Polak-Ribiere with non-negative BETA"](method&3));
-    ws = optim_cgmn_setup(method, fmin=fmin, fatol=fatol, frtol=frtol);
-  } else {
-    error, "bad METHOD";
-  }
-  step = 0.0;
-  task = 1;
-  eval = iter = 0;
-  stop = 0n;
-  if (verb) {
-    elapsed = array(double, 3);
-    timer, elapsed;
-    cpu_start = elapsed(1);
-  }
-  for (;;) {
-    local gx; /* to store the gradient */
-    if (task == 1) {
-      /* Evaluate function and gradient. */
-      if (bounds) {
-        if (bounds & 1) {
-          x = max(x, xmin);
-        }
-        if (bounds & 2) {
-          x = min(x, xmax);
-        }
-      }
-      fx = (use_extra ? f(x, gx, extra) : f(x, gx));
-      ++eval;
-      if (bounds) {
-        /* Figure out the set of free parameters:
-         *   ACTIVE(i) = 0 if X(i) has a lower bound XMIN(i)
-         *                 and X(i) = XMIN(i) and GX(i) >= 0
-         *               0 if X(i) value has an upper bound XMAX(i)
-         *                 and X(i) = XMAX(i) and GX(i) <= 0
-         *               1 (or any non-zero value) otherwise
-         */
-        if (bounds == 1) {
-          active = ((x > xmin) | (gx < 0.0));
-        } else if (bounds == 2) {
-          active = ((x < xmax) | (gx > 0.0));
-        } else {
-          active = (((x > xmin) | (gx < 0.0)) & ((x < xmax) | (gx > 0.0)));
-        }
-      }
-    }
-
-    /* Check for convergence. */
-    if (task != 1 || eval == 1) {
-      gnorm =  mira_projected_gradient_norm(x, gx, xmin=xmin, xmax=xmax);
-      if (task > 2) {
-        stop = 1n;
-        msg = op_vmlmb_msg(ws);
-      } else if (! is_void(gpnormconv) && gnorm <= gpnormconv) {
-        stop = 1n;
-        msg = "GP norm <= pre-set level";
-      } else if (check_iter && iter > maxiter) {
-        stop = 1n;
-        msg = swrite(format="warning: too many iterations (%d)\n", iter);
-      } else if (check_eval && eval > maxeval) {
-        stop = 1n;
-        msg = swrite(format="warning: too many function evaluations (%d)\n",
-                     eval);
-      }
-      if (verb) {
-        if (eval == 1 && ! use_printer) {
-          write, output, format="# Method %d (MEM=%d): %s\n#\n",
-            method, mem, method_name;
-          write, output, format="# %s\n# %s\n",
-            "ITER  EVAL   CPU (ms)        FUNC               GNORM   STEPLEN",
-            "---------------------------------------------------------------";
-        }
-        if (stop || ! (iter % verb)) {
-          timer, elapsed;
-          cpu = 1e3*(elapsed(1) - cpu_start);
-          // FIXME: this is a hack...
-          if (use_printer) {
-            printer, output, iter, eval, cpu, fx, gnorm, steplen, x, extra;
-          } else {
-            write, output, format=" %5d %5d %10.3f  %+-24.15e%-9.1e%-9.1e\n",
-              iter, eval, cpu, fx, gnorm, step;
-          }
-          if (use_viewer) {
-            viewer, x, extra;
-          }
-        }
-      }
-      if (stop) {
-        if (msg && (verb || (task != 3 && ! quiet))) {
-          write, output, format="# %s\n", strtrim(msg, 2, blank=" \t\v\n\r");
-        }
-        return x;
-      }
-    }
-
-    /* Call optimizer. */
-    if (! method) {
-      task = op_vmlmb_next(x, fx, gx, ws, active);
-      iter = (*ws(2))(7);
-      step = (*ws(3))(22);
-    } else if (method < 0) {
-      task = op_lbfgs_next(x, fx, gx, ws);
-      if (task == 2 || task == 3) ++iter;
-      step = -1.0;
-    }
   }
 }
 
