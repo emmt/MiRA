@@ -87,7 +87,7 @@ mira_require, "opt_init", MIRA_HOME + ["", "../lib/ylib/"] + "options.i";
 NULL = []; /* FIXME: make a private function to hide local variables */
 _MIRA_OPTIONS = opt_init\
   ("Usage: mira [OPTIONS] INPUT [...] OUTPUT",
-   "Image reconstruction.  INPUT and [...] are the OI-FITS data file and OUTPUT" +
+   "Image reconstruction.  INPUT and [...] are the OI-FITS data file and OUTPUT " +
    "is the result saved into a FITS file.",
    _lst\
    (/* DATA SELECTION */
