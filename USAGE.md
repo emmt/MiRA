@@ -72,7 +72,7 @@ options.
 
 ### Data selection
 
-MiRA reconstruct a gray image from the interferometric data.  The wavelengths
+MiRA reconstructs a gray image from the interferometric data.  The wavelengths
 of the selected data can be specified as the end points of the spectral range:
 
     ... -wavemin=MINVAL -wavemax=MAXVAL
@@ -109,7 +109,7 @@ and option `-seed=NUMBER` can be used to seed the random generator.
 By default, the reconstructed image will have the same pixel size and
 dimensions as the initial image if provided.  Otherwise, the pixel size can be
 specified with option `-pixelsize=PIXSIZ` and the image dimensions can be chosen
-with `-dim=NUMBER` or `-fov=ANGLE`, where `PIXSIZ` and `ANGLE` are in angular units and `NUMBER` is a number of pxiels.  For instance:
+with `-dim=NUMBER` or `-fov=ANGLE`, where `PIXSIZ` and `ANGLE` are in angular units and `NUMBER` is a number of pixels.  For instance:
 
     ... -pixelsize=0.25mas -fov=100mas
 
@@ -127,7 +127,7 @@ The nonequispaced Fourier transform of the pixels can be computed by different
 methods: `-xform=exact` uses an exact transform, `-xform=nfft` use a precise
 approximation by the NFFT algorithm while `-xform=fft` uses a built-in
 algorithm which is less precise.  The exact transform can be very slow if the
-image is large and/or if there are many data.  The two others exploits an FFT
+image is large and/or if there are many data.  The two others exploit an FFT
 algorithm and are faster.  If you have installed
 [Yorick NFFT plug-in](https://github.com/emmt/ynfft), `-xform=nfft` is
 certainly the method of choice.
@@ -147,7 +147,7 @@ is a must for processing OIFITS data.
 ### Regularization
 
 The regularization is the kind of prior imposed to the reconstructed image.
-For all implemented reularizations, the relative strength of the prior
+For all implemented regularizations, the relative strength of the prior
 (compared to the data) is specified with option `-mu=µ` where `µ ≥ 0`.
 
 The following regularizations are available:
