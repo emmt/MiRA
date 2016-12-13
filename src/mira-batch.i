@@ -89,59 +89,60 @@ _MIRA_OPTIONS = opt_init\
   ("Usage: mira [OPTIONS] INPUT [...] OUTPUT",
    "Image reconstruction.  INPUT and [...] are the OI-FITS data file and OUTPUT" +
    "is the result saved into a FITS file.",
-   _lst(
-        /* DATA SELECTION */
-        _lst("target",           NULL,  "NAME",   OPT_STRING,   "Name of the astrophysical object"),
-        _lst("effwave",          NULL,  "VALUE",  OPT_STRING,   "Effective wavelength, e.g. 1.6micron"),
-        _lst("effband",          NULL,  "VALUE",  OPT_STRING,   "Effective bandwidth, e.g. 200nm"),
-        _lst("wavemin",          NULL,  "VALUE",  OPT_STRING,   "Minimum wavelength, e.g. 1.5µm"),
-        _lst("wavemax",          NULL,  "VALUE",  OPT_STRING,   "Maximum wavelength, e.g. 1.7µm"),
-        /* IMAGE PARAMETERS */
-        _lst("pixelsize",        NULL,  "ANGLE",  OPT_STRING,   "Angular size of pixels, e.g. 0.1mas"),
-        _lst("fov",              NULL,  "ANGLE",  OPT_STRING,   "Angular size of the field of view, e.g. 20mas"),
-        _lst("dim",              NULL,  "NUMBER", OPT_INTEGER,  "Number of pixels per side of the image"),
-        _lst("xform",           "nfft", "NAME",   OPT_STRING,   "Method to compute the Fourier transform"),
-        _lst("normalization",    NULL,  "VALUE",  OPT_REAL,     "Flux normalization (sum of pixels = VALUE)"),
-        _lst("min",              NULL,  "LOWER",  OPT_REAL,     "Lower bound for the pixel values"),
-        _lst("max",              NULL,  "UPPER",  OPT_REAL,     "Upper bound for the pixel values"),
-        _lst("overwrite",        NULL,  NULL,     OPT_FLAG,     "Overwrite output if it exists"),
-        /* REGULARIZATION SETTINGS */
-        _lst("regul",            NULL,  "NAME",   OPT_STRING,    "Name of regularization method"),
-        _lst("mu",               0.0,   "VALUE",  OPT_REAL,      "Global regularization weight"),
-        _lst("tau",              1E-6,  "VALUE",  OPT_REAL,      "Edge preserving threshold"),
-        _lst("eta",              1.0,   "VALUES", OPT_REAL_LIST, "Gradient scales along dimensions"),
-        _lst("gamma",            NULL,  "FWHM",   OPT_STRING,    "A priori full half width at half maximum, e.g. 15mas"),
-        _lst("regul_epsilon",    1E-6,  "VALUE",  OPT_REAL,      "Edge preserving threshold"),
-        _lst("regul_threshold",  1E-3,  "VALUE",  OPT_REAL,      "Threshold for the cost function"),
-        _lst("regul_power",      2.0,   "VALUE",  OPT_REAL,      "Power for the Lp-norm"),
-        _lst("regul_normalized", NULL,  NULL,     OPT_FLAG,      "Image is normalized"), /* FIXME: */
-        _lst("regul_cost",       "l2",  "NAME",   OPT_STRING,    "Cost function for the regularization"),
-        _lst("regul_type",       "log", "NAME",   OPT_STRING,    "Subtype for the regularization"),
-        _lst("regul_periodic",   NULL,  NULL,     OPT_FLAG,      "Use periodic conditions for the regularization"),
-        _lst("regul_isotropic",  NULL,  NULL,     OPT_FLAG,      "Use isotropic version of the regularization"),
-        /* ALGORITHM PARAMETERS */
-        _lst("initial",          "random", "NAME", OPT_STRING, "FITS file or method for initial image"),
-        _lst("seed",             NULL, "VALUE",    OPT_REAL,   "Seed for the random generator"),
-        _lst("save_initial",  NULL, NULL,    OPT_FLAG,    "Save initial image as a secondary HDU in result"),
-        /* can also be "random", "Dirac", "Gauss", or "Cauchy-Lorentz" */
-        _lst("bootstrap", 2,    "COUNT", OPT_INTEGER, "Number of bootstrapping iterations"),
-        _lst("recenter",  NULL, NULL,    OPT_FLAG,    "Recenter result of bootstrapping iterations"),
-        _lst("maxiter",   NULL, "COUNT", OPT_INTEGER, "Maximum number of iterations"),
-        _lst("maxeval",   NULL, "COUNT", OPT_INTEGER, "Maximum number of evaluations of the objective function"),
-        _lst("quiet",     NULL, NULL,    OPT_FLAG,    "Suppress most messages"),
-        _lst("verb",      NULL, "COUNT", OPT_INTEGER, "Verbose level"),
-        _lst("view",      0,    "MASK",  OPT_INTEGER, "Bitwise mask to specify which graphics to show"),
-        _lst("mem",       NULL, "COUNT", OPT_INTEGER, "Number of previous steps to memorize in VMLMB"),
-        _lst("ftol",      NULL, "REAL",  OPT_REAL,    "Function tolerance for the global convergence"),
-        _lst("gtol",      NULL, "REAL",  OPT_REAL,    "Gradient tolerance for the global convergence"),
-        _lst("sftol",     NULL, "REAL",  OPT_REAL,    "Function tolerance for the line search"),
-        _lst("sgtol",     NULL, "REAL",  OPT_REAL,    "Gradient tolerance for the line search"),
-        _lst("sxtol",     NULL, "REAL",  OPT_REAL,    "Step tolerance for the line search"),
-        /* MISCELLANEOUS */
-        _lst("bitpix",   -32,   "BITPIX", OPT_INTEGER, "Bits per pixel"),
-        _lst("help",     NULL, NULL, OPT_HELP, "Print out this help"),
-        _lst("version",  MIRA_VERSION, NULL, OPT_VERSION, "Print out version number")));
-/* FIXME: merge regul_cost and regul_type */
+   _lst\
+   (/* DATA SELECTION */
+    _lst("target", NULL, "NAME", OPT_STRING, "Name of the astrophysical object"),
+    _lst("effwave", NULL, "VALUE", OPT_STRING, "Effective wavelength, e.g. 1.6micron"),
+    _lst("effband", NULL, "VALUE", OPT_STRING, "Effective bandwidth, e.g. 200nm"),
+    _lst("wavemin", NULL, "VALUE", OPT_STRING, "Minimum wavelength, e.g. 1.5µm"),
+    _lst("wavemax", NULL, "VALUE", OPT_STRING, "Maximum wavelength, e.g. 1.7µm"),
+    /* IMAGE PARAMETERS */
+    _lst("pixelsize", NULL, "ANGLE", OPT_STRING, "Angular size of pixels, e.g. 0.1mas"),
+    _lst("fov", NULL, "ANGLE", OPT_STRING, "Angular size of the field of view, e.g. 20mas"),
+    _lst("dim", NULL, "NUMBER", OPT_INTEGER, "Number of pixels per side of the image"),
+    _lst("xform", "nfft", "NAME", OPT_STRING, "Method to compute the Fourier transform"),
+    _lst("normalization", NULL, "VALUE", OPT_REAL, "Flux normalization (sum of pixels = VALUE)"),
+    _lst("min", NULL, "LOWER", OPT_REAL, "Lower bound for the pixel values"),
+    _lst("max", NULL, "UPPER", OPT_REAL, "Upper bound for the pixel values"),
+    _lst("overwrite", NULL, NULL, OPT_FLAG, "Overwrite output if it exists"),
+    /* REGULARIZATION SETTINGS */
+    _lst("regul", NULL, "NAME", OPT_STRING, "Name of regularization method"),
+    _lst("mu", 0.0, "VALUE(S)", OPT_REAL_LIST, "Global regularization weight"),
+    _lst("tau", 1E-6, "VALUE", OPT_REAL, "Edge preserving threshold"),
+    _lst("eta", 1.0, "VALUE(S)", OPT_REAL_LIST, "Gradient scales along dimensions"),
+    _lst("gamma", NULL, "FWHM", OPT_STRING, "A priori full half width at half maximum, e.g. 15mas"),
+    /*
+    _lst("regul_epsilon", 1E-6, "VALUE", OPT_REAL, "Edge preserving threshold"),
+    _lst("regul_threshold", 1E-3, "VALUE", OPT_REAL, "Threshold for the cost function"),
+    _lst("regul_power", 2.0, "VALUE", OPT_REAL, "Power for the Lp-norm"),
+    _lst("regul_normalized", NULL, NULL, OPT_FLAG, "Image is normalized"),
+    _lst("regul_cost", "l2", "NAME", OPT_STRING, "Cost function for the regularization"),
+    _lst("regul_type", "log", "NAME", OPT_STRING, "Subtype for the regularization"),
+    _lst("regul_periodic", NULL, NULL, OPT_FLAG, "Use periodic conditions for the regularization"),
+    _lst("regul_isotropic", NULL, NULL, OPT_FLAG, "Use isotropic version of the regularization"),
+    */
+    /* ALGORITHM PARAMETERS */
+    _lst("initial", "random", "NAME", OPT_STRING, "FITS file or method for initial image"),
+    _lst("seed", NULL, "VALUE", OPT_REAL, "Seed for the random generator"),
+    _lst("save_initial", NULL, NULL, OPT_FLAG, "Save initial image as a secondary HDU in result"),
+    /* can also be "random", "Dirac", "Gauss", or "Cauchy-Lorentz" */
+    _lst("bootstrap", NULL, "COUNT", OPT_INTEGER, "Number of bootstrapping iterations"),
+    _lst("recenter", NULL, NULL, OPT_FLAG, "Recenter result of bootstrapping iterations"),
+    _lst("maxiter", NULL, "COUNT", OPT_INTEGER, "Maximum number of iterations"),
+    _lst("maxeval", NULL, "COUNT", OPT_INTEGER, "Maximum number of evaluations of the objective function"),
+    _lst("quiet", NULL, NULL, OPT_FLAG, "Suppress most messages"),
+    _lst("verb", NULL, "COUNT", OPT_INTEGER, "Verbose level"),
+    _lst("view", 0, "MASK", OPT_INTEGER, "Bitwise mask to specify which graphics to show"),
+    _lst("mem", NULL, "COUNT", OPT_INTEGER, "Number of previous steps to memorize in VMLMB"),
+    _lst("ftol", NULL, "REAL", OPT_REAL, "Function tolerance for the global convergence"),
+    _lst("gtol", NULL, "REAL", OPT_REAL, "Gradient tolerance for the global convergence"),
+    _lst("sftol", NULL, "REAL", OPT_REAL, "Function tolerance for the line search"),
+    _lst("sgtol", NULL, "REAL", OPT_REAL, "Gradient tolerance for the line search"),
+    _lst("sxtol", NULL, "REAL", OPT_REAL, "Step tolerance for the line search"),
+    /* MISCELLANEOUS */
+    _lst("bitpix", -32, "BITPIX", OPT_INTEGER, "Bits per pixel"),
+    _lst("help", NULL, NULL, OPT_HELP, "Print out this help"),
+    _lst("version", MIRA_VERSION, NULL, OPT_VERSION, "Print out version number")));
 
 func _mira_cli_parse_angle(str, opt)
 {
@@ -177,11 +178,20 @@ func _mira_cli_parse_length(str, opt)
   return value*fact;
 }
 
+func mira_format(val) { return sum(print(val)); }
+/* DOCUMENT mira_format(arg);
+     Yield a string representation of ARG.
+
+     SEE ALSO; print.
+*/
+
 func mira_main(argv0, argv)
 {
+  /* Constants and shortcuts. */
   FALSE = 0n;
   TRUE = 1n;
   monochromatic = TRUE;
+  format = mira_format;
 
   opt = opt_parse(_MIRA_OPTIONS, argv);
   if (is_void(opt)) {
@@ -208,8 +218,8 @@ func mira_main(argv0, argv)
   regul_post = FALSE;
   regul_name = opt.regul;
   if (! is_void(regul_name)) {
-    if (opt.mu < 0.0) {
-      opt_error, "value of `--mu` must be >= 0.0";
+    if (min(opt.mu) < 0.0) {
+      opt_error, "value(s) of `--mu` must be >= 0.0";
     }
     if (regul_name == "hyperbolic") {
       /* Edge-preserving smoothness prior. */
@@ -221,8 +231,9 @@ func mira_main(argv0, argv)
       }
       regul = rgl_new("hyperbolic");
       rgl_config, regul, tau=opt.tau, eta=opt.eta;
-      grow, comment, swrite(format="Regularization: \"%s\" with MU=%g, TAU=%g, ETA=%s",
-                            regul_name, opt.mu, opt.tau, sum(print(opt.eta)));
+      grow, comment,
+        swrite(format="Regularization: \"%s\" with MU=%s, TAU=%g, ETA=%s",
+               regul_name, format(opt.mu), opt.tau, format(opt.eta));
     } else if (regul_name == "compactness") {
       /* Compactness prior. */
       if (is_void(opt.gamma)) {
@@ -233,8 +244,9 @@ func mira_main(argv0, argv)
         opt_error, "invalid value for `--gamma=...`";
       }
       h_set, opt, gamma=value;
-      grow, comment, swrite(format="Regularization: \"%s\" with GAMMA=%g",
-                            regul_name, opt.gamma);
+      grow, comment,
+        swrite(format="Regularization: \"%s\" with MU=%s and GAMMA=%g",
+               regul_name, format(opt.mu), opt.gamma);
       regul_post = TRUE;
 
 #if 0
@@ -420,9 +432,29 @@ func mira_main(argv0, argv)
     }
   }
 
-  local maxeval, maxiter;
-  if (opt.bootstrap < 0) {
-    opt_error, "bad value for option `--bootstrap`";
+  local mu;
+  if (is_void(opt.bootstrap)) {
+    eq_nocopy, mu, opt.mu;
+    n = numberof(mu);
+  } else {
+    if (opt.bootstrap < 0) {
+      opt_error, "bad value for option `--bootstrap`";
+    }
+    n = opt.bootstrap + 1;
+    m = numberof(opt.mu);
+    if (m == n) {
+      eq_nocopy, mu, opt.mu;
+    } else if (m == 1) {
+      mu = array(opt.mu, n);
+    } else if (m == 2 && n >= 2) {
+      mu = spanl(opt.mu(1), opt.mu(2), n);
+    } else if (m == 3 && n >= 3) {
+      mu = grow(spanl(opt.mu(1), opt.mu(2), n - 1), opt.mu(3));
+    } else if (m == 3 && n == 2) {
+      mu = [opt.mu(1), opt.mu(3)];
+    } else {
+      opt_error, "bad number of values for option `--mu`";
+    }
   }
   if (! is_void(opt.maxiter) && opt.maxiter < 0) {
       opt_error, "bad value for option `--maxiter`";
@@ -434,7 +466,7 @@ func mira_main(argv0, argv)
   /* Reconstructions. */
   local final;
   eq_nocopy, final, initial;
-  for (k = 1; k <= opt.bootstrap + 1; ++k) {
+  for (k = 1; k <= n; ++k) {
     final = mira_solve(master, final,
                        maxeval = opt.maxeval,
                        maxiter = opt.maxiter,
@@ -444,7 +476,7 @@ func mira_main(argv0, argv)
                        xmax = opt("max"),
                        normalization = opt.normalization,
                        regul = regul,
-                       mu = opt.mu,
+                       mu = mu(k),
                        mem = opt.mem,
                        ftol = opt.ftol,
                        gtol = opt.gtol,
