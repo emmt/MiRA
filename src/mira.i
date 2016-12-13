@@ -110,14 +110,26 @@ mira_require, "fft_indgen", MIRA_HOME + ["", "../lib/ylib/"] + "fft_utils.i";
 mira_require, "fmin",       MIRA_HOME + ["", "../lib/ylib/"] + "fmin.i";
 mira_require, "color_bar",  MIRA_HOME + ["", "../lib/ylib/"] + "plot.i";
 
-/* MiRA requires OptimPack1: */
-mira_require, "op_vmlmb_next", "OptimPack1.i";
-if (! is_func(op_vmlmb)) {
+/* MiRA requires OptimPack: */
+if (! is_func(opl_vmlmb)) {
+  include, "optimpacklegacy.i", 3;
+}
+if (is_func(opl_vmlmb)) {
+  mira_vmlmb = opl_vmlmb;
+} else {
   write, format="*** WARNING *** %s\n",
     "You should update OptimPack (https://github.com/emmt/OptimPackLegacy)";
-  mira_vmlmb = op_mnb;
-} else {
-  mira_vmlmb = op_vmlmb;
+  if (! is_func(op_vmlmb) && ! is_func(op_mnb)) {
+    include, "OptimPack1.i", 3;
+  }
+  if (is_func(op_vmlmb)) {
+    mira_vmlmb = op_vmlmb;
+  } else if (is_func(op_mnb)) {
+    mira_vmlmb = op_mnb;
+  } else {
+    error, ("OptimPack1 or OptimPackLegacy not found " +
+            "(https://github.com/emmt/OptimPackLegacy)");
+  }
 }
 
 /* Load some files from the standard Yorick installation. */
