@@ -131,6 +131,8 @@ if (is_func(opl_vmlmb)) {
             "(https://github.com/emmt/OptimPackLegacy)");
   }
 }
+include, "OptimPack1.i", 1;
+mira_vmlmb = op_mnb;
 
 /* Load some files from the standard Yorick installation. */
 mira_require, "bessj0",   Y_SITE + "i/bessel.i";
@@ -2619,7 +2621,7 @@ func mira_solve(master, x, &penalty, reset=, fix=,
                  xmin=xmin, xmax=xmax, mem=mem,
                  verb=verb, viewer=viewer, printer=printer,
                  maxiter=maxiter, maxeval=maxeval, output=,
-                 frtol=ftol, fatol=0.0, gatol=0.0, grtol=gtol,
+                 frtol=ftol, fatol=0.0, //gatol=0.0, grtol=gtol,
                  sftol=sftol, sgtol=sftol, sxtol=sftol);
 
   /* Re-normalization. */
