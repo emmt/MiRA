@@ -131,8 +131,6 @@ if (is_func(opl_vmlmb)) {
             "(https://github.com/emmt/OptimPackLegacy)");
   }
 }
-include, "OptimPack1.i", 1;
-mira_vmlmb = op_mnb;
 
 /* Load some files from the standard Yorick installation. */
 mira_require, "bessj0",   Y_SITE + "i/bessel.i";
