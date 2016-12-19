@@ -128,6 +128,7 @@ _MIRA_OPTIONS = opt_init\
     /* can also be "random", "Dirac", "Gauss", or "Cauchy-Lorentz" */
     _lst("bootstrap", NULL, "COUNT", OPT_INTEGER, "Number of bootstrapping iterations"),
     _lst("recenter", NULL, NULL, OPT_FLAG, "Recenter result of bootstrapping iterations"),
+    _lst("threshold", NULL, "FRACTION", OPT_REAL, "Level for soft-thresholding input image(s)"),
     _lst("maxiter", NULL, "COUNT", OPT_INTEGER, "Maximum number of iterations"),
     _lst("maxeval", NULL, "COUNT", OPT_INTEGER, "Maximum number of evaluations of the objective function"),
     _lst("quiet", NULL, NULL, OPT_FLAG, "Suppress most messages"),
@@ -332,6 +333,11 @@ func mira_main(argv0, argv)
                 + "or `--fov=..` when no initial image is given");
   }
 
+  /* Check some options. */
+  if (! is_void(opt.threshold) && (opt.threshold < 0 || opt.threshold >= 1)) {
+    opt_error, "invalid value for `--threshold=...`";
+  }
+
   /* Initial image. */
   local initial;
   if (initial_filename) {
@@ -465,31 +471,34 @@ func mira_main(argv0, argv)
 
   /* Reconstructions. */
   local final;
-  eq_nocopy, final, initial;
+  eq_nocopy, img, initial;
   for (k = 1; k <= n; ++k) {
-    final = mira_solve(master, final,
-                       maxeval = opt.maxeval,
-                       maxiter = opt.maxiter,
-                       verb = opt.verb,
-                       view = opt.view,
-                       xmin = opt("min"),
-                       xmax = opt("max"),
-                       normalization = opt.normalization,
-                       regul = regul,
-                       mu = mu(k),
-                       mem = opt.mem,
-                       ftol = opt.ftol,
-                       gtol = opt.gtol,
-                       sftol = opt.sftol,
-                       sgtol = opt.sgtol,
-                       sxtol = opt.sxtol);
-    if (opt.recenter && k <= opt.bootstrap) {
-      final = mira_recenter(final, quiet=opt.quiet);
+    if (! is_void(opt.threshold) && opt.threshold > 0) {
+      img = mira_soft_threshold(img, opt.threshold, opt.normalization);
+    }
+    img = mira_solve(master, img,
+                     maxeval = opt.maxeval,
+                     maxiter = opt.maxiter,
+                     verb = opt.verb,
+                     view = opt.view,
+                     xmin = opt("min"),
+                     xmax = opt("max"),
+                     normalization = opt.normalization,
+                     regul = regul,
+                     mu = mu(k),
+                     mem = opt.mem,
+                     ftol = opt.ftol,
+                     gtol = opt.gtol,
+                     sftol = opt.sftol,
+                     sgtol = opt.sgtol,
+                     sxtol = opt.sxtol);
+    if (opt.recenter && k < n) {
+      img = mira_recenter(img, quiet=opt.quiet);
     }
   }
 
   /* Save the result. */
-  fh = mira_save_image(mira_wrap_image(final, master), final_filename,
+  fh = mira_save_image(mira_wrap_image(img, master), final_filename,
                        overwrite=opt.overwrite, bitpix=opt.bitpix,
                        comment=comment);
   if (opt.save_initial) {
