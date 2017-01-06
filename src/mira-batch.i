@@ -510,9 +510,10 @@ func mira_main(argv0, argv)
 
 
   if (opt.view && batch()) {
-    write, format="%s\n", "Hit Ctrl-C twice to finish.";
-    while (1) {
-      pause, 5000;
+    /* Just make a substancial pause? */
+    write, format="\n%s\n", "Close the graphic window to finish.";
+    while (window_exists(_mira_window)) {
+      pause, 100;
     }
   }
 }
