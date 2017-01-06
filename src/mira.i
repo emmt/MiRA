@@ -164,6 +164,22 @@ MIRA_MILLIARCSEC = MIRA_MAS = MIRA_MILLIARCSECOND = 1e-3*MIRA_ARCSECOND;
 MIRA_METER = 1.0;
 MIRA_MICRON = MIRA_MICROMETER = 1e-6*MIRA_METER;
 
+/* A few "nice" colors. */
+MIRA_DARK_BLUE   = ['\x00', '\x45', '\x86'];
+MIRA_ORANGE      = ['\xff', '\x42', '\x0e'];
+MIRA_YELLOW      = ['\xff', '\xd3', '\x20'];
+MIRA_GREEN       = ['\x57', '\x9d', '\x1c'];
+MIRA_DARK_VIOLET = ['\x7e', '\x00', '\x21'];
+MIRA_LIGHT_BLUE  = ['\x83', '\xca', '\xff'];
+MIRA_DARK_GREEN  = ['\x31', '\x40', '\x04'];
+MIRA_LIGHT_GREEN = ['\xae', '\xcf', '\x00'];
+MIRA_VIOLET      = ['\x4b', '\x1f', '\x6f'];
+MIRA_GOLDEN      = ['\xff', '\x95', '\x0e'];
+MIRA_RED         = ['\xc5', '\x00', '\x0b'];
+MIRA_BLUE        = ['\x00', '\x84', '\xd1'];
+
+MIRA_EMPH = +sqrt(2); // emphasis for titles
+
 /* Various global options. */
 MIRA_SPARSE = 1n; /* use Yeti sparse matrix */
 MIRA_FLAGS = 0n;
@@ -1197,7 +1213,68 @@ func mira_update(this)
     }
     return h_set(this, xform=xform, update_pending=0n);
   }
+  return this;
 }
+
+local mira_get_model_vis, mira_get_model_vis_re, mira_get_model_vis_im;
+local mira_get_model_vis_amp, mira_get_model_vis_phi;
+func mira_update_model(data, img)
+/* DOCUMENT mira_update_model, data, img;
+         or vis = mira_get_model_vis(data);
+         or vis_re = mira_get_model_vis_re(data);
+         or vis_im = mira_get_model_vis_im(data);
+         or vis_amp = mira_get_model_vis_amp(data);
+         or vis_phi = mira_get_model_vis_phi(data);
+
+     The first subroutine updates the model complex visibilities for the master
+     instance DATA and the model image IMG.
+
+     Then the other functions can be used to retrieve the model complex visibilities,
+     their real parts, their imaginary parts, their amplitudes or their phases.
+
+   SEE ALSO: mira_phase.
+*/
+{
+  if (data.update_pending) {
+    mira_update, data;
+  }
+  vis = data.xform(img);
+  return h_set(data, model_img = img, model_vis = vis,
+               model_vis_re = vis(1,..), model_vis_im = vis(2,..),
+               model_vis_amp = [], model_vis_phi = []);
+}
+
+func mira_get_model_vis(data) { return data.model_vis; }
+
+func mira_get_model_vis_re(data) { return data.model_vis_re; }
+
+func mira_get_model_vis_im(data) { return data.model_vis_im; }
+
+func mira_get_model_vis_amp(data)
+{
+  if (is_void(data.model_vis_amp)) {
+    h_set, data, model_vis_amp = abs(data.model_vis_re, data.model_vis_im);
+  }
+  return data.model_vis_amp;
+}
+
+func mira_get_model_vis_phi(data)
+{
+  if (is_void(data.model_vis_phi)) {
+    h_set, data, model_vis_phi = mira_phase(data.model_vis_re, data.model_vis_im);
+  }
+  return data.model_vis_phi;
+}
+
+func mira_phase(re, im) { return atan(im, re + ((!im)&(!re))); }
+/* DOCUMENT phi = mira_phase(re, im);
+
+     Returns the phase (in radians) of the complex whose real and imaginary
+     parts are RE and IM respectively.  To avoid numerical problems, the result
+     is arbitrarily set to zero where RE and IM are both zero.
+
+   SEE ALSO: atan.
+*/
 
 /*---------------------------------------------------------------------------*/
 /* COORDINATE SYSTEM */
@@ -1636,181 +1713,6 @@ func _mira_apply_fft_xform(this, x, job)
 
 /*---------------------------------------------------------------------------*/
 
-func mira_plot(master, img, what)
-{
-  // FIXME: optimize
-
-  /* Apply linear transform to compute the model of the complex visibility
-     of image IMG for _all_ the measured frequencies. */
-  vis = master.xform(img);
-  vis_re = vis(1,..);
-  vis_im = vis(2,..);
-  vis_amp = abs(vis_re, vis_im);
-  vis_phi = atan(vis_im, vis_re);
-  nil = []; /* for cleanup */
-
-  /* Complex visibilities. */
-  key = "vis";
-  if (is_void(what) || what == key) {
-    db = h_get(master, key);
-    if (db) {
-      f = master.freq_len(db.idx);
-      plp, db.amp, f, dy=db.amperr, ticks=1, color="magenta", symbol=1, size=0.3, fill=1;
-      plp, vis_amp(db.idx), f, color="blue", symbol=3, size=0.4, fill=1;
-      xytitles, "spatial frequency", "amplitude";
-    }
-  }
-
-  /* Powerspectrum data. */
-  if (is_void(what) || strpart(what, 1:4) == "vis2") {
-    local idx, amp, amperr, relerr;
-    if (what == "vis2-2D") {
-      /* Collect data from powerspectrum. */
-      db = h_get(master, "vis2");
-      if (db) {
-        temp = vis_amp(db.idx);
-        grow, relerr, (db.vis2data - temp*temp)/db.vis2err;
-        grow, idx, db.idx;
-      }
-
-      /* Collect data from complex visibilities. */
-      db = h_get(master, "vis");
-      if (db) {
-        eq_nocopy, amp, db.amp;
-        eq_nocopy, amperr,  db.amperr;
-        if (is_void(amp)) {
-          amp = abs(db.re, db.im);
-          amperr = sqrt(0.5/db.wrr + 0.5/db.wii);
-          h_set, db, amp=amp, amperr=amperr;
-        }
-        sel = where(amperr > 0.0);
-        if (is_array(sel)) {
-          idx_sel = db.idx(sel);
-          grow, relerr, (amp(sel) - vis_amp(idx_sel))/amperr(sel);
-          grow, idx, idx_sel;
-        }
-      }
-
-      /* Plot 2-D amplitude. */
-      z = abs2(fft(img)); // FIXME: save time: use FFTW, the FFT of the model may already be computed
-      if (z(1) > 0.0) z = log(z + 1e-6*z(1));
-      fft_pli, z, scale=[-1.0,1.0]/master.fov; // FIXME: this is weird
-      mira_fix_image_axis;
-      if (! is_void(idx)) {
-        u = master.u(idx);
-        v = master.v(idx);
-        color_map = [char(indgen(0:255)),
-                     char(indgen(255:0:-1)),
-                     array(char, 256)];
-        color_index = min(long((255/3.0)*abs(relerr) + 1.5), 256);
-        for (i = numberof(color_index); i >= 1; --i) {
-          plp, v(i)*[1,-1], u(i)*[-1,1], color=color_map(color_index(i),),
-            symbol=1, size=0.1;
-        }
-      }
-    } else if (what == "vis2") {
-      /* Collect data from complex visibilities. */
-      db = h_get(master, "vis");
-      if (db) {
-        eq_nocopy, idx, db.idx;
-        eq_nocopy, amp, db.amp;
-        eq_nocopy, amperr,  db.amperr;
-        if (is_void(amp)) {
-          // FIXME:
-          amp = abs(db.re, db.im);
-          amperr = sqrt(0.5/db.wrr + 0.5/db.wii);
-          h_set, db, amp=amp, amperr=amperr;
-        }
-      }
-
-      /* Collect data from powerspectrum. */
-      db = h_get(master, "vis2");
-      if (db) {
-        sel = where(db.vis2data > 0.0);
-        if (is_array(sel)) {
-          temp = sqrt(db.vis2data(sel));
-          grow, idx, db.idx(sel);
-          grow, amp, temp;
-          grow, amperr, 0.5*db.vis2err(sel)/temp;
-        }
-      }
-
-      /* Plot 1-D amplitude. */
-      if (! is_void(idx)) {
-        f = master.freq_len(idx);
-        plp, amp, f, dy=amperr, ticks=1, color="red", symbol=1,
-          size=0.3, fill=1;
-        plp, vis_amp(idx), f, color="green", symbol=3, size=0.3, fill=1;
-        xytitles, "spatial frequency", "amplitude";
-      }
-    }
-
-  }
-
-  /* Bispectrum phase. */
-  key = "vis3";
-  if (is_void(what) || what == key) {
-    db = h_get(master, key);
-    if (db && ! master.zap_phase) {
-
-      /* normalized residuals */
-      res = arc(db.t3phi - (db.sgn1*vis_phi(db.idx1) +
-                            db.sgn2*vis_phi(db.idx2) +
-                            db.sgn3*vis_phi(db.idx3)))/sqrt(db.t3phierr);
-
-      binsize = 0.2;
-      index = long(floor((1.0/binsize)*res + 0.5));
-      inf = min(index) - 1;
-      sup = max(index) + 1;
-      hy = histogram(index + (1 - inf), top=(sup - inf + 1));
-      hx = binsize*indgen(inf:sup);
-
-      plh, hy, hx, marks=0;
-      //require, "modulo.i";
-      //vis_CP = modulo(vis_CP+pi,2*pi)-pi;
-#if 0
-      vis_CP = arc(vis_CP);
-
-      plp, CP*180./pi, dy = CPerr*180./pi, ticks=1, color="red", symbol=1, size=0.3, fill=1;
-      plp, vis_CP*180./pi, color="green", symbol=3, size=0.3, fill=1;
-      flag2 = 1;
-#endif
-    }
-  }
-
-
-
-  return; // FIXME: cleanup
-
-  if (! is_void(img)) {
-    vis = master.xform(img);
-    re = vis(1,..);
-    im = vis(2,..);
-    old_ps = h_pop(master, "ps");
-    h_set, master, ps=(re*re + im*im);
-  }
-  for (db = master.data ; db ; db = db.next) {
-    op = db.plot; /* work around Yorick parser bug */
-    if (is_symlink(op)) {
-      op = value_of_symlink(op);
-    }
-    if (is_func(op)) {
-      op, master, db;
-    }
-  }
-  if (! is_void(master.ps)) {
-    opt = master.plot_model_options;
-    plp, master.ps, master.freq_len,
-      color=opt.color, symbol=opt.symbol, size=opt.size,
-      fill=opt.fill, ticks=opt.ticks, type=opt.type,
-      width=opt.width;
-  }
-  if (! is_void(img)) {
-    /* restore PowerSpectrum */
-    h_set, master, ps=old_ps;
-  }
-}
-
 /* To compute penalty w.r.t. complex data, there are different cases:
  *   1. use quadratic penalty in (RE,IM) coordinates
  *   2. compute penalty in (AMP,PHI) coordinates
@@ -1824,29 +1726,24 @@ func mira_plot(master, img, what)
  *   3. bispectrum (in polar or cartesian coordinates)
  */
 
-func mira_data_penalty(master, model, &grd)
-/* DOCUMENT mira_data_penalty(data, model, grd)
- *
- *   Compute misfit penalty w.r.t. to interferometric data.  DATA is MiRA
- *   data instance which stores the interferometric data.  MODEL is a 2-D
- *   or 3-D model of the brightness distribution.  GRD is an optional
- *   output variable to store the gradient of the penalty w.r.t. the model
- *   parameters.
- *
- * SEE ALSO: mira_new.
- */
+func mira_data_penalty(master, img, &grd)
+/* DOCUMENT mira_data_penalty(data, img, grd);
+
+     Compute misfit penalty w.r.t. to interferometric data.  DATA is MiRA data
+     instance which stores the interferometric data.  IMG is a 2-D or 3-D model
+     image.  GRD is an optional output variable to store the gradient of the
+     penalty w.r.t. the model parameters.
+
+   SEE ALSO: mira_new.
+*/
 {
-  if (master.update_pending) mira_update, master;
-
-
-  /* Apply linear transform to compute the model of the complex visibility
-     of image MODEL for _all_ the measured frequencies. */
-  vis = master.xform(model);
+  /* Compute model of complex visibilities. */
+  local vis, vis_re, vis_im, vis_amp, vis_phi;
+  mira_update_model, master, img;
+  eq_nocopy, vis, mira_get_model_vis(master);
+  eq_nocopy, vis_re, mira_get_model_vis_re(master);
+  eq_nocopy, vis_im, mira_get_model_vis_im(master);
   grd = array(double, dimsof(vis));
-  vis_re = vis(1,..);
-  vis_im = vis(2,..);
-  nil = []; /* for cleanup */
-
 
   /*
   ** Compute fitting error and gradient for every different type of
@@ -1878,7 +1775,7 @@ func mira_data_penalty(master, model, &grd)
     grd(1, idx) += (temp_re + temp_re);
     grd(2, idx) += (temp_im + temp_im);
     ndata1 = 2*numberof(idx);
-    im = re = temp_re = temp_im = nil; /* cleanup */
+    im = re = temp_re = temp_im = []; /* cleanup */
   }
 
   /* Powerspectrum data. */
@@ -1905,11 +1802,10 @@ func mira_data_penalty(master, model, &grd)
     q = db.vis2wght*e;
     err2 = sum(q*e);
     ndata2 = numberof(e);
-    e = nil; /* cleanup */
     q *= 4.0;
     grd(1, idx) += q*re;
     grd(2, idx) += q*im;
-    im = re = nil; /* cleanup */
+    im = re = e = q = []; /* cleanup */
   }
 
   /* Bispectrum data. */
@@ -2081,26 +1977,26 @@ func mira_data_penalty(master, model, &grd)
       temp_im = db.wri*re + db.wii*im;
       err3 = sum(temp_re*re) + sum(temp_im*im);
       ndata3 = 2*numberof(re);
-      re = im = nil;
+      re = im = [];
 
       temp_re = temp_re + temp_re; /* dERR3 / dRe(Z) */
       temp_im = temp_im + temp_im; /* dERR3 / dIm(Z) */
 
       grd(1, idx1) +=  temp_re*re23 + temp_im*im23;
       grd(2, idx1) += (temp_im*re23 - temp_re*im23)*sgn1;
-      re23 = im23 = nil;
+      re23 = im23 = [];
 
       re13 = zmult_re(re1, im1, re3, im3);
       im13 = zmult_im(re1, im1, re3, im3);
       grd(1, idx2) +=  temp_re*re13 + temp_im*im13;
       grd(2, idx2) += (temp_im*re13 - temp_re*im13)*sgn2;
-      re13 = im13 = nil;
+      re13 = im13 = [];
 
       re12 = zmult_re(re1, im1, re2, im2);
       im12 = zmult_im(re1, im1, re2, im2);
       grd(1, idx3) +=  temp_re*re12 + temp_im*im12;
       grd(2, idx3) += (temp_im*re12 - temp_re*im12)*sgn3;
-      re12 = im12 = nil;
+      re12 = im12 = [];
     }
 
   }
@@ -2114,6 +2010,182 @@ func mira_data_penalty(master, model, &grd)
 
 func _mira_zmult_re(re1, im1, re2, im2) { return re1*re2 - im1*im2; }
 func _mira_zmult_im(re1, im1, re2, im2) { return re1*im2 + im1*re2; }
+
+func _mira_plot_vis(master)
+{
+  local amp;
+  db = h_get(master, "vis");
+  if (db) {
+    eq_nocopy, amp, mira_get_model_vis_amp(master);
+    f = master.freq_len(db.idx)*MIRA_MILLIARCSECOND;
+    pl_points, db.amp, f, dy=db.amperr, ticks=1, color=MIRA_RED,
+      symbol=P_PLUS, size=0.4;
+    pl_points, amp(db.idx), f, color=MIRA_BLUE,
+      symbol=P_CROSS, size=0.4;
+    pl_title, "Amplitude profile", emph=MIRA_EMPH,
+      "Spatial frequency (cycles/mas)", "Amplitude";
+  }
+}
+
+func _mira_plot_vis2_map(master)
+{
+  local idx, amp, amperr, relerr;
+  eq_nocopy, amp, mira_get_model_vis_amp(master);
+
+  /* Collect data from powerspectrum. */
+  db = h_get(master, "vis2");
+  if (db) {
+    temp = amp(db.idx);
+    grow, relerr, (db.vis2data - temp*temp)/db.vis2err;
+    grow, idx, db.idx;
+  }
+
+  /* Collect data from complex visibilities. */
+  db = h_get(master, "vis");
+  if (db) {
+    grow, relerr, (db.amp - amp(db.idx))/db.amperr;
+    grow, idx, db.idx;
+  }
+
+  /* Plot 2-D amplitude. */
+  z = abs2(fft(master.model_img));
+  if (z(1) > 0.0) z = log(z + 1e-6*z(1));
+  scl = MIRA_MILLIARCSECOND/master.fov;
+  fft_pli, z, scale=[scl,scl];
+  if (! is_void(idx)) {
+    u = master.u(idx)*MIRA_MILLIARCSECOND;
+    v = master.v(idx)*MIRA_MILLIARCSECOND;
+    nlevs = 7;
+    a = double(MIRA_GREEN)/(nlevs - 1);
+    b = double(MIRA_RED)/(nlevs - 1);
+    lev = min(lround((nlevs/3.0)*abs(relerr)) + 1, nlevs);
+    for (i = 1; i <= nlevs; ++i) {
+      j = where(lev == i);
+      if (is_array(j)) {
+        uj = u(j); grow, uj, -uj;
+        vj = v(j); grow, vj, -vj;
+        cj = char(a*(nlevs - i) + b*(i - 1));
+        //stat, uj, vj;
+        //cj;
+        pl_points, vj, uj, color=cj, symbol=P_SQUARE, size=0.3, fill=1;
+      }
+    }
+  }
+  mira_fix_image_axis;
+  pl_title, "Powerspectrum map", emph=MIRA_EMPH,
+    "Spatial frequency (cycles/mas)", "Spatial frequency (cycles/mas)";
+}
+
+func _mira_plot_vis2_profile(master)
+{
+  local idx, dat, err;
+
+  /* Collect data from powerspectrum. */
+  db = h_get(master, "vis2");
+  if (db) {
+    eq_nocopy, idx, db.idx;
+    eq_nocopy, dat, db.vis2data;
+    eq_nocopy, err, db.vis2err;
+  }
+
+  /* Collect data from complex visibilities. */
+  db = h_get(master, "vis");
+  if (db) {
+    sel = where(db.amp > 0.0);
+    if (is_array(sel)) {
+      temp = db.amp(sel);
+      temp *= temp;
+      grow, idx, db.idx(sel);
+      grow, dat, temp;
+      grow, err, 4.0*temp*db.amperr(sel);
+    }
+  }
+
+  /* Plot 1-D amplitude. */
+  if (! is_void(idx)) {
+    temp = mira_get_model_vis_amp(master)(idx);
+    f = master.freq_len(idx)*MIRA_MILLIARCSECOND;
+    pl_points, dat, f, dy=err, ticks=1, color=MIRA_RED, symbol=1, size=0.3, fill=1;
+    pl_points, temp*temp, f, color=MIRA_GREEN, symbol=3, size=0.3, fill=1;
+    pl_title, "Powerspectrum Profile", emph=MIRA_EMPH,
+      "Spatial frequency (cycles/mas)", "Powerspectrum";
+  }
+}
+
+func _mira_plot_vis_profile(master)
+{
+  local idx, dat, err;
+
+  /* Collect data from complex visibilities. */
+  db = h_get(master, "vis");
+  if (db) {
+    eq_nocopy, idx, db.idx;
+    eq_nocopy, dat, db.amp;
+    eq_nocopy, err, db.amperr;
+  }
+
+  /* Collect data from powerspectrum. */
+  db = h_get(master, "vis2");
+  if (db) {
+    sel = where(db.vis2data > 0.0);
+    if (is_array(sel)) {
+      temp = sqrt(db.vis2data(sel));
+      grow, idx, db.idx(sel);
+      grow, dat, temp;
+      grow, err, 0.5*db.vis2err(sel)/temp;
+    }
+  }
+
+  /* Plot 1-D amplitude. */
+  if (! is_void(idx)) {
+    temp = mira_get_model_vis_amp(master)(idx);
+    f = master.freq_len(idx)*MIRA_MILLIARCSECOND;
+    pl_points, dat, f, dy=err, ticks=1, color=MIRA_RED, symbol=1, size=0.3, fill=1;
+    pl_points, temp, f, color=MIRA_GREEN, symbol=3, size=0.3, fill=1;
+    pl_title, "Amplitude profile", emph=MIRA_EMPH,
+      "Spatial frequency (cycles/mas)", "Amplitude";
+  }
+}
+
+func _mira_plot_vis3_histogram(master)
+{
+  /* Plot histogram of bispectrum phase. */
+  db = h_get(master, "vis3");
+  if (db) {
+    /* normalized residuals */
+    local phi;
+    eq_nocopy, phi, mira_get_model_vis_phi(master);
+    res = arc(db.t3phi - (db.sgn1*phi(db.idx1) +
+                          db.sgn2*phi(db.idx2) +
+                          db.sgn3*phi(db.idx3)))/sqrt(db.t3phierr);
+
+    binsize = 0.2;
+    index = long(floor((1.0/binsize)*res + 0.5));
+    inf = min(index) - 1;
+    sup = max(index) + 1;
+    hy = histogram(index + (1 - inf), top=(sup - inf + 1));
+    hx = binsize*indgen(inf:sup);
+    pl_steps, hy, hx, marks=0, color=MIRA_BLUE, width=3;
+    pl_title, "Phase closure residuals", emph=MIRA_EMPH,
+      "Relative error", "Counts";
+  }
+}
+
+func _mira_plot(master, what)
+{
+  if (is_void(what)) what = "vis2";
+  if (what == "vis") {
+    _mira_plot_vis, master;
+  } else if (what == "vis2-2D") {
+    _mira_plot_vis2_map, master;
+  } else if (what == "vis2") {
+    _mira_plot_vis2_profile, master;
+  } else if (what == "vis") {
+    _mira_plot_vis_profile, master;
+  } else if (what == "vis3") {
+    _mira_plot_vis3_histogram, master;
+  }
+}
 
 /*---------------------------------------------------------------------------*/
 /* IMAGE RECONSTRUCTION */
@@ -2129,44 +2201,6 @@ func mira_new_window
   _mira_window = -1;
 }
 if (is_void(_mira_window)) _mira_window = -1;
-
-// MIRA_ANCHOR_NORTH = 0;
-// MIRA_ANCHOR_SOUTH = 1;
-// MIRA_ANCHOR_EAST =  2;
-// MIRA_ANCHOR_WEST =  3;
-// _mira_plot_anchor_table = h_new(n=MIRA_ANCHOR_NORTH, s=MIRA_ANCHOR_SOUTH,
-//                                 e=MIRA_ANCHOR_EAST, w=MIRA_ANCHOR_WEST);
-func mira_plot_title(text, height=, font=, anchor=, offset=, orient=)
-{
-  port = viewport();
-  if (is_void(offset)) offset = 0.02;
-  if (is_void(font)) font = "helvetica";
-  if (is_void(height)) height = 18;
-  if (is_void(anchor) || anchor == "n") {
-    x = port(avg:1:2);
-    y = port(4) + offset;
-    justify = "CB";
-    if (is_void(orient)) orient = 0;
-  } else if (anchor == "s") {
-    x = port(avg:1:2);
-    y = port(3) - offset;
-    justify = "CT";
-    if (is_void(orient)) orient = 0;
-  } else if (anchor == "e") {
-    x = port(2) + offset;
-    y = port(avg:3:4);
-    justify = "CB";
-    if (is_void(orient)) orient = 3;
-  } else if (anchor == "w") {
-    x = port(1) - offset;
-    y = port(avg:3:4);
-    justify = "CB";
-    if (is_void(orient)) orient = 1;
-  } else {
-    error, "bad value for ANCHOR keyword";
-  }
-  plt, text, x, y, font=font, justify=justify, height=height, orient=orient;
-}
 
 func _mira_solve_viewer(x, extra)
 {
@@ -2185,7 +2219,29 @@ func _mira_solve_viewer(x, extra)
   /* Setup for graphics. */
   if (is_void(_mira_window) || ! window_exists(_mira_window)) {
     dpi = 133; // DPI=133 yields ~ 800x800 pixel graphic windows
-    vp = [[7,47,55,95],[57,97,55,95],[7,67,5,45],[72,97,5,30]]*1e-2;
+    topmargin = 5e-2;
+    bottommargin = 6e-2;
+    leftmargin = 8e-2;
+    rightmargin = 5e-2;
+    width = 0.5 - (leftmargin + rightmargin);
+    height = 0.5 - (topmargin + bottommargin);
+    if (width > height) {
+      scale = width/height;
+      leftmargin *= scale;
+      rightmargin *= scale;
+      width = height;
+    } else if (width < height) {
+      scale = height/width;
+      topmargin *= scale;
+      bottommargin *= scale;
+      height = width;
+    }
+    aspect = 4.0/3.0;
+    vp = [[leftmargin, 0.5 - rightmargin, 0.5 + bottommargin, 1.0 - topmargin],
+          [0.5 + leftmargin, 1.0 - rightmargin, 0.5 + bottommargin, 1.0 - topmargin],
+          [leftmargin, 0.5*aspect - rightmargin, bottommargin, 0.5 - topmargin],
+          [0.5*aspect + leftmargin, 1.0 - rightmargin, bottommargin,
+           bottommargin + (1.0 - rightmargin) - (0.5*aspect + leftmargin)]];
     win_min =  0;
     win_max = 63;
     if (is_void(_mira_window) || _mira_window < win_min ||
@@ -2202,7 +2258,10 @@ func _mira_solve_viewer(x, extra)
       winkill, _mira_window;
     }
     window, _mira_window, dpi=dpi;
-    p_style, _mira_window, viewport=vp, units=P_RELATIVE;
+    p_style, _mira_window, viewport=vp, frame=1, units=P_RELATIVE,
+      font=P_HELVETICA, textcolor=P_BLACK,
+      linecolor="darkgray", linewidth=1, linetype=P_SOLID,
+      gridlevel=0;
     p_colormap, "viridis.gp";
   }
   if (is_void(x)) {
@@ -2224,23 +2283,16 @@ func _mira_solve_viewer(x, extra)
   fma;
   if ((flags & 2) != 0) {
     plsys, 3;
-    mira_plot, extra.master, x, "vis2";
-    mira_plot_title, "Powerspectrum", height=label_height, offset=title_offset, anchor="w";
-    mira_plot_title, "spatial frequency", height=label_height, offset=label_offset, anchor="s";
+    //_mira_plot_vis2_profile, extra.master;
+    _mira_plot_vis_profile, extra.master;
   }
   if ((flags & 4) != 0) {
     plsys, 2;
-    mira_plot, extra.master, x, "vis2-2D";
-    mira_plot_title, "Powerspectrum", height=title_height, offset=title_offset, anchor="n";
-    mira_plot_title, "spatial frequency", height=label_height, offset=label_offset, anchor="s";
-    mira_plot_title, "spatial frequency", height=label_height, offset=label_offset, anchor="w";
- }
+    _mira_plot_vis2_map, extra.master;
+  }
   if ((flags & 8) != 0) {
     plsys, 4;
-    mira_plot, extra.master, x, "vis3";
-    mira_plot_title, "Closure residuals", height=title_height, offset=title_offset, anchor="n";
-    //mira_plot_title, "!DPHI3 (UNITS????)", height=label_height, anchor="s";
-    //mira_plot_title, "frequency (???)", height=label_height, anchor="w";
+    _mira_plot_vis3_histogram, extra.master;
   }
 
   /* Display current solution. */
@@ -2260,16 +2312,10 @@ func _mira_solve_viewer(x, extra)
     y1 = x1 = lim(2) + 0.5*pixelsize;
     pli, x, cmin=cmin, cmax=cmax, x0,y0, x1,y1;
     mira_fix_image_axis;
-    mira_plot_title, "Image", height=title_height, offset=title_offset, anchor="n";
-    mira_plot_title, "!DRA (milliarcseconds)", height=label_height, offset=label_offset, anchor="s";
-    mira_plot_title, "!DDEC (milliarcseconds)", height=label_height, offset=title_offset, anchor="w";
-    //mira_plot_image, /*log(1e-6*max(x) + x)*/ x, extra.master,
-    //  cmin=cmin, cmax=cmax, clear=1, zformat="%+.2e";
-    //title = extra.title;
-    //if (structof(title) == string) pltitle, title;
+    pl_title, "Image", emph=MIRA_EMPH, "!D!a (mas)", "!D!d (mas)";
   }
 
-  pause, 1;
+  pause, 0;
 }
 
 func _mira_solve_cost2(self, x, &g)
