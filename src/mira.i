@@ -108,7 +108,8 @@ mira_require, "rgl_new",   MIRA_HOME + ["", "../lib/ipy/"] + "rgl.i";
 /* MiRA requires some files in YLib: */
 mira_require, "fft_indgen", MIRA_HOME + ["", "../lib/ylib/"] + "fft_utils.i";
 mira_require, "fmin",       MIRA_HOME + ["", "../lib/ylib/"] + "fmin.i";
-mira_require, "color_bar",  MIRA_HOME + ["", "../lib/ylib/"] + "plot.i";
+mira_require, "p_colormap", MIRA_HOME + ["", "../lib/ylib/"] + "xplot0.i";
+mira_require, "pl_cbar",    MIRA_HOME + ["", "../lib/ylib/"] + "xplot.i";
 
 /* MiRA requires OptimPack: */
 if (! is_func(opl_vmlmb)) {
@@ -275,7 +276,6 @@ _MIRA_LENGTH_UNITS_TABLE = h_new("m",           MIRA_METER,
  * ~~~~~~~~~~~~~~~~~~~
  *   mira_bicubic_ft
  *   mira_bilinear_ft
- *   mira_color_bar
  *   mira_fit_profile
  *   mira_gauss_ft
  *   mira_glob
@@ -1636,19 +1636,18 @@ func _mira_apply_fft_xform(this, x, job)
 
 /*---------------------------------------------------------------------------*/
 
-func mira_plot(master, model, what)
+func mira_plot(master, img, what)
 {
   // FIXME: optimize
 
   /* Apply linear transform to compute the model of the complex visibility
-     of image MODEL for _all_ the measured frequencies. */
-  vis = master.xform(model);
+     of image IMG for _all_ the measured frequencies. */
+  vis = master.xform(img);
   vis_re = vis(1,..);
   vis_im = vis(2,..);
   vis_amp = abs(vis_re, vis_im);
   vis_phi = atan(vis_im, vis_re);
   nil = []; /* for cleanup */
-
 
   /* Complex visibilities. */
   key = "vis";
@@ -1693,7 +1692,7 @@ func mira_plot(master, model, what)
       }
 
       /* Plot 2-D amplitude. */
-      z = abs2(fft(model)); // FIXME: save time: use FFTW, the FFT of the model may already be computed
+      z = abs2(fft(img)); // FIXME: save time: use FFTW, the FFT of the model may already be computed
       if (z(1) > 0.0) z = log(z + 1e-6*z(1));
       fft_pli, z, scale=[-1.0,1.0]/master.fov; // FIXME: this is weird
       mira_fix_image_axis;
@@ -2189,7 +2188,8 @@ func _mira_solve_viewer(x, extra)
     vp = [[7,47,55,95],[57,97,55,95],[7,67,5,45],[72,97,5,30]]*1e-2;
     win_min =  0;
     win_max = 63;
-    if (is_void(_mira_window) || _mira_window < win_min || _mira_window > win_max) {
+    if (is_void(_mira_window) || _mira_window < win_min ||
+        _mira_window > win_max) {
       _mira_window = win_min; // window number if all possible windows already exist
       for (n = win_min; n < win_max; ++n) {
         if (! window_exists(n)) {
@@ -2201,9 +2201,9 @@ func _mira_solve_viewer(x, extra)
     if (window_exists(_mira_window)) {
       winkill, _mira_window;
     }
-    xwindow, _mira_window, dpi = dpi, viewport=vp, units=1, size=label_height, xopt=, yopt=,
-      frame = [0,0,1,1];
-    palette, "earth.gp";
+    window, _mira_window, dpi=dpi;
+    p_style, _mira_window, viewport=vp, units=P_RELATIVE;
+    p_colormap, "viridis.gp";
   }
   if (is_void(x)) {
     /* Nothing to display. */
@@ -2817,7 +2817,7 @@ func mira_extract_region(arr, dim)
 }
 
 func mira_plot_image(img, dat, clear=, cmin=, cmax=, zformat=, keeplimits=,
-                     normalize=, pixelsize=, pixelunits=)
+                     normalize=, pixelsize=, pixelunits=, cmap=)
 /* DOCUMENT mira_plot_image, img;
          or mira_plot_image, img, dat;
 
@@ -2833,7 +2833,7 @@ func mira_plot_image(img, dat, clear=, cmin=, cmax=, zformat=, keeplimits=,
      undefined, then fma is not called.
 
      Keyword ZFORMAT can be used to specify the format for the color bar
-     labels (see mira_color_bar).
+     labels (see pl_cbar).
 
      Keyword PIXELSIZE and PIXELUNITS can be used to specify the size of the
      pixel in given angular units and the name of these units.  Both must be
@@ -2844,12 +2844,14 @@ func mira_plot_image(img, dat, clear=, cmin=, cmax=, zformat=, keeplimits=,
      (see pli).  If keyword NORMALIZE (see below) is true, CMIN and CMAX are
      in units of normalized intensity.
 
+     Keywords CMAP can be used to specify a colormap.
+
      If keyword NORMALIZE is true, the flux is normalized (divided by
      PIXELSIZE^2).
 
 
-   SEE ALSO: pli, fma, animate, mira_limits, mira_color_bar,
-     mira_fix_image_axis, xytitles.
+   SEE ALSO: pli, fma, animate, mira_limits, pl_cbar, p_colormap, pl_title,
+     mira_fix_image_axis.
  */
 {
   dims = dimsof(img);
@@ -2868,13 +2870,13 @@ func mira_plot_image(img, dat, clear=, cmin=, cmax=, zformat=, keeplimits=,
       pixelunits = "pixels";
     }
   }
-  if (is_void(normalize)) {
-    scl = 1.0;
-  } else {
+  if (normalize) {
     scl = 1.0/pixelsize^2;
     if (scl != 1) {
       img *= scl;
     }
+  } else {
+    scl = 1.0;
   }
 
   if (is_void(cmin)) cmin = min(img);
@@ -2887,25 +2889,18 @@ func mira_plot_image(img, dat, clear=, cmin=, cmax=, zformat=, keeplimits=,
   y0 = ylim(1) - 0.5*pixelsize;
   y1 = ylim(2) + 0.5*pixelsize;
 
-  if (clear && clear > 0) {
-    fma;
-  }
-  pli, img, x0, y0, x1, y1, cmin=cmin, cmax=cmax;
-  if (! keeplimits) mira_fix_image_axis;
-  local red, green, blue;
-  palette, red, green, blue, query=1;
-  ncolors = numberof(red);
-  levs = span(cmin, cmax, ncolors + 1);
-  colors = indgen(ncolors);
-  mira_color_bar, cmin=cmin, cmax=cmax, vert=1, nlabs=11, format=zformat;
-  xytitles, "relative !a ("+pixelunits+")", "relative !d ("+pixelunits+")";
-  if (clear && clear < 0) {
-    fma;
-  }
+  if (clear && clear > 0) fma;
+  if (! is_void(cmap)) p_colormap, cmap;
+  _pl_builtin_pli, img, x0, y0, x1, y1, cmin=cmin, cmax=cmax;
+  if (! keeplimits) mira_fix_image_axis, x0, x1, y0, y1;
+  pl_cbar, cmin=cmin, cmax=cmax, position="right", format=zformat, nlabs=11;
+  pl_title, "relative !a ("+pixelunits+")", "relative !d ("+pixelunits+")";
+  if (clear && clear < 0) fma;
 }
 
-func mira_fix_image_axis
+func mira_fix_image_axis(x0, x1, y0, y1)
 /* DOCUMENT mira_fix_image_axis;
+         or mira_fix_image_axis, x0, x1, y0, y1;
 
      Fix orientation of horizontal axis (right ascension, RA) and vertical
      axis (declination, DEC) in current window to match the conventions in
@@ -2916,128 +2911,17 @@ func mira_fix_image_axis
    SEE ALSO: limits, mira_plot_image, mira_plot_baselines.
  */
 {
-  lm = limits();
-  x0 = lm(1);
-  x1 = lm(2);
-  y0 = lm(3);
-  y1 = lm(4);
+  limits = _p_builtin_limits;
+  if (is_void(x0) || is_void(x1) || is_void(y0) || is_void(y1)) {
+    lm = limits();
+    if (is_void(x0)) x0 = lm(1);
+    if (is_void(x1)) x1 = lm(2);
+    if (is_void(y0)) y0 = lm(3);
+    if (is_void(y1)) y1 = lm(4);
+  }
   if (x0 < x1 || y0 > y1) {
     limits, max(x0, x1), min(x0, x1), min(y0, y1), max(y0, y1);
   }
-}
-
-func mira_color_bar(z, cmin=, cmax=, vert=, nlabs=, adjust=,
-                    color=, font=, height=, opaque=, orient=,
-                    width=, ticklen=, thickness=, vport=, format=)
-/* DOCUMENT mira_color_bar, z;
-         or mira_color_bar, cmin=CMIN, cmax=CMAX;
-
-     Draw a color bar below the current coordinate system the colors and the
-     associated label values are from min(Z) to max(Z) -- alternatively
-     keywords CMIN and CMAX can be specified.  With the VERT=1 keyword the
-     color bar appears to the left of the current coordinate system (vert=0 is
-     the default).
-
-     Keyword NLABS can be used to choose the number of displayed labels; by
-     default, NLABS=11 which correspond to a label every 10% of the dynamic;
-     use NLABS=0 to suppress all labels.  The format of the labels can be
-     specified with keyword FORMAT; by default FORMAT= "%.3g".  The font type,
-     font height and text orientation for the labels can be set with keywords
-     FONT (default "helvetica"), HEIGHT (default 14 points) and ORIENT
-     respectively.
-
-     By default the colorbar is drawn next to the current viewport; other
-     viewport coordinates can be given by VPORT=[xmin,xmax,ymin,ymax].
-     Keyword ADJUST can be used to move the bar closer to (adjust<0) or
-     further from (adjust>0) the viewport.
-
-     Keyword COLOR can be used to specify the color of the labels, the ticks
-     and the frame of the colorbar.  Default is foreground color.
-
-     Keyword WIDTH can be used to set the width of the lines used to draw the
-     frame and the ticks of the colorbar.
-
-     Keyword TICKLEN can be used to set the lenght (in NDC units) of the
-     ticks.  Default is 0.007 NDC.
-
-     Keyword THICKNESS can be used to set the thickness of the colorbar (in
-     NDC units).  Default is 0.020 NDC.
-
-
-    SEE ALSO: pli, plt, pldj, plg, viewport.
- */
-{
-  if (is_void(cmin)) cmin = min(z);
-  if (is_void(cmax)) cmax = max(z);
-  if (is_void(vport)) vport = viewport();
-  if (is_void(adjust)) adjust = 0.0;
-  if (is_void(ticklen)) ticklen = 0.007;
-  if (is_void(thickness)) thickness = 0.020;
-  if (is_void(nlabs)) nlabs = 11;
-
-  local red, green, blue;
-  palette, red, green, blue, query=1;
-  ncolors = numberof(red);
-  if (ncolors < 2) {
-    ncolors = 240;
-  }
-  levs = span(cmin, cmax, ncolors + 1);
-  cells = char(indgen(0 : ncolors - 1));
-
-  linetype = 1; /* "solid" */
-
-  if (vert) {
-    x0 = vport(2) + adjust + 0.022;
-    x1 = x0 + thickness;
-    y0 = vport(3);
-    y1 = vport(4);
-    cells = cells(-,);
-  } else {
-    x0 = vport(1);
-    x1 = vport(2);
-    y0 = vport(3) - adjust - 0.045;
-    y1 = y0 - thickness;
-    cells = cells(,-);
-  }
-  sys = plsys(0);
-  pli, cells, x0, y0, x1, y1;
-  if (is_void(width) || width != 0) {
-    plg, [y0,y0,y1,y1], [x0,x1,x1,x0], closed=1,
-      color=color, width=width, type=linetype, marks=0;
-  }
-
-  if (nlabs) {
-    if (is_void(format)) format= "%.3g";
-    text = swrite(format=format, span(cmin, cmax, nlabs));
-
-    local lx0, lx1, lx2, ly0, ly1, ly2;
-    if (vert) {
-      lx0 = array(x1, nlabs);
-      lx1 = array(x1 + ticklen, nlabs);
-      lx2 = array(x1 + 1.67*ticklen, nlabs);
-      ly0 = span(y0, y1, nlabs);
-      eq_nocopy, ly1, ly0;
-      eq_nocopy, ly2, ly0;
-      justify = "LH";
-    } else {
-      ly0 = array(y1, nlabs);
-      ly1 = array(y1 - ticklen, nlabs);
-      ly2 = array(y1 - 1.67*ticklen, nlabs);
-      lx0 = span(x0, x1, nlabs);
-      eq_nocopy, lx1, lx0;
-      eq_nocopy, lx2, lx0;
-      justify = "CT";
-    }
-    if (ticklen && (is_void(width) || width != 0)) {
-      pldj, lx0, ly0, lx1, ly1,
-        color=color, width=width, type=linetype;
-    }
-    for (i = 1; i <= nlabs; ++i) {
-      plt, text(i), lx2(i), ly2(i), tosys=0, color=color, font=font,
-        height=height, opaque=opaque, orient=orient, justify=justify;
-    }
-  }
-  plsys, sys;
 }
 
 /*---------------------------------------------------------------------------*/
