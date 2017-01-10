@@ -15,7 +15,7 @@ YLIB_FILES = options.i xplot.i xplot0.i
 YOIFITS_FILES = oifits.i
 TEST_FILES = mira-demo.i mira-test1.i mira-test2.i
 DATA_FILES = data1.oifits data2.oifits README
-OTHER_FILES = AUTHOR COPYING Makefile configure \
+OTHER_FILES = AUTHOR LICENSE Makefile configure \
     README.md INSTALL.md USAGE.md NEWS.md
 
 MIRA_SRC = $(srcdir)/src
