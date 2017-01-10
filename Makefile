@@ -11,7 +11,7 @@ DESTDIR=
 BIN_FILES = mira
 MIRA_FILES = mira.i mira-batch.i
 IPY_FILES = linop.i rgl.i
-YLIB_FILES = fft_utils.i fmin.i img.i options.i plot.i utils.i
+YLIB_FILES = options.i xplot.i xplot0.i
 YOIFITS_FILES = oifits.i
 TEST_FILES = mira-demo.i mira-test1.i mira-test2.i
 DATA_FILES = data1.oifits data2.oifits README
@@ -41,7 +41,7 @@ TEST_FLAGS=-pixelsize=0.1mas -fov=20mas -regul=hyperbolic -bootstrap=1 -recenter
 test:
 	$(srcdir)/bin/mira $(TEST_FLAGS) \
 	    $(srcdir)/data/data1.oifits test1.fits
-	$(srcdir)/bin/mira $(TEST_FLAGS) -initial=test1.fits \
+	$(srcdir)/bin/mira $(TEST_FLAGS) -view=-1 -initial=test1.fits \
 	    $(srcdir)/data/data1.oifits test2.fits
 
 # Installation parameters are variables so that they can be overwritten when

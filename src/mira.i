@@ -28,8 +28,8 @@ func mira_dirname(path)
 
      Returns PATH with its trailing "/component" removed; if PATH contains no
      /'s, returns "./" (meaning the current directory).  The result is always
-     terminated by a "/", so that dirname(dirname(PATH)) gives the same result
-     as dirname(PATH).
+     terminated by a "/", so that `mira_dirname(mira_dirname(PATH))` gives the
+     same result as `mira_dirname(PATH)`.
 
    SEE ALSO: strfind. */
 {
@@ -94,9 +94,6 @@ func mira_require(fname, src)
   }
 }
 
-/* Loading of utility functions: */
-mira_require, "glob", MIRA_HOME + ["", "../lib/ylib/"] + "utils.i";
-
 /* MiRA requires OI-FITS support: */
 mira_require, "fits_open", "fits.i";
 mira_require, "oifits_load", MIRA_HOME + ["", "../lib/yoifits/"] + "oifits.i";
@@ -106,8 +103,6 @@ mira_require, "linop_new", MIRA_HOME + ["", "../lib/ipy/"] + "linop.i";
 mira_require, "rgl_new",   MIRA_HOME + ["", "../lib/ipy/"] + "rgl.i";
 
 /* MiRA requires some files in YLib: */
-mira_require, "fft_indgen", MIRA_HOME + ["", "../lib/ylib/"] + "fft_utils.i";
-mira_require, "fmin",       MIRA_HOME + ["", "../lib/ylib/"] + "fmin.i";
 mira_require, "p_colormap", MIRA_HOME + ["", "../lib/ylib/"] + "xplot0.i";
 mira_require, "pl_cbar",    MIRA_HOME + ["", "../lib/ylib/"] + "xplot.i";
 
@@ -287,35 +282,6 @@ _MIRA_LENGTH_UNITS_TABLE = h_new("m",           MIRA_METER,
  *   mira_classify - classify values
  *   mira_digitize - digitize values
  *
- *
- * Obsolete or unused?
- * ~~~~~~~~~~~~~~~~~~~
- *   mira_bicubic_ft
- *   mira_bilinear_ft
- *   mira_fit_profile
- *   mira_gauss_ft
- *   mira_glob
- *   mira_include
- *   mira_plot_baselines
- *   mira_plot_frequencies
- *   mira_plot_image
- *   mira_plot
- *   mira_regul0mask
- *   mira_regul1
- *   mira_regul2
- *   mira_regul3
- *   mira_regul4
- *   mira_regul_fov_l2
- *   mira_regul_mem2
- *   mira_regul_mem3
- *   mira_regul_mem
- *   mira_regul_roughness
- *   mira_relative_absolute_difference
- *   mira_rescale
- *   mira_stdev_to_weight
- *   mira_trash
- *   mira_udisk_ft
- *   mira_weight_to_stdev
  *
  *
  * Master Opaque Object
@@ -1273,8 +1239,20 @@ func mira_phase(re, im) { return atan(im, re + ((!im)&(!re))); }
      parts are RE and IM respectively.  To avoid numerical problems, the result
      is arbitrarily set to zero where RE and IM are both zero.
 
-   SEE ALSO: atan.
-*/
+   SEE ALSO: atan, mira_abs2. */
+
+func mira_abs2(x)
+/* DOCUMENT mira_abs2(x);
+
+     Returns abs(X)^2 computed efficiently.
+
+   SEE ALSO: abs, mira_phase. */
+{
+  if (structof(x) != complex) return x*x;
+  y = x.im;
+  x = double(x);
+  return x*x + y*y;
+}
 
 /*---------------------------------------------------------------------------*/
 /* COORDINATE SYSTEM */
@@ -2048,10 +2026,10 @@ func _mira_plot_vis2_map(master)
   }
 
   /* Plot 2-D amplitude. */
-  z = abs2(fft(master.model_img));
+  z = mira_abs2(fft(master.model_img));
   if (z(1) > 0.0) z = log(z + 1e-6*z(1));
   scl = MIRA_MILLIARCSECOND/master.fov;
-  fft_pli, z, scale=[scl,scl];
+  mira_plot_fft2d, z, scale=[scl,scl];
   if (! is_void(idx)) {
     u = master.u(idx)*MIRA_MILLIARCSECOND;
     v = master.v(idx)*MIRA_MILLIARCSECOND;
@@ -2065,8 +2043,6 @@ func _mira_plot_vis2_map(master)
         uj = u(j); grow, uj, -uj;
         vj = v(j); grow, vj, -vj;
         cj = char(a*(nlevs - i) + b*(i - 1));
-        //stat, uj, vj;
-        //cj;
         pl_points, vj, uj, color=cj, symbol=P_SQUARE, size=0.3, fill=1;
       }
     }
@@ -2262,7 +2238,7 @@ func _mira_solve_viewer(x, extra)
       font=P_HELVETICA, textcolor=P_BLACK,
       linecolor="darkgray", linewidth=1, linetype=P_SOLID,
       gridlevel=0;
-    p_colormap, "viridis.gp";
+    p_colormap, "gist:earth";
   }
   if (is_void(x)) {
     /* Nothing to display. */
@@ -2457,83 +2433,83 @@ func mira_select(this, select)
 
 local mira_solve; /* only to provide the documentation */
 /* DOCUMENT img = mira_solve(data, key1=value1, key2=value2, ...);
- *      or: img = mira_solve(data, img_init, key1=value1, key2=value2, ...);
- *      or: img = mira_solve(data, img_init, penalty, key1=value1, ...);
- *
- *   Builds an image from the interferometric data stored into instance DATA
- *   (see mira_new) which must have been properly initialized for
- *   reconstruction (see mira_config).  The reconstruction is done by
- *   minimizing an objective function which is the sum of the likelihood
- *   penalty (which enforces agreement of the model image with the data) and a
- *   regularization penalty (which enforces some priors about the image).
- *
- *   Optional argument IMG_INIT is the initial image.  Most arguments are
- *   provided by keywords (see below). At least, you want to specify the
- *   regularization method and level by the keywords REGUL and MU.  Usually,
- *   you also want to impose a positivity constraint with XMIN=0.0 (use a
- *   small but strictly positive value if regularization such as entropy with
- *   a logarithm is used) and a normalization constraint with
- *   NORMALIZATION=1.0 (which is suitable for OI-FITS data, otherwise the
- *   actual value should be equal to the total flux in the image).
- *
- *   Optional argument PENALTY is a simple symbol name to store the values of
- *   the penalty terms at the final solution as a vector of 5 values: [NDATA,
- *   DATA_COST, REGUL_WGHT, REGUL_COST, TOTAL_COST, GPNORM] where NDATA is the
- *   number of measurements, DATA_COST is the data penalty per datum,
- *   REGUL_WGHT and REGUL_COST are the regularization weight and penalty,
- *   TOTAL_COST = NDATA*DATA_COST + REGUL_WGHT*REGUL_COST and GPNORM is the
- *   Euclidean norm of the (projected) gradient.
- *
- *
- * KEYWORDS
- *   XMIN - minimum allowed value in the image; can be a scalar or a
- *          pixel-wise value; there is no limit if this option is not set.
- *   XMAX - maximum allowed value in the image; can be a scalar or a
- *          pixel-wise value; there is no limit if this option is not set.
- *   NORMALIZATION - value of the sum of the image pixels to impose a
- *          normalization constraint.
- *   REGUL - regularization method (see rgl_new).
- *   MU   - regularization level; the higher is MU the more the solution is
- *          influenced by the priors set by the regularization.
- *   MAXITER - maximum number of iterations, unlimited if not set.
- *   MAXEVAL - maximum number of evaluations of the objective function,
- *          unlimited if not set.
- *   OUTPUT - output stream/file for iteration informations; default is
- *          standard text output (see keyword VERB).
- *   VERB - verbose level: informations get printed out every VERB iterations
- *          and at convergence.
- *   VIEW - Bitwise mask to specify which graphics to show.  If unset, all
- *          graphics are shown.  Otherwise, if bit 0x01 is set, the current
- *          image is drawn into 1st sub-window; if bit 0x02 is set, a radial
- *          plot of the visibility amplitudes is drawn into 2nd sub-window; if
- *          bit 0x04 is set, a 2-D plot of the complex visibilities is drawn
- *          into 4th sub-window; if bit 0x03 is set, an histogram of the phase
- *          closure resiudals is drawn into 3rd sub-window.
- *   SELECT - if set, select data to fit; the value can be the cutoff
- *          frequency or a boolean vector set true for frequencies to keep
- *          (see mira_select).
- *   ZAP_AMPLITUDE - if true, the image reconstruction is performed without
- *          any visibility amplitude data (FIXME: not yet tested).
- *   ZAP_PHASE - if true, the image reconstruction is performed without any
- *          phase data.
- *   ZAP_DATA - if true, the image reconstruction is performed without any
- *          data, that is with only the regularization.  Useful to get the
- *          default solution set by the priors.
- *   HANIFF - use Haniff's method to account for phase modulo 2-PI
- *          uncertainty; the default is to use phasors which yields better
- *          convergence properties.
- *   MEM  - control the memory usage by the optimizer; the value is the
- *          number of corrections and gradient differences memorized by the
- *          variable metric algorithm; by default, MEM=7 (see op_vmlmb).
- *   FTOL - relative function tolerance for the stopping criterion of
- *          the optimizer; default value is: FTOL = 1e-15 (see op_vmlmb).
- *   GTOL - relative gradient tolerance for the stopping criterion of the
- *          optimizer; default value is: GTOL = 0.0 (see op_vmlmb).
- *   SFTOL, SGTOL, SXTOL - control the stopping criterion of the
- *          line-search method in the optimizer (see op_vmlmb).
- *
- * SEE ALSO:
- *   mira_new, mira_config.
+         or img = mira_solve(data, img_init, key1=value1, key2=value2, ...);
+         or img = mira_solve(data, img_init, penalty, key1=value1, ...);
+
+     Builds an image from the interferometric data stored into instance DATA
+     (see mira_new) which must have been properly initialized for
+     reconstruction (see mira_config).  The reconstruction is done by
+     minimizing an objective function which is the sum of the likelihood
+     penalty (which enforces agreement of the model image with the data) and a
+     regularization penalty (which enforces some priors about the image).
+
+     Optional argument IMG_INIT is the initial image.  Most arguments are
+     provided by keywords (see below). At least, you want to specify the
+     regularization method and level by the keywords REGUL and MU.  Usually,
+     you also want to impose a positivity constraint with XMIN=0.0 (use a small
+     but strictly positive value if regularization such as entropy with a
+     logarithm is used) and a normalization constraint with NORMALIZATION=1.0
+     (which is suitable for OI-FITS data, otherwise the actual value should be
+     equal to the total flux in the image).
+
+     Optional argument PENALTY is a simple symbol name to store the values of
+     the penalty terms at the final solution as a vector of 5 values: [NDATA,
+     DATA_COST, REGUL_WGHT, REGUL_COST, TOTAL_COST, GPNORM] where NDATA is the
+     number of measurements, DATA_COST is the data penalty per datum,
+     REGUL_WGHT and REGUL_COST are the regularization weight and penalty,
+     TOTAL_COST = NDATA*DATA_COST + REGUL_WGHT*REGUL_COST and GPNORM is the
+     Euclidean norm of the (projected) gradient.
+
+
+   KEYWORDS
+     XMIN - minimum allowed value in the image; can be a scalar or a
+            pixel-wise value; there is no limit if this option is not set.
+     XMAX - maximum allowed value in the image; can be a scalar or a
+            pixel-wise value; there is no limit if this option is not set.
+     NORMALIZATION - value of the sum of the image pixels to impose a
+            normalization constraint.
+     REGUL - regularization method (see rgl_new).
+     MU   - regularization level; the higher is MU the more the solution is
+            influenced by the priors set by the regularization.
+     MAXITER - maximum number of iterations, unlimited if not set.
+     MAXEVAL - maximum number of evaluations of the objective function,
+            unlimited if not set.
+     OUTPUT - output stream/file for iteration informations; default is
+            standard text output (see keyword VERB).
+     VERB - verbose level: informations get printed out every VERB iterations
+            and at convergence.
+     VIEW - Bitwise mask to specify which graphics to show.  If unset, all
+            graphics are shown.  Otherwise, if bit 0x01 is set, the current
+            image is drawn into 1st sub-window; if bit 0x02 is set, a radial
+            plot of the visibility amplitudes is drawn into 2nd sub-window; if
+            bit 0x04 is set, a 2-D plot of the complex visibilities is drawn
+            into 4th sub-window; if bit 0x03 is set, an histogram of the phase
+            closure resiudals is drawn into 3rd sub-window.
+     SELECT - if set, select data to fit; the value can be the cutoff
+            frequency or a boolean vector set true for frequencies to keep
+            (see mira_select).
+     ZAP_AMPLITUDE - if true, the image reconstruction is performed without
+            any visibility amplitude data (FIXME: not yet tested).
+     ZAP_PHASE - if true, the image reconstruction is performed without any
+            phase data.
+     ZAP_DATA - if true, the image reconstruction is performed without any
+            data, that is with only the regularization.  Useful to get the
+            default solution set by the priors.
+     HANIFF - use Haniff's method to account for phase modulo 2-PI
+            uncertainty; the default is to use phasors which yields better
+            convergence properties.
+     MEM  - control the memory usage by the optimizer; the value is the
+            number of corrections and gradient differences memorized by the
+            variable metric algorithm; by default, MEM=7 (see op_vmlmb).
+     FTOL - relative function tolerance for the stopping criterion of
+            the optimizer; default value is: FTOL = 1e-15 (see op_vmlmb).
+     GTOL - relative gradient tolerance for the stopping criterion of the
+            optimizer; default value is: GTOL = 0.0 (see op_vmlmb).
+     SFTOL, SGTOL, SXTOL - control the stopping criterion of the
+            line-search method in the optimizer (see op_vmlmb).
+
+   SEE ALSO:
+     mira_new, mira_config.
  */
 func mira_solve(master, x, &penalty, reset=, fix=,
                 normalization=,
@@ -2970,6 +2946,65 @@ func mira_fix_image_axis(x0, x1, y0, y1)
   }
 }
 
+func mira_plot_fft2d(a, scale=, legend=, hide=, top=, cmin=, cmax=)
+/* DOCUMENT mira_plot_fft2d, a;
+
+     Plots 2-D FFT array A as an image, taking care of "rolling" A and setting
+     correct world boundaries.  Keyword SCALE can be used to indicate the
+     "frequel" scale along both axis (SCALE is a scalar) or along each axis
+     (SCALE is a 2-element vector: SCALE=[XSCALE,YSCALE]); by default,
+     SCALE=[1.0, 1.0].
+
+   KEYWORDS legend, hide, top, cmin, cmax.
+
+   SEE ALSO pli, roll. */
+{
+  dims = dimsof(a);
+  if (identof(a) > Y_DOUBLE || numberof(dims) != 3) {
+    error, "expecting 2D real array";
+  }
+  if (is_void(scale)) {
+    scale1 = scale2 = 1.0;
+  } else if (dimsof(scale)(1) == 0) {
+    scale1 = scale2 = scale;
+  } else if (numberof(scale) == 2) {
+    scale1 = scale(1);
+    scale2 = scale(2);
+  } else {
+    error, "bad number of elements in SCALE";
+  }
+  dim1 = dims(2);
+  dim2 = dims(3);
+  max1 = dim1 - 1 + (min1 = -(off1 = dim1/2));
+  max2 = dim2 - 1 + (min2 = -(off2 = dim2/2));
+  a = bytscl(a, top=top, cmin=cmin, cmax=cmax);
+  n1 = dim1;
+  k1 = (n1 + (off1%n1))%n1; /* wrap offset in the range [0, n1-1] */
+  n2 = dim2;
+  k2 = (n2 + (off2%n2))%n2; /* wrap offset in the range [0, n2-1] */
+  case = (! k1) + 2*(! k2);
+  if (case != 3) {
+    b = array(structof(a), dims);
+    if (case == 0) {
+      b((r1=k1+1:n1), (r2=k2+1:n2)) = a((s1=1:n1-k1), (s2=1:n2-k2));
+      b(r1, (t2=1:k2)) = a(s1, (u2=n2-k2+1:n2));
+      b((t1=1:k1), t2) = a((u1=n1-k1+1:n1), u2);
+      b(t1, r2) = a(u1, s2);
+    } else if (case == 1) {
+      b( , k2+1:n2) = a( , 1:n2-k2);
+      b( , 1:k2)    = a( , n2-k2+1:n2);
+    } else {
+      b(k1+1:n1, ) = a(1:n1-k1, );
+      b(1:k1, )    = a(n1-k1+1:n1, );
+    }
+    eq_nocopy, a, b;
+  }
+  pli, a,
+    scale1*(min1 - 0.5), scale2*(min2 - 0.5),
+    scale1*(max1 + 0.5), scale2*(max2 + 0.5),
+    legend=legend, hide=hide;
+}
+
 /*---------------------------------------------------------------------------*/
 /* ESTIMATION OF DIRTY BEAM */
 
@@ -3298,7 +3333,7 @@ func mira_relative_absolute_difference(a, b)
 
 func mira_rescale(a, .., scale=, rgb=, cubic=)
 /* DOCUMENT mira_rescale(a, dimlist)
-       -or- mira_rescale(a, scale=FACT)
+         or mira_rescale(a, scale=FACT)
      Return an array obtained by interpolation of A with new dimension list
      as given by DIMLIST or with all its dimension multiplied by a scaling
      factor FACT if keyword SCALE is specified.  If keyword RGB is true the
@@ -3540,10 +3575,10 @@ func mira_dirac(dim)
 
 func mira_glob(pat)
 /* DOCUMENT mira_glob(pat)
- *   Returns a list of files matching glob-style pattern PAT.  Only the
- *   'file' part of PAT can have wild characters.
- *
- * SEE ALSO: lsdir, strglob.
+     Returns a list of files matching glob-style pattern PAT.  Only the
+     'file' part of PAT can have wild characters.
+
+   SEE ALSO: lsdir, strglob.
  */
 {
   i = strfind("/", pat, back=1);
@@ -3560,18 +3595,17 @@ func mira_glob(pat)
 
 local mira_get_one_integer, mira_get_one_real;
 /* DOCUMENT mira_get_one_integer(symbol)
- *     -or- mira_get_one_integer(symbol, defval)
- *     -or- mira_get_one_real(symbol)
- *     -or- mira_get_one_real(symbol, defval)
- *
- *   Make sure SYMBOL (a simple variable reference) is a real or integer
- *   scalar.  If SYMBOL is undefined on entry, DEFVAL is used instead.
- *   These functions returns true (non-zero) if the assertion failed (for
- *   SYMBOL or, if SYMBOL is undefined, for DEFVAL); otherwise, on return,
- *   the value stored by SYMBOL is a scalar of type long (integer) or
- *   double (real).
- *
- * SEE ALSO: is_integer, is_real, is_scalar.
+         or mira_get_one_integer(symbol, defval)
+         or mira_get_one_real(symbol)
+         or mira_get_one_real(symbol, defval)
+
+     Make sure SYMBOL (a simple variable reference) is a real or integer
+     scalar.  If SYMBOL is undefined on entry, DEFVAL is used instead.  These
+     functions returns true (non-zero) if the assertion failed (for SYMBOL or,
+     if SYMBOL is undefined, for DEFVAL); otherwise, on return, the value
+     stored by SYMBOL is a scalar of type long (integer) or double (real).
+
+   SEE ALSO: is_integer, is_real, is_scalar.
  */
 func mira_get_one_real(&symbol, defval)
 {
@@ -3716,7 +3750,7 @@ func mira_read_image(inp, hdu)
        img.ctype2 = coordinate name along 2nd axis
        img.cunit2 = coordinate units along 2nd axis
 
-   If image is 3D:
+     If image is 3D:
 
        img.naxis3 = length of the 3rd axis
        img.crval3 = 3rd coordinate of the reference pixel
@@ -3725,15 +3759,14 @@ func mira_read_image(inp, hdu)
        img.ctype3 = coordinate name along 3rd axis
        img.cunit3 = coordinate units along 3rd axis
 
-    The conventions for MiRA are to use the first 2 axes for spatial
-    coordinates while the 3rd axis, if any, is for the spectral channel.  The
-    values of members ctype1..3 are upper case strings with leading and
-    trailing spaces stripped.  The values of members cunit1..3 are strings with
-    leading and trailing spaces stripped.  Other c... members are scalar
-    doubles and dimensions are scalar long.
+     The conventions for MiRA are to use the first 2 axes for spatial
+     coordinates while the 3rd axis, if any, is for the spectral channel.  The
+     values of members ctype1..3 are upper case strings with leading and
+     trailing spaces stripped.  The values of members cunit1..3 are strings
+     with leading and trailing spaces stripped.  Other c... members are scalar
+     doubles and dimensions are scalar long.
 
-  SEE ALSO: mira_wrap_image, mira_save_image, fits_read_array.
- */
+   SEE ALSO: mira_wrap_image, mira_save_image, fits_read_array. */
 {
   /* Open FITS file if necessary. */
   local fh;
