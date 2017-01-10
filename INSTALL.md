@@ -27,7 +27,7 @@ MiRA Git repository has several sub-modules.  To retrieve a complete
 repository, you have to clone the master repostory and its sub-modules:
 
     git clone https://github.com/emmt/MiRA.git
-    
+
 or (depending what work best for you):
 
     git clone git@github.com:emmt/MiRA.git
@@ -56,11 +56,10 @@ unpack it.  For instance:
 
 ## Prerequisites
 
-You must have [Yorick](http://dhmunro.github.io/yorick-doc/) (at least
-version 2.1), [Yeti](https://github.com/emmt/Yeti) (at least version 6.2.0) and
-[OptimPack](https://cral.univ-lyon1.fr/labo/perso/eric.thiebaut/?Software/OptimPack)
-(version 1.2) installed.  For faster operations, you may want to use
-[YNFFT](https://github.com/emmt/ynfft), a Yorick plugin for the *Nonequispaced
+You must have [Yorick](http://dhmunro.github.io/yorick-doc/) (version 2.2.04 or better), [Yeti](https://github.com/emmt/Yeti) (version 6.3.2 or better) and
+[OptimPackLegacy](https://github.com/emmt/OptimPackLegacy)
+(version 1.4.0 or better) installed.  For faster operations, you may want to use
+[YNFFT](https://github.com/emmt/ynfft) (version 1.0.3 or better), a Yorick plugin for the *Nonequispaced
 Fast Fourier Transform*.
 
 
