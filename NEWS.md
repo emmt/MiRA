@@ -1,4 +1,6 @@
-2016-01-10:
+ * Improve command line help, provide a manual page.
+
+2017-01-10:
  * Version 1.1.0 released.
  * Provide a command line interface (options in command line have units).
  * Provide configuration and installation scripts.

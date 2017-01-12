@@ -90,22 +90,22 @@ _MIRA_OPTIONS = opt_init\
    "Image reconstruction.  INPUT and [...] are the OI-FITS data file and OUTPUT " +
    "is the result saved into a FITS file.",
    _lst\
-   (/* DATA SELECTION */
+   (
+    "\nData selection:",
     _lst("target", NULL, "NAME", OPT_STRING, "Name of the astrophysical object"),
-    _lst("effwave", NULL, "VALUE", OPT_STRING, "Effective wavelength, e.g. 1.6micron"),
-    _lst("effband", NULL, "VALUE", OPT_STRING, "Effective bandwidth, e.g. 200nm"),
-    _lst("wavemin", NULL, "VALUE", OPT_STRING, "Minimum wavelength, e.g. 1.5µm"),
-    _lst("wavemax", NULL, "VALUE", OPT_STRING, "Maximum wavelength, e.g. 1.7µm"),
-    /* IMAGE PARAMETERS */
+    _lst("effwave", NULL, "LENGTH", OPT_STRING, "Effective wavelength, e.g. 1.6micron"),
+    _lst("effband", NULL, "LENGTH", OPT_STRING, "Effective bandwidth, e.g. 200nm"),
+    _lst("wavemin", NULL, "LENGTH", OPT_STRING, "Minimum wavelength, e.g. 1.5µm"),
+    _lst("wavemax", NULL, "LENGTH", OPT_STRING, "Maximum wavelength, e.g. 1.7µm"),
+    "\nImage parameters and direct model:",
     _lst("pixelsize", NULL, "ANGLE", OPT_STRING, "Angular size of pixels, e.g. 0.1mas"),
     _lst("fov", NULL, "ANGLE", OPT_STRING, "Angular size of the field of view, e.g. 20mas"),
     _lst("dim", NULL, "NUMBER", OPT_INTEGER, "Number of pixels per side of the image"),
-    _lst("xform", "nfft", "NAME", OPT_STRING, "Method to compute the Fourier transform"),
     _lst("normalization", NULL, "VALUE", OPT_REAL, "Flux normalization (sum of pixels = VALUE)"),
     _lst("min", NULL, "LOWER", OPT_REAL, "Lower bound for the pixel values"),
     _lst("max", NULL, "UPPER", OPT_REAL, "Upper bound for the pixel values"),
-    _lst("overwrite", NULL, NULL, OPT_FLAG, "Overwrite output if it exists"),
-    /* REGULARIZATION SETTINGS */
+    _lst("xform", "nfft", "NAME", OPT_STRING, "Method to compute the Fourier transform"),
+    "\nRegularization settings:",
     _lst("regul", NULL, "NAME", OPT_STRING, "Name of regularization method"),
     _lst("mu", 0.0, "VALUE(S)", OPT_REAL_LIST, "Global regularization weight"),
     _lst("tau", 1E-6, "VALUE", OPT_REAL, "Edge preserving threshold"),
@@ -121,27 +121,32 @@ _MIRA_OPTIONS = opt_init\
     _lst("regul_periodic", NULL, NULL, OPT_FLAG, "Use periodic conditions for the regularization"),
     _lst("regul_isotropic", NULL, NULL, OPT_FLAG, "Use isotropic version of the regularization"),
     */
-    /* ALGORITHM PARAMETERS */
+    "\nInitial image:",
     _lst("initial", "random", "NAME", OPT_STRING, "FITS file or method for initial image"),
     _lst("seed", NULL, "VALUE", OPT_REAL, "Seed for the random generator"),
+    "\nOutput image:",
+    _lst("overwrite", NULL, NULL, OPT_FLAG, "Overwrite output if it exists"),
+    _lst("bitpix", -32, "BITPIX", OPT_INTEGER, "Bits per pixel"),
     _lst("save_initial", NULL, NULL, OPT_FLAG, "Save initial image as a secondary HDU in result"),
-    /* can also be "random", "Dirac", "Gauss", or "Cauchy-Lorentz" */
+    "\nReconstruction strategy:",
     _lst("bootstrap", NULL, "COUNT", OPT_INTEGER, "Number of bootstrapping iterations"),
     _lst("recenter", NULL, NULL, OPT_FLAG, "Recenter result of bootstrapping iterations"),
     _lst("threshold", NULL, "FRACTION", OPT_REAL, "Level for soft-thresholding input image(s)"),
-    _lst("maxiter", NULL, "COUNT", OPT_INTEGER, "Maximum number of iterations"),
-    _lst("maxeval", NULL, "COUNT", OPT_INTEGER, "Maximum number of evaluations of the objective function"),
+    "\nMessages and graphics:",
     _lst("quiet", NULL, NULL, OPT_FLAG, "Suppress most messages"),
     _lst("verb", NULL, "COUNT", OPT_INTEGER, "Verbose level"),
     _lst("view", 0, "MASK", OPT_INTEGER, "Bitwise mask to specify which graphics to show"),
+    "\nOptimizer Settings:",
     _lst("mem", NULL, "COUNT", OPT_INTEGER, "Number of previous steps to memorize in VMLMB"),
     _lst("ftol", NULL, "REAL", OPT_REAL, "Function tolerance for the global convergence"),
     _lst("gtol", NULL, "REAL", OPT_REAL, "Gradient tolerance for the global convergence"),
+    _lst("maxiter", NULL, "COUNT", OPT_INTEGER, "Maximum number of iterations"),
+    _lst("maxeval", NULL, "COUNT", OPT_INTEGER, "Maximum number of evaluations of the objective function"),
+    "\nLine search:",
     _lst("sftol", NULL, "REAL", OPT_REAL, "Function tolerance for the line search"),
     _lst("sgtol", NULL, "REAL", OPT_REAL, "Gradient tolerance for the line search"),
     _lst("sxtol", NULL, "REAL", OPT_REAL, "Step tolerance for the line search"),
-    /* MISCELLANEOUS */
-    _lst("bitpix", -32, "BITPIX", OPT_INTEGER, "Bits per pixel"),
+    "\nMiscellaneous:",
     _lst("help", NULL, NULL, OPT_HELP, "Print out this help"),
     _lst("version", MIRA_VERSION, NULL, OPT_VERSION, "Print out version number")));
 
