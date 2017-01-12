@@ -56,9 +56,9 @@ mira_require, "opt_init", MIRA_HOME + ["", "../lib/ylib/"] + "options.i";
  *
  *    regul
  *
- *    "hyperbolic" "mu"   real >= 0.0      --mu
- *                 "tau"  real > 0.0       --tau
- *                 "eta"  values           --eta // FIXME:
+ *    "hyperbolic" "mu"   real >= 0.0      -mu
+ *                 "tau"  real > 0.0       -tau
+ *                 "eta"  values           -eta // FIXME:
  *                 "mask" image
  *
  *    "totvar"     "mu"         real >= 0.0      regul_mu
@@ -196,7 +196,7 @@ func mira_main(argv0, argv)
 
   opt = opt_parse(_MIRA_OPTIONS, argv);
   if (is_void(opt)) {
-    /* Options "--help", or "--usage", or "--version" have been set. */
+    /* Options "-help", or "-usage", or "-version" have been set. */
     return;
   }
   argc = numberof(argv);
@@ -209,7 +209,7 @@ func mira_main(argv0, argv)
   /* Check bitpix. */
   if (opt.bitpix != 8 && opt.bitpix != 16 && opt.bitpix != 32 &&
       opt.bitpix != -32 && opt.bitpix != -64) {
-    opt_error, "invalid value for `--bitpix`";
+    opt_error, "invalid value for `-bitpix`";
   }
 
   /* Initial comment. */
@@ -220,15 +220,15 @@ func mira_main(argv0, argv)
   regul_name = opt.regul;
   if (! is_void(regul_name)) {
     if (min(opt.mu) < 0.0) {
-      opt_error, "value(s) of `--mu` must be >= 0.0";
+      opt_error, "value(s) of `-mu` must be >= 0.0";
     }
     if (regul_name == "hyperbolic") {
       /* Edge-preserving smoothness prior. */
       if (opt.tau <= 0.0) {
-        opt_error, "value of `--tau` must be > 0.0";
+        opt_error, "value of `-tau` must be > 0.0";
       }
       if (min(opt.eta) <= 0.0) {
-        opt_error, "values of `--eta` must be > 0.0";
+        opt_error, "values of `-eta` must be > 0.0";
       }
       regul = rgl_new("hyperbolic");
       rgl_config, regul, tau=opt.tau, eta=opt.eta;
@@ -238,11 +238,11 @@ func mira_main(argv0, argv)
     } else if (regul_name == "compactness") {
       /* Compactness prior. */
       if (is_void(opt.gamma)) {
-        opt_error, "option `--gamma=...` must be specified with \"compactness\" regularization";
+        opt_error, "option `-gamma=...` must be specified with \"compactness\" regularization";
       }
-      value = _mira_cli_parse_angle(opt.gamma, "`--gamma=...`");
+      value = _mira_cli_parse_angle(opt.gamma, "`-gamma=...`");
       if (value <= 0) {
-        opt_error, "invalid value for `--gamma=...`";
+        opt_error, "invalid value for `-gamma=...`";
       }
       h_set, opt, gamma=value;
       grow, comment,
@@ -253,13 +253,13 @@ func mira_main(argv0, argv)
 #if 0
     } else {
       if (opt.regul_threshold <= 0.0) {
-        opt_error, "value of `--regul_threshold` must be > 0.0";
+        opt_error, "value of `-regul_threshold` must be > 0.0";
       }
       if (opt.regul_epsilon <= 0.0) {
-        opt_error, "value of `--regul_epsilon` must be > 0.0";
+        opt_error, "value of `-regul_epsilon` must be > 0.0";
       }
       if (opt.regul_power <= 0.0) {
-        opt_error, "value of `--regul_power` must be > 0.0";
+        opt_error, "value of `-regul_power` must be > 0.0";
       }
       regul = rgl_new(regul_name);
       regul_keywords = rgl_info(regul_name);
@@ -306,36 +306,36 @@ func mira_main(argv0, argv)
   /* Get image dimensions and pixel size, if specified. */
   local dim, pixelsize;
   if (! is_void(opt.pixelsize)) {
-    pixelsize = _mira_cli_parse_angle(opt.pixelsize, "`--pixelsize=...`");
+    pixelsize = _mira_cli_parse_angle(opt.pixelsize, "`-pixelsize=...`");
     if (pixelsize <= 0) {
-      opt_error, "invalid value for `--pixelsize=...`";
+      opt_error, "invalid value for `-pixelsize=...`";
     }
   }
   if (! is_void(opt.fov)) {
     if (! is_void(opt.dim)) {
-      opt_error, "only one of `--fov=...` or `--dim=...` can be specified";
+      opt_error, "only one of `-fov=...` or `-dim=...` can be specified";
     }
     if (is_void(opt.pixelsize)) {
-      opt_error, "option `--pixelsize=...` must be specified with `--fov=...`";
+      opt_error, "option `-pixelsize=...` must be specified with `-fov=...`";
     }
-    fov = _mira_cli_parse_angle(opt.fov, "`--fov=...`");
+    fov = _mira_cli_parse_angle(opt.fov, "`-fov=...`");
     if (fov <= 0) {
-      opt_error, "invalid value for `--fov=...`";
+      opt_error, "invalid value for `-fov=...`";
     }
     dim = lround(fov/pixelsize);
   } else if (! is_void(opt.dim)) {
     if (opt.dim <= 0) {
-      opt_error, "bad value for `--dim=...`";
+      opt_error, "bad value for `-dim=...`";
     }
     dim = opt.dim;
   } else if (! initial_filename) {
-    opt_error, ("image dimension must be specified with `--dim=...` "
-                + "or `--fov=..` when no initial image is given");
+    opt_error, ("image dimension must be specified with `-dim=...` "
+                + "or `-fov=..` when no initial image is given");
   }
 
   /* Check some options. */
   if (! is_void(opt.threshold) && (opt.threshold < 0 || opt.threshold >= 1)) {
-    opt_error, "invalid value for `--threshold=...`";
+    opt_error, "invalid value for `-threshold=...`";
   }
 
   /* Initial image. */
@@ -368,7 +368,7 @@ func mira_main(argv0, argv)
       cunit2 = mira_parse_angular_unit(img.cunit2, 0);
       if (cunit1 == 0 || cunit2 == 0) {
         opt_error, ("Unknown units in CUNIT1 or CUNIT2, "
-                    + "can be overriden by `--pixelsize`");
+                    + "can be overriden by `-pixelsize`");
       }
       pixsiz1 = cdelt1*cunit1;
       pixsiz2 = cdelt2*cunit2;
@@ -400,7 +400,7 @@ func mira_main(argv0, argv)
     initial = array(double, dim, dim);
     initial(dim/2 +1, dim/2 + 1) = 1.0;
   } else {
-    opt_error, "option --initial=\""+initial_name+"\" not yet implemented";
+    opt_error, "option -initial=\""+initial_name+"\" not yet implemented";
   }
 
   /* Parse wavelenght settings. */
@@ -410,9 +410,9 @@ func mira_main(argv0, argv)
     key = keys(k);
     eq_nocopy, str, h_get(opt, key);
     if (! is_void(str)) {
-      value = _mira_cli_parse_length(str, "`--"+key+"=...`");
+      value = _mira_cli_parse_length(str, "`-"+key+"=...`");
       if (value <= 0) {
-        opt_error, "invalid value for `--"+key+"=...`";
+        opt_error, "invalid value for `-"+key+"=...`";
       }
       h_set, opt, key, value;
     }
@@ -444,7 +444,7 @@ func mira_main(argv0, argv)
     n = numberof(mu);
   } else {
     if (opt.bootstrap < 0) {
-      opt_error, "bad value for option `--bootstrap`";
+      opt_error, "bad value for option `-bootstrap`";
     }
     n = opt.bootstrap + 1;
     m = numberof(opt.mu);
@@ -459,14 +459,14 @@ func mira_main(argv0, argv)
     } else if (m == 3 && n == 2) {
       mu = [opt.mu(1), opt.mu(3)];
     } else {
-      opt_error, "bad number of values for option `--mu`";
+      opt_error, "bad number of values for option `-mu`";
     }
   }
   if (! is_void(opt.maxiter) && opt.maxiter < 0) {
-      opt_error, "bad value for option `--maxiter`";
+      opt_error, "bad value for option `-maxiter`";
   }
   if (! is_void(opt.maxeval) && opt.maxeval < 0) {
-    opt_error, "bad value for option `--maxeval`";
+    opt_error, "bad value for option `-maxeval`";
   }
 
   /* Reconstructions. */
