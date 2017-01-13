@@ -1182,18 +1182,47 @@ func mira_update(this)
   return this;
 }
 
+local mira_apply_xform, mira_get_xform;
+/* DOCUMENT H = mira_get_xform(dat);
+         or res = mira_apply_xform(dat, arg);
+         or res = mira_apply_xform(dat, arg, job);
+
+     The function mira_get_xform gives the linear operator H which computes the
+     complex visibilities for the MiRA data instance DAT.
+
+     The function mira_apply_xform applies the linear operator which computes
+     the complex visibilities for the MiRA data instance DAT to the argument
+     ARG. Optional argument JOB indicates whether the direct or adjoint
+     operator has to be applied.
+
+   SEE ALSO: mira_config.
+*/
+
+func mira_apply_xform(dat, arg, job)
+{
+  return mira_get_xform(dat)(arg, job);
+}
+
+func mira_get_xform(dat)
+{
+  if (dat.update_pending) {
+    mira_update, dat;
+  }
+  return dat.xform;
+}
+
 local mira_get_model_vis, mira_get_model_vis_re, mira_get_model_vis_im;
 local mira_get_model_vis_amp, mira_get_model_vis_phi;
-func mira_update_model(data, img)
-/* DOCUMENT mira_update_model, data, img;
-         or vis = mira_get_model_vis(data);
-         or vis_re = mira_get_model_vis_re(data);
-         or vis_im = mira_get_model_vis_im(data);
-         or vis_amp = mira_get_model_vis_amp(data);
-         or vis_phi = mira_get_model_vis_phi(data);
+func mira_update_model(dat, img)
+/* DOCUMENT mira_update_model, dat, img;
+         or vis = mira_get_model_vis(dat);
+         or vis_re = mira_get_model_vis_re(dat);
+         or vis_im = mira_get_model_vis_im(dat);
+         or vis_amp = mira_get_model_vis_amp(dat);
+         or vis_phi = mira_get_model_vis_phi(dat);
 
      The first subroutine updates the model complex visibilities for the master
-     instance DATA and the model image IMG.
+     instance DAT and the model image IMG.
 
      Then the other functions can be used to retrieve the model complex visibilities,
      their real parts, their imaginary parts, their amplitudes or their phases.
@@ -1201,35 +1230,32 @@ func mira_update_model(data, img)
    SEE ALSO: mira_phase.
 */
 {
-  if (data.update_pending) {
-    mira_update, data;
-  }
-  vis = data.xform(img);
-  return h_set(data, model_img = img, model_vis = vis,
+  vis = mira_apply_xform(dat, img);
+  return h_set(dat, model_img = img, model_vis = vis,
                model_vis_re = vis(1,..), model_vis_im = vis(2,..),
                model_vis_amp = [], model_vis_phi = []);
 }
 
-func mira_get_model_vis(data) { return data.model_vis; }
+func mira_get_model_vis(dat) { return dat.model_vis; }
 
-func mira_get_model_vis_re(data) { return data.model_vis_re; }
+func mira_get_model_vis_re(dat) { return dat.model_vis_re; }
 
-func mira_get_model_vis_im(data) { return data.model_vis_im; }
+func mira_get_model_vis_im(dat) { return dat.model_vis_im; }
 
-func mira_get_model_vis_amp(data)
+func mira_get_model_vis_amp(dat)
 {
-  if (is_void(data.model_vis_amp)) {
-    h_set, data, model_vis_amp = abs(data.model_vis_re, data.model_vis_im);
+  if (is_void(dat.model_vis_amp)) {
+    h_set, dat, model_vis_amp = abs(dat.model_vis_re, dat.model_vis_im);
   }
-  return data.model_vis_amp;
+  return dat.model_vis_amp;
 }
 
-func mira_get_model_vis_phi(data)
+func mira_get_model_vis_phi(dat)
 {
-  if (is_void(data.model_vis_phi)) {
-    h_set, data, model_vis_phi = mira_phase(data.model_vis_re, data.model_vis_im);
+  if (is_void(dat.model_vis_phi)) {
+    h_set, dat, model_vis_phi = mira_phase(dat.model_vis_re, dat.model_vis_im);
   }
-  return data.model_vis_phi;
+  return dat.model_vis_phi;
 }
 
 func mira_phase(re, im) { return atan(im, re + ((!im)&(!re))); }
@@ -2731,6 +2757,18 @@ mira_get_y = mira_get_x;
 mira_get_ra = mira_get_x;
 mira_get_dec = mira_get_y;
 
+func mira_get_u(dat) { return dat.u; }
+func mira_get_v(dat) { return dat.v; }
+/* DOCUMENT mira_get_u(dat);
+         or mira_get_v(dat);
+
+     Get the coordinates of the spatial frequencies required for the data in
+     MiRA instance DAT.  These are the frequencies of the complex visibilities
+     computed by the linear model.
+
+   SEE ALSO: mira_apply_xform, mira_config.
+*/
+
 func mira_get_ndata(dat)
 /* DOCUMENT mira_get_ndata(dat);
 
@@ -3006,52 +3044,139 @@ func mira_plot_fft2d(a, scale=, legend=, hide=, top=, cmin=, cmax=)
 }
 
 /*---------------------------------------------------------------------------*/
-/* ESTIMATION OF DIRTY BEAM */
+/* DIRTY MAP AND DIRTY BEAM */
 
-func mira_dirty_beam(this)
-/* DOCUMENT mira_dirty_beam(this);
+local mira_dirty_beam, mira_dirty_map;
+/* DOCUMENT map = mira_dirty_map(dat, vis);
+         or map = mira_dirty_map(dat, img);
+         or psf = mira_dirty_beam(dat);
 
-     Compute dirty beam for MiRA instance THIS.  The result has the same
-     geometry as an image reconstructed from THIS, i.e. it depends on the u-v
-     coverage and on the synthetic field of view parameters as set by
-     mira_config.  There is however a small (1/2 pixel) offset in the X and Y
-     (RA and dec) directions for for even dimensions.
+     The function mira_dirty_map computes the dirty map (or the dirty beam) for
+     the u-v coverage in the MiRA data instance DAT.  In the first case, VIS
+     are the assumed complex visibilities (must be a complex array of suitable
+     size).  In the second case, IMG is the assumed "true" image (a real array
+     of suitable size).  If second argument of mira_dirty_map is void, the
+     dirty beam is returned instead.
 
-   EXAMPLE:
-     mira_config, this, dim=128, pixelsize=0.3*MIRA_MILLIARCSECOND;
-     dirty = mira_dirty_beam(this);
-     mira_plot_image, dirty, this;
+     The function mira_dirty_beam computes the dirty beam for the u-v coverage
+     in the MiRA data instance DAT.  It is the same as computing the dirty map
+     when all complex visibilities are assumed to be all equal to 1.
 
-   SEE ALSO: mira_plot_image, mira_config, fft, roll.
- */
+     If the zero-th frequency is absent from the u-v coverage, the dirty map
+     computed from given complex visibilities will have zero mean.
+
+     Keywords MAXITER and TOL can be set to specify the stopping criterion of
+     the conjugate gradient method used to compute the solution.  If MAXITER is
+     explicitly set to 0, a fast approximate solution is computed (see below).
+
+     Keyword GUESS may be set true to start the conjugate gradient iterations
+     with an initial solution proportional to the complex visibilities (see
+     below); otherwise, the initial conjugate gradient solution is zero.
+
+
+  ALGORITHM
+     To simplify the explanations, let x be the sought image, y be the complex
+     visibilities (all equal to 1 to compute the dirty beam) and H be the
+     linear operator which computes the complex visibilities given the image.
+     Then computing the dirty map amounts to applying the pseudoinverse of H to
+     the complex visibilities y.  This is the same as finding the least norm
+     x such that H.x = y; the Lagrangian of this constrained problem is:
+
+         L(x,w) = (1/2) <x,x> - <w,H.x> = (1/2) <x,x> - <H'.w,x>
+
+     with w the Lagrange multipliers for the constraints H.x = y and H' the
+     adjoint of H.  The gradient of the Lagrangian L(x,w) with respect to x
+     is:
+
+         dL(x,w)/dx = x - H'.w
+
+     thus the solution writes x = H'.w and the problem is to find w such that
+     the constraints hold, that is:
+
+         y = H.x = H.H'.w = A.w
+
+     where A = H.H' is symmetric.  It is easy to show that A is approximately
+     proportional to the identity: A ≈ (1/β) I.  A simple approximation of the
+     solution is therefore w ≈ β y where the factor β can be estimated so as to
+     minimize ||β y - A.y||.  The conjugate gradient method may be used to
+     refine this solution and solve A.w = y.  Note that if conjugate gradients
+     are started with initial solution w = 0, then the first iteration of the
+     conjugate gradients yields a first iterate which is proportional to A.y
+     and thus almost β y.
+
+
+  SEE ALSO: mira_config, mira_new, mira_get_xform.
+*/
+
+func mira_dirty_beam(dat, maxiter=, tol=, guess=)
 {
-  /* Get sky coordinates (in radians). */
-  if (! (dim = this.dim) ||
-      ! (pixelsize = this.pixelsize)) {
-    error, "DIM and PIXELSIZE must be set before (see mira_config)";
+  return mira_dirty_map(dat, maxiter=maxiter, tol=tol, guess=guess);
+}
+
+func mira_dirty_map(dat, arg, maxiter=, tol=, guess=)
+{
+  /* We need the linear operator H which computes the complex visibilities
+     (this also update internals). */
+  local u, v;
+  H = mira_get_xform(dat);
+  eq_nocopy, u, mira_get_u(dat);
+  eq_nocopy, v, mira_get_v(dat);
+  zerofreq = anyof((!u)&(!v));
+
+  /* Get complex visibilities. */
+  local vis;
+  total = 0.0;
+  nfreq = numberof(u);
+  if (is_void(arg)) {
+    /* Will compute the dirty beam. */
+    vis = array(double, 2, nfreq);
+    vis(1,..) = 1.0;
+    total = 1.0;
+  } else {
+    dims = dimsof(arg);
+    type = identof(arg);
+    if (type <= Y_DOUBLE && numberof(dims) == 3 && dims(2) == dims(3) &&
+        dims(2) == mira_get_dim(dat)) {
+      total = double(sum(arg));
+      vis = H(arg);
+    } else if (type == Y_COMPLEX && numberof(dims) == 2 && dims(2) == nfreq) {
+      vis = linop_cast_complex_as_real(unref(arg));
+    } else if (type <= Y_DOUBLE && numberof(dims) == 3 && dims(2) == 2 &&
+               dims(3) == nfreq) {
+      eq_nocopy, vis, double(arg);
+    } else {
+      error, "invalid argument ARG";
+    }
   }
 
-  /* convert (u,v) into frequels */
-  s = dim*pixelsize;
-  u = long(floor(s*this.u + 0.5));
-  v = long(floor(s*this.v + 0.5));
-
-  /* convert (u,v) into FFT indices */
-  fmax = dim/2;
-  fmin = fmax + 1 - dim;
-  j = where((u >= fmin)&(u <= fmax)&(v >= fmin)&(v <= fmax));
-  if (numberof(j) != numberof(u)) {
-    _mira_warn, "Nyquist frequency too small";
-    u = u(j);
-    v = v(j);
+  /* Build the LHS operator of the normal equations, computes the initial value
+     of the solution (the Lagrange multipliers w of the constrained problem)
+     and solves the problem by means of the conjugate gradient method. */
+  local w, x, y;
+  eq_nocopy, y, vis; // to use the same notations as in the doc.
+  inner = mira_inner;
+  A = closure("_mira_apply_dirty_map_lhs", H);
+  if (maxiter == 0 || guess) {
+    /* Compute initial Lagrange multipliers. */
+    Ay = A(y);
+    beta = inner(y,Ay)/inner(Ay,Ay);
+    w = beta*y;
   }
-  u += (u < 0)*dim; // zero-based FFT U-index
-  v += (v < 0)*dim; // zero-based FFT V-index
-  w = array(double, dim, dim);
-  w(1) = 1.0;
-  w(1 + u + v*dim) = 1.0;
-  w(1 + (dim - u)%dim + ((dim - v)%dim)*dim) = 1.0;
-  return roll((1.0/(dim*dim))*double(fft(w, -1)), [dim/2, dim/2]);
+  if (maxiter != 0) {
+    /* Find the Lagrange multipliers by means of the conjugate gradient
+       method. */
+    local mira_conjgrad_iterations;
+    w = mira_conjgrad(A, y, w, maxiter=maxiter, tol=tol);
+  }
+  x = H(w, 1);
+
+  /* Normalize the result. */
+  return (zerofreq ? x : x + (total - sum(x)));
+}
+
+func _mira_apply_dirty_map_lhs(H, x)
+{
+  return H(H(x,1),0);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -3316,12 +3441,13 @@ func mira_weight_to_stdev(w)
 }
 
 func mira_relative_absolute_difference(a, b)
-/* DOCUMENT mira_relative_absolute_difference(a, b)
- *   Returns elementwise relative absolute difference between A and B defined
- *   as: 0                                             if A(i) = B(i)
- *       2*abs(A(i) - B(i))/(abs(A(i)) + abs(B(i))     otherwise
- *
- * SEE ALSO: mira.
+/* DOCUMENT mira_relative_absolute_difference(a, b);
+
+     Returns elementwise relative absolute difference between A and B defined
+     as: 0                                             if A(i) = B(i)
+         2*abs(A(i) - B(i))/(abs(A(i)) + abs(B(i))     otherwise
+
+   SEE ALSO: mira.
  */
 {
   diff = a - b;
@@ -4218,6 +4344,147 @@ func mira_soft_threshold(img, lvl, nrm)
     }
   }
   return img;
+}
+
+/*---------------------------------------------------------------------------*/
+/* CONJUGATE GRADIENTS */
+
+func mira_inner(x, y) { return sum(x*y); }
+/* DOCUMENT mira_inner(x, y)
+     This function returns the inner (a.k.a. dot) product of X by Y.
+
+   SEE ALSO: mira_conjgrad, sum.
+ */
+
+local mira_conjgrad_iterations;
+func mira_conjgrad(A, b, x, tol=, maxiter=, precond=, show=, quiet=)
+/* DOCUMENT mira_conjgrad(A, b);
+         or mira_conjgrad(A, b, x0);
+
+      Compute the solution of the linear problem A.x = B by means of the linear
+      conjugate gradient method.  The left hand side (LHS) matrix A must be
+      positive (semi-)definite and is implemented via a function which takes a
+      single argument and returns the result of applying A to this argument:
+      A(p) yields A.p; the argument of A will always be an array of same shape
+      as the right hand side (RHS) "vector" b.
+
+      The method is iterative.  If argument X0 is provided, it is taken as the
+      solution to start with; otherwise the method starts with an array of
+      zeros.  The convergence of the algorithm is assumed when the Euclidean
+      norm ||r|| of the residuals r = b - A.x becomes less or equal a threshold
+      EPSILON given by:
+
+           epsilon = atol + rtol*||b - A.x0||
+
+      where ATOL and RTOL are absolute and relative tolerances.  The number of
+      iterations is accessible via the variable `mira_conjgrad_iterations`.
+
+      The keyword TOL can be used to specify the tolerances as either TOL=ATOL,
+      or TOL=[ATOL,RTOL].  If the relative tolerance RTOL is not specified, its
+      default value is 0.  If the absolute tolerance ATOL is not specified, its
+      default value is 1E-6.
+
+      The maximum number of iterations can be set via keyword MAXITER; by
+      default, MAXITER = min(numberof(b),50).  If MAXITER is set with a
+      strictly negative value, the number of iterations is only controlled by
+      the tolerance parameters.  If the algorithm does not convergence after
+      the maximum number of iterations, a warning message is printed and the
+      current solution is returned.  Keyword QUIET can be set true to disable
+      warning messages.
+
+      Keyword PRECOND can be set to specify a preconditioner, its value is a
+      function which applies an approximation of the inverse of A to its
+      argument (up to an irrelevant scaling factor).  If a preconditioner, say
+      M, is set, it must be positive definite and the weighted norm
+      sqrt(r'.M.r) of the residuals r is used instead of the ordinary Euclidean
+      norm of the residuals for checking the convergence.  If the keyword
+      PRECOND is not set, un-preconditioned conjugate gradient method is
+      applied.
+
+      Keyword SHOW can be set with a subroutine to display the variables X at
+      every iterations.  It is called as:
+
+          show, x;
+
+   SEE ALSO: mira_inner, closure, h_functor, h_evaluator.
+ */
+{
+  /* Alias to compute the dot product. */
+  inner = mira_inner;
+
+  /* Parse keywords. */
+  error = tipi_error;
+  if (is_void(maxiter)) {
+    maxiter = min(numberof(b), 50);
+  } else if (! is_scalar(maxiter) || ! is_integer(maxiter)) {
+    error, "MAXITER must be an integer";
+  }
+  if (is_void(tol)) {
+    atol = 1e-6;
+    rtol = 0.0;
+  } else if (identof(tol) <= Y_DOUBLE && (n = numberof(tol)) <= 1
+             && min(tol) >= 0) {
+    atol = double(tol(1));
+    rtol = (n >= 2 ? double(tol(2)) : 0.0);
+  } else {
+    error, "bad tolerance";
+  }
+  if (is_void(show)) {
+    show = noop;
+  }
+
+  /* Initialization. */
+  if (is_void(x)) {
+    x = array(double, dimsof(b));
+    r = double(unref(b));
+  } else {
+    r = unref(b) - A(x);
+  }
+
+  /* Conjugate gradient iterations. */
+  extern mira_conjgrad_iterations;
+  local z, epsilon, rho0;
+  mira_conjgrad_iterations = 0;
+  while (1n) {
+    if (is_void(precond)) {
+      eq_nocopy, z, r;
+      rho = inner(r, r);
+    } else {
+      z = precond(r);
+      rho = inner(r, z);
+      if (rho < 0) error, "preconditioner is not positive definite";
+    }
+    if (mira_conjgrad_iterations == 0) {
+      epsilon = atol + rtol*sqrt(rho);
+    }
+    show, x;
+
+    ++mira_conjgrad_iterations;
+    if (sqrt(rho) <= epsilon) {
+      break;
+    } else if (maxiter >= 0 && mira_conjgrad_iterations > maxiter) {
+      if (! quiet) {
+        write, format="WARNING: too many (%d) conjugate gradient iterations", maxiter;
+      }
+      break;
+    }
+    if (mira_conjgrad_iterations == 1) {
+      p = z;
+    } else {
+      p = z + (rho/rho0)*unref(p);
+    }
+    q = A(p);
+    gamma = inner(p, q);
+    if (gamma <= 0) {
+      error, "left-hand-side operator A is not positive definite";
+      break;
+    }
+    alpha = rho/gamma;
+    x += alpha*p;
+    r -= alpha*q;
+    rho0 = rho;
+  }
+  return x;
 }
 
 /*---------------------------------------------------------------------------*/
