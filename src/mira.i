@@ -3449,7 +3449,7 @@ func mira_rescale(a, .., scale=, rgb=, cubic=)
       n1 = new_dimlist(k);
       if (n1 == n0) continue;
       if (n1 == 1) {
-        /* fix output dimensions equal to 1 (FIXME: use transpose)*/
+        /* fix output dimensions equal to 1 */
         /**/ if (j ==  1) a = a(avg, ..);
         else if (j ==  2) a = a(,avg, ..);
         else if (j ==  3) a = a(,,avg, ..);
@@ -3460,16 +3460,6 @@ func mira_rescale(a, .., scale=, rgb=, cubic=)
         else if (j ==  8) a = a(,,,,,,,avg, ..);
         else if (j ==  9) a = a(,,,,,,,,avg, ..);
         else if (j == 10) a = a(,,,,,,,,,avg, ..);
-        else if (j == 11) a = a(,,,,,,,,,,avg, ..);
-        else if (j == 12) a = a(,,,,,,,,,,,avg, ..);
-        else if (j == 13) a = a(,,,,,,,,,,,,avg, ..);
-        else if (j == 14) a = a(,,,,,,,,,,,,,avg, ..);
-        else if (j == 15) a = a(,,,,,,,,,,,,,,avg, ..);
-        else if (j == 16) a = a(,,,,,,,,,,,,,,,avg, ..);
-        else if (j == 17) a = a(,,,,,,,,,,,,,,,,avg, ..);
-        else if (j == 18) a = a(,,,,,,,,,,,,,,,,,avg, ..);
-        else if (j == 19) a = a(,,,,,,,,,,,,,,,,,,avg, ..);
-        else if (j == 20) a = a(,,,,,,,,,,,,,,,,,,,avg, ..);
         else error, "too many dimensions";
       } else {
         /* use linear interpolation */
