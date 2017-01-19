@@ -650,7 +650,7 @@ func mira_add_oidata(this, .., quiet=, noise_method=, noise_level=,
     j = where(strglob(this.target, data_target, case=0, path=3, esc=0));
     if (! is_array(j)) {
        if (! (quiet & 4)) {
-         write, format="WARNING - No data for target \"%s\" in this file.",
+         write, format="WARNING - No data for target \"%s\" in this file.\n",
            this.target;
        }
        continue;
@@ -2951,7 +2951,7 @@ func mira_plot_image(img, dat, clear=, cmin=, cmax=, zformat=, keeplimits=,
 
   if (clear && clear > 0) fma;
   if (! is_void(cmap)) p_colormap, cmap;
-  _pl_builtin_pli, img, x0, y0, x1, y1, cmin=cmin, cmax=cmax;
+  _pl_builtin_pli, img, "", x0, y0, x1, y1, cmin=cmin, cmax=cmax;
   if (! keeplimits) mira_fix_image_axis, x0, x1, y0, y1;
   pl_cbar, cmin=cmin, cmax=cmax, position="right", format=zformat, nlabs=11;
   pl_title, "relative !a ("+pixelunits+")", "relative !d ("+pixelunits+")";
@@ -3171,7 +3171,7 @@ func mira_dirty_map(dat, arg, maxiter=, tol=, guess=)
   x = H(w, 1);
 
   /* Normalize the result. */
-  return (zerofreq ? x : x + (total - sum(x)));
+  return (zerofreq ? x : x + (total - sum(x))/numberof(x));
 }
 
 func _mira_apply_dirty_map_lhs(H, x)
@@ -4464,7 +4464,9 @@ func mira_conjgrad(A, b, x, tol=, maxiter=, precond=, show=, quiet=)
       break;
     } else if (maxiter >= 0 && mira_conjgrad_iterations > maxiter) {
       if (! quiet) {
-        write, format="WARNING: too many (%d) conjugate gradient iterations", maxiter;
+        write,
+          format="WARNING - Too many (%d) conjugate gradient iterations.\n",
+          maxiter;
       }
       break;
     }
