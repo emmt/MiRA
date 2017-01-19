@@ -65,7 +65,7 @@ random_seed, (is_func(fftw) ? 0.2 : 0.7);
 img0 = random(dim, dim);
 
 rdline, prompt="hit [Return] to start reconstruction";
-img1 = mira_solve(mh1, img0, maxeval=0, verb=1, xmin=0.0, normalization=1, regul=rgl, mu=1e5, view=3, title="Reconstruction with phase closure");
+img1 = mira_solve(mh1, img0, maxeval=1, verb=1, xmin=0.0, normalization=1, regul=rgl, mu=1e5, view=3, title="Reconstruction with phase closure");
 rdline, prompt="hit [Return] to continue reconstruction";
 img1 = mira_solve(mh1, img1, maxeval=100, verb=1, xmin=0.0, normalization=1, regul=rgl, mu=1e5, view=3, title="Reconstruction with phase closure");
 img1 = mira_solve(mh1, img1, maxeval=100, verb=1, xmin=0.0, normalization=1, regul=rgl, mu=1e4, view=3, title="Reconstruction with phase closure");
