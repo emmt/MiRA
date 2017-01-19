@@ -3063,7 +3063,13 @@ local mira_dirty_beam, mira_dirty_map;
      when all complex visibilities are assumed to be all equal to 1.
 
      If the zero-th frequency is absent from the u-v coverage, the dirty map
-     computed from given complex visibilities will have zero mean.
+     computed from given complex visibilities will have zero mean.  To impose a
+     normalization constraint, it is sufficient to add a constant to the result
+     so as to match the requested average or total value.  If keyword
+     FIXZEROFREQ is true, an attempt will be done to fix the missing zeroth
+     frequency by imposing the sum of the pixels in the result when it can be
+     estimated (i.e. when an image IMG is given or when the dirty beam is
+     computed).
 
      Keywords MAXITER and TOL can be set to specify the stopping criterion of
      the conjugate gradient method used to compute the solution.  If MAXITER is
@@ -3108,12 +3114,13 @@ local mira_dirty_beam, mira_dirty_map;
   SEE ALSO: mira_config, mira_new, mira_get_xform.
 */
 
-func mira_dirty_beam(dat, maxiter=, tol=, guess=)
+func mira_dirty_beam(dat, maxiter=, tol=, guess=, fixzerofreq=)
 {
-  return mira_dirty_map(dat, maxiter=maxiter, tol=tol, guess=guess);
+  return mira_dirty_map(dat, maxiter=maxiter, tol=tol, guess=guess,
+                        fixzerofreq=fixzerofreq);
 }
 
-func mira_dirty_map(dat, arg, maxiter=, tol=, guess=)
+func mira_dirty_map(dat, arg, maxiter=, tol=, guess=, fixzerofreq=)
 {
   /* We need the linear operator H which computes the complex visibilities
      (this also update internals). */
@@ -3131,13 +3138,13 @@ func mira_dirty_map(dat, arg, maxiter=, tol=, guess=)
     /* Will compute the dirty beam. */
     vis = array(double, 2, nfreq);
     vis(1,..) = 1.0;
-    total = 1.0;
+    if (fixzerofreq) total = 1.0;
   } else {
     dims = dimsof(arg);
     type = identof(arg);
     if (type <= Y_DOUBLE && numberof(dims) == 3 && dims(2) == dims(3) &&
         dims(2) == mira_get_dim(dat)) {
-      total = double(sum(arg));
+      if (fixzerofreq) total = double(sum(arg));
       vis = H(arg);
     } else if (type == Y_COMPLEX && numberof(dims) == 2 && dims(2) == nfreq) {
       vis = linop_cast_complex_as_real(unref(arg));
