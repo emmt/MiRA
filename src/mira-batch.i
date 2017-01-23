@@ -36,9 +36,6 @@ _mira_batch_init = [];
 
 mira_require, "opt_init", MIRA_HOME + ["", "../lib/ylib/"] + "options.i";
 
-
-
-
 /* regularization
  * clique (mu, region)
  * entropy (mu, type, normalized, prior, epsilon)

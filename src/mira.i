@@ -463,8 +463,8 @@ func mira_new(.., wavemin=, wavemax=,
   if (is_void(monochromatic)) monochromatic = 1n;
 
   /* Get spectral bandwidth parameters (in meters). */
-  choice = ((is_void(wavemin) ? 0 : 1) |
-            (is_void(wavemax) ? 0 : 2) |
+  choice = ((is_void(wavemin)  ? 0 : 1) |
+            (is_void(wavemax)  ? 0 : 2) |
             (is_void(eff_wave) ? 0 : 4) |
             (is_void(eff_band) ? 0 : 8));
   if (choice == 3) {
@@ -2951,7 +2951,7 @@ func mira_plot_image(img, dat, clear=, cmin=, cmax=, zformat=, keeplimits=,
 
   if (clear && clear > 0) fma;
   if (! is_void(cmap)) p_colormap, cmap;
-  _pl_builtin_pli, img, "", x0, y0, x1, y1, cmin=cmin, cmax=cmax;
+  _pl_orig_pli, img, "", x0, y0, x1, y1, cmin=cmin, cmax=cmax;
   if (! keeplimits) mira_fix_image_axis, x0, x1, y0, y1;
   pl_cbar, cmin=cmin, cmax=cmax, position="right", format=zformat, nlabs=11;
   pl_title, "relative !a ("+pixelunits+")", "relative !d ("+pixelunits+")";
@@ -2971,7 +2971,7 @@ func mira_fix_image_axis(x0, x1, y0, y1)
    SEE ALSO: limits, mira_plot_image, mira_plot_baselines.
  */
 {
-  limits = _p_builtin_limits;
+  limits = _p_orig_limits;
   if (is_void(x0) || is_void(x1) || is_void(y0) || is_void(y1)) {
     lm = limits();
     if (is_void(x0)) x0 = lm(1);
