@@ -45,6 +45,7 @@ options:
   --yorick=PATH        Path to Yorick executable [$cfg_yorick].
   --incdir=DIR         Destination directory for MiRA code files [Y_SITE/i].
   --bindir=DIR         Destination directory for MiRA executable [$cfg_bindir].
+  --mandir=DIR         Destination directory for man pages [$cfg_mandir].
   --debug              Turn debug mode on (for this script).
   -h, --help           Print this help and exit.
 EOF
@@ -59,6 +60,7 @@ fi
 cfg_yorick=yorick
 cfg_incdir=
 cfg_bindir=
+cfg_mandir=
 while test $# -ge 1; do
     cfg_arg=$1
     shift
@@ -78,6 +80,9 @@ while test $# -ge 1; do
             ;;
         --bindir=*)
             cfg_bindir=$(cfg_opt_value "$cfg_arg")
+            ;;
+        --mandir=*)
+            cfg_mandir=$(cfg_opt_value "$cfg_arg")
             ;;
         *)
             cfg_die "Unknown option \"$cfg_arg\""
@@ -131,6 +136,13 @@ else
 fi
 echo >&2 "MiRA executable directory ------> $cfg_bindir_mesg"
 
+if test "x$cfg_mandir" = "x"; then
+    cfg_mandir_mesg="(will not be installed)"
+else
+    cfg_mandir_mesg="$cfg_mandir"
+fi
+echo >&2 "MiRA manual pages ---------------> $cfg_mandir_mesg"
+
 # Create the configration file.
 cfg_dst="./install.cfg"
 cat >"$cfg_dst" <<EOF
@@ -143,6 +155,10 @@ INCDIR=$cfg_incdir
 # BINDIR is the directory where to install MiRA command (nothing is installed
 # if empty).
 BINDIR=$cfg_bindir
+
+# MANDIR is the directory where to install MiRA manula pages (nothing is
+# installed if empty).
+MANDIR=$cfg_mandir
 
 # YORICK is the path for Yorick interpreter.
 YORICK=$cfg_yorick

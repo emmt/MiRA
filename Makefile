@@ -8,6 +8,7 @@ DESTDIR=
 #------------------------------------------------------------------------------
 #
 
+MAN_PAGES = ymira.1
 BIN_FILES = ymira
 MIRA_FILES = mira.i mira-batch.i
 IPY_FILES = linop.i rgl.i
@@ -17,6 +18,7 @@ TEST_FILES = mira-demo.i mira-test1.i mira-test2.i
 DATA_FILES = data1.oifits data2.oifits README
 OTHER_FILES = AUTHOR LICENSE Makefile configure \
     README.md INSTALL.md USAGE.md NEWS.md
+DOC_FILES = $(MAN_PAGES)
 
 MIRA_SRC = $(srcdir)/src
 IPY_SRC = $(srcdir)/lib/ipy
@@ -51,6 +53,7 @@ CONFIG=install.cfg
 YORICK=`test -f $(CONFIG) && sed <$(CONFIG) '/^ *YORICK *=/!d;s/^[^=]*= *//;s/ *$$//'`
 BINDIR=`test -f $(CONFIG) && sed <$(CONFIG) '/^ *BINDIR *=/!d;s/^[^=]*= *//;s/ *$$//'`
 INCDIR=`test -f $(CONFIG) && sed <$(CONFIG) '/^ *INCDIR *=/!d;s/^[^=]*= *//;s/ *$$//'`
+MANDIR=`test -f $(CONFIG) && sed <$(CONFIG) '/^ *MANDIR *=/!d;s/^[^=]*= *//;s/ *$$//'`
 
 $(CONFIG):
 	@echo "You must run the configuration script first"
@@ -59,24 +62,29 @@ $(CONFIG):
 install:
 	@ INCDIR=$(INCDIR); \
 	  BINDIR=$(BINDIR); \
+	  MANDIR=$(MANDIR); \
 	  YORICK=$(YORICK); \
 	  if test "x$$INCDIR" = "x" -o \( "x$$BINDIR" != "x" -a "x$$YORICK" = "x" \); then \
 	      echo >&2 "Run the configuration script \"configure\" first, or specify"; \
 	      echo >&2 "installation parameters on the command line:"; \
 	      echo >&2 ""; \
-	      echo >&2 "    make install YORICK=... BINDIR=... INCDIR=..."; \
+	      echo >&2 "    make install YORICK=... BINDIR=... INCDIR=... MANDIR=... DESTDIR=..."; \
 	      echo >&2 ""; \
 	      return 1; \
 	  fi; \
 	  echo "Installation settings:"; \
 	  echo "  BINDIR = $$BINDIR"; \
+	  echo "  MANDIR = $$MANDIR"; \
 	  echo "  INCDIR = $$INCDIR"; \
 	  echo "  YORICK = $$YORICK"; \
 	  if test "x$$INCDIR" != "x"; then \
+	      if test "x$(DESTDIR)" != "x"; then \
+	          INCDIR=$(DESTDIR)/$$INCDIR; \
+	      fi; \
 	      mkdir -p "$$INCDIR"; \
 	      for file in $(MIRA_FILES); do \
 	          echo "Installing $$file in $$INCDIR"; \
-	          dst=$(DESTDIR)$$INCDIR/$$file; \
+	          dst=$$INCDIR/$$file; \
 	          src=$(srcdir)/src/$$file; \
 	          if ! test -f "$$src"; then \
 	              echo >&2 "Missing file \"$$file\""; \
@@ -87,7 +95,7 @@ install:
 	      done; \
 	      for file in $(IPY_FILES); do \
 	          echo "Installing $$file in $$INCDIR"; \
-	          dst=$(DESTDIR)$$INCDIR/$$file; \
+	          dst=$$INCDIR/$$file; \
 	          src=$(IPY_SRC)/$$file; \
 	          if ! test -f "$$src"; then \
 	              src=$(srcdir)/src/$$file; \
@@ -101,7 +109,7 @@ install:
 	      done; \
 	      for file in $(YLIB_FILES); do \
 	          echo "Installing $$file in $$INCDIR"; \
-	          dst=$(DESTDIR)$$INCDIR/$$file; \
+	          dst=$$INCDIR/$$file; \
 	          src=$(YLIB_SRC)/$$file; \
 	          if ! test -f "$$src"; then \
 	              src=$(srcdir)/src/$$file; \
@@ -115,7 +123,7 @@ install:
 	      done; \
 	      for file in $(YOIFITS_FILES); do \
 	          echo "Installing $$file in $$INCDIR"; \
-	          dst=$(DESTDIR)$$INCDIR/$$file; \
+	          dst=$$INCDIR/$$file; \
 	          src=$(YOIFITS_SRC)/$$file; \
 	          if ! test -f "$$src"; then \
 	              src=$(srcdir)/src/$$file; \
@@ -129,10 +137,13 @@ install:
 	      done; \
 	  fi; \
 	  if test "x$$BINDIR" != "x"; then \
+	      if test "x$(DESTDIR)" != "x"; then \
+	          BINDIR=$(DESTDIR)/$$BINDIR; \
+	      fi; \
 	      mkdir -p "$$BINDIR"; \
 	      for file in $(BIN_FILES); do \
 	          echo "Installing $$file in $$BINDIR"; \
-	          dst=$(DESTDIR)$$BINDIR/$$file; \
+	          dst=$$BINDIR/$$file; \
 	          src=$(srcdir)/bin/$$file; \
 	          if ! test -f "$$src"; then \
 	              echo >&2 "Missing file \"$$file\""; \
@@ -143,6 +154,23 @@ install:
 	            -e "s,^INCDIR=.*,INCDIR=$$INCDIR,"; \
 	          chmod 755 "$$dst"; \
 	      done; \
+	      if test "x$$MANDIR" != "x"; then \
+	          if test "x$(DESTDIR)" != "x"; then \
+	              MANDIR=$(DESTDIR)/$$MANDIR; \
+	          fi; \
+	          mkdir -p "$$MANDIR/man1"; \
+	          for file in $(MAN_PAGES); do \
+	              echo "Installing $$file.gz in $$MANDIR/man1"; \
+	              dst=$$MANDIR/man1/$$file.gz; \
+	              src=$(srcdir)/doc/$$file; \
+	              if ! test -f "$$src"; then \
+	                  echo >&2 "Missing file \"$$file\""; \
+	                  return 1; \
+	              fi; \
+	              gzip <"$$src" >"$$dst"; \
+	              chmod 644 "$$dst"; \
+	          done; \
+	      fi; \
 	  fi
 
 distrib:
@@ -194,6 +222,11 @@ distrib:
 	mkdir -p "$$dstdir"; \
 	for file in $(DATA_FILES); do \
 	  cp -p "$(srcdir)/data/$$file" "$$dstdir/."; \
+	done; \
+	dstdir=$$pkgdir/doc; \
+	mkdir -p "$$dstdir"; \
+	for file in $(DOC_FILES); do \
+	  cp -p "$(srcdir)/doc/$$file" "$$dstdir/."; \
 	done; \
 	dstdir=$$pkgdir/test; \
 	mkdir -p "$$dstdir"; \
