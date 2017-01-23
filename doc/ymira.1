@@ -1,0 +1,271 @@
+.\" Manpage for MiRA
+.\" For a tutorial about writing a manpage, see
+.\" http://www.linuxhowtos.org/System/creatingman.htm
+.TH ymira 1 "23 january 2017" "Version 1.1.0" "MiRA image reconstruction algorithm"
+.SH NAME
+ymira \- reconstruct an image from optical interferometric data
+
+.SH SYNOPSIS
+
+.RI "ymira [" options "] " input " [" ... "] " output
+
+.SH DESCRIPTION
+
+MiRA is a software to reconstruct images from optical interferometric data.
+The algorithm performs a regularized fit of the data with additional
+constraints such as normalization and lower and/or upper bounds.
+
+.IR input " and [" ... "] are the OI-FITS data file and " output " is the result"
+saved into a FITS file.
+
+.SH OPTIONS
+
+Options are introduced by a word prefixed with one or two hyphens (at your
+convenience).  In case the first input file starts with an hyphen, a double
+hyphen can be used to indicate the end of the options.
+
+Some options have units.  Angles must be suffixed with
+.BR mas ", " milliarcsec ", " milliarcsecond ", " milliarcseconds ", "
+.BR deg ", " degree ", " degrees ", " rad ", " radian ", or " radians "."
+Lengths must be suffixed with
+.BR m ", " meter ", " meters ", " mm ", " millimeter ", " millimeters ", "
+.BR µm ", " micron ", " microns ", " micrometer ", " micrometers ", " nm ", "
+.BR nanometer ", or " nanometers "."
+
+Some options may take several values which are separated by commas.
+
+.SS Data Selection
+The following options can be used to select which data to consider.  If no
+spectral range is given (either with options
+.B -effwave
+and
+.B -effband
+or with options
+.B -wavemin
+and
+.B -wavemax
+), an image is reconstructed from all available wavelengths.
+
+.TP
+.BI "-target=" name
+Name of the astrophysical object.  This option is used to select a specific
+target from the input file(s).  If there is a single target which is identical
+in all input files, this option may be omitted.
+
+.TP
+.BI "-effwave=" length
+Specify the effective wavelength; for example,
+.BR -effwave=1.6micron .
+This is the central wavelength of the spectral range to consider.
+
+.TP
+.BI "-effband=" length
+Specify the effective bandwidth; for example,
+.BR -effband=200nm .
+This the full width of the spectral range to consider.
+
+.TP
+.BI "-wavemin=" length
+Specify the minimum wavelength; for example,
+.BR -wavemin=1.5µm .
+This the lower bound of the spectral range to consider.
+
+.TP
+.BI "-wavemax=" length
+Specify the maximum wavelength; for example,
+.BR -wavemin=1.7µm .
+This the upper bound of the spectral range to consider.
+
+.SS Image Settings
+.TP
+.BI "-pixelsize=" angle
+Angular size of pixels.  For example,
+.BR -pixelsize=0.1mas .
+This option must be specified.
+
+.TP
+.BI "-fov=" angle
+Angular size of the field of view. For example,
+.BR -fov=20mas .
+The image dimension must be specified either by this option or by
+.BR -dim .
+
+.TP
+.BI "-dim=" number
+Number of pixels per side of the image.  For example,
+.BR -dim=200 .
+The image dimension must be specified either by this option or by
+.BR -fov .
+
+.TP
+.BI "-normalization=" value
+Sepcify the sum of pixels.  A recommended setting is:
+.BR -normalization=1 .
+
+.TP
+.BI "-min=" lower
+Lower bound for the pixel values.  A recommended setting is:
+.BR -min=0 .
+
+.TP
+.BI "-max=" upper
+Upper bound for the pixel values.
+
+.SS Direct Model
+.TP
+.BI "-xform=" name
+Method to compute the nonequispaced Fourier transform.  Argument
+.I name
+.RB "can be " nfft ", " exact " or " fft
+(the latter value is however not recommended).
+
+.SS Regularization Settings
+.TP
+.BI "-regul=" name
+Specify the name of the regularization method.
+
+.TP
+.BI "-mu=" value(s)
+Global regularization weight(s) µ.  If a single value is given, it will be used
+for all reconstructions.  If two values are given (separated by comas), a
+different value of µ will be used for each reconstructions the values of µ
+spaced at equal ratios from START to STOP (that is, equally spaced
+logarithmically).
+
+.TP
+.BI "-tau=" value
+Edge preserving threshold.
+.IR value " must be strictly positive."
+
+.TP
+.BI "-eta=" value(s)
+Gradient scales along dimensions.
+
+.TP
+.BI "-gamma=" angle
+A priori full half width at half maximum (FWHM).  For example:
+.BR 15mas "."
+
+.SS Initial Image
+.TP
+.BI "-initial=" name
+FITS file or method for initial image.
+
+.TP
+.BI "-seed=" value
+Seed for the random generator.
+
+.SS Reconstruction Strategy
+.TP
+.BI "-bootstrap=" count
+Number of bootstrapping iterations.
+
+.TP
+.B "-recenter"
+Recenter result of bootstrapping iterations.
+
+.TP
+.BI "-threshold=" fraction
+Level for soft-thresholding input image(s)
+
+.SS Information and Graphics
+.TP
+.B "-quiet"
+Suppress most messages.
+
+.TP
+.BI "-verb=" count
+.RI "Set the verbose level.  Information will be printed every " count " iteration."
+.RB "Also see option " -view "."
+
+.TP
+.BI "-view=" bits
+Bitwise value to specify which graphics to show each time some information is
+printed.  The least significant bits of
+.I bits
+indicate which sub-panel to display.
+.RB "Use " "-view=0" " to suppress all graphics and "
+.BR "-view=-1" " to show all graphics."
+The default is to not display anything.  If some graphics are shown, the
+graphic window has to be closed at the end of the reconstruction to effectively
+quit the program.
+
+.SS Optimizer Settings
+.TP
+.BI "-mem=" count
+Number of previous steps to memorize in VMLMB.
+
+.TP
+.BI "-ftol=" real
+Function tolerance for the global convergence.
+
+.TP
+.BI "-gtol=" real
+Gradient tolerance for the global convergence.
+
+.TP
+.BI "-maxiter=" COUNT
+Maximum number of iterations for all reconstructions.
+
+.TP
+.BI "-maxeval=" COUNT
+Maximum number of evaluations of the objective function for all reconstructions.
+
+.SS Line Search Parameters
+.TP
+.BI "-sftol=" real
+Function tolerance for the line search.
+
+.TP
+.BI "-sgtol=" real
+Gradient tolerance for the line search.
+
+.TP
+.BI "-sxtol=" real
+Step tolerance for the line search.
+
+
+.SS Output File
+
+.TP
+.B "-overwrite"
+Overwrite output file if it exists.
+
+.TP
+.BI "-bitpix=" number
+Bits per pixel for the output FITS file.  Default is
+.BR -32 ", that is 32-bit floating point values."
+
+.TP
+.B "-save_initial"
+Save initial image as a secondary HDU in the output file.
+
+.SS Miscellaneaous
+.TP
+.B -help
+Print out this help.
+
+.TP
+.B -version
+Print out version number.
+
+.\".SH BUGS
+
+.SH AUTHOR
+
+Éric Thiébaut <https://github.com/emmt/MiRA>
+
+.SH REFERENCES
+
+Thiébaut, É.:
+.IR "MiRA: an effective imaging algorithm for optical interferometry" ,
+in SPIE Proc. Astronomical Telescopes and Instrumentation
+.BR 7013 ,
+70131I-1-70131I-12 (2008) <http://dx.doi.org/10.1117/12.788822>
+
+.PP
+Thiébaut, É. & Giovannelli, J.-F.:
+.IR "Image Reconstruction in Optical Interferometry" ,
+in IEEE Signal Processing Magazine
+.BR 27 ,
+pp. 97-109 (2010) <http://dx.doi.org/10.1109/MSP.2009.934870>
