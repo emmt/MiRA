@@ -8,7 +8,7 @@ DESTDIR=
 #------------------------------------------------------------------------------
 #
 
-BIN_FILES = mira
+BIN_FILES = ymira
 MIRA_FILES = mira.i mira-batch.i
 IPY_FILES = linop.i rgl.i
 YLIB_FILES = options.i xplot.i xplot0.i
@@ -39,9 +39,9 @@ distclean: clean
 
 TEST_FLAGS=-pixelsize=0.1mas -fov=20mas -regul=hyperbolic -bootstrap=1 -recenter -mu=3e3 -tau=5e-5 -ftol=0 -gtol=0 -maxeval=2000 -overwrite -normalization=1 -min=0 -verb=10
 test:
-	$(srcdir)/bin/mira $(TEST_FLAGS) \
+	$(srcdir)/bin/ymira $(TEST_FLAGS) \
 	    $(srcdir)/data/data1.oifits test1.fits
-	$(srcdir)/bin/mira $(TEST_FLAGS) -view=-1 -initial=test1.fits \
+	$(srcdir)/bin/ymira $(TEST_FLAGS) -view=-1 -initial=test1.fits \
 	    $(srcdir)/data/data1.oifits test2.fits
 
 # Installation parameters are variables so that they can be overwritten when
