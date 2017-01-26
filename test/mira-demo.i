@@ -94,7 +94,7 @@ random_seed, (is_func(fftw) ? 0.5 : 0.7);
 ROTATE = 0;
 img0 = random(dim, dim)//(::-1,::-1);
 
-img4 = mira_solve(mh1, img0, maxeval=0, verb=1, xmin=0.0, normalization=1, regul=rgl, mu=1e5, zap_phase=1, view=3, title="Reconstruction with no phase data");
+img4 = mira_solve(mh1, img0, maxeval=1, verb=1, xmin=0.0, normalization=1, regul=rgl, mu=1e5, zap_phase=1, view=3, title="Reconstruction with no phase data");
 rdline, prompt="hit [Return] to start reconstruction";
 img4 = mira_solve(mh1, img0, maxeval=50, verb=1, xmin=0.0, normalization=1, regul=rgl, mu=1e5, zap_phase=1, view=3, title="Reconstruction with no phase data");
 img4 = mira_solve(mh1, img4, maxeval=50, verb=1, xmin=0.0, normalization=1, regul=rgl, mu=5e4, zap_phase=1, view=3, title="Reconstruction with no phase data");
