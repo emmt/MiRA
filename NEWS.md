@@ -1,8 +1,9 @@
 # History of MiRA
 
-# Master version
+## Version 1.1.1 (2017-01-26)
 * Better algorithm to compute the dirty map and the dirty beam.
 * Improve command line help, provide a manual page.
+* Speed up plots.
 
 ## Version 1.1.0 (2017-01-10)
 * Provide a command line interface (options in command line have units).
