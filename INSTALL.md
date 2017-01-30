@@ -5,7 +5,7 @@ There are 2 possible ways to use MiRA:
 * with Yorick interpreter or in your Yorick code with `#include "mira.i"` (or
   similar);
 
-* from the command line with the `mira` command.
+* from the command line with the `ymira` command.
 
 Provided you have installed required software (see
 [*Prerequisites*](#prerequisites) below), MiRA software is usable right after
@@ -129,15 +129,14 @@ can be installed anywhere but must know the directory where MiRA source files
 are copied and the path to Yorick executable.
 
 If Yorick executable is in your shell command path, you can directly run the
-`mira` command from the `bin` directory of the distribution.
+`ymira` command from the `bin` directory of the distribution.
 
-To install the `mira` command in a given directory, say `BINDIR`, you just have
-to copy the script `src/mira` in `BINDIR` and edit it so that variables
+To install the `ymira` command in a given directory, say `BINDIR`, you just
+have to copy the script `bin/ymira` in `BINDIR` and edit it so that variables
 `INCDIR` and `YORICK` are correctly set, the former to the directory where MiRA
 sources have been copied, the latter to the path of the Yorick interpreter
 executable.  For instance:
 
-    cp src/mira "$BINDIR"
-    edit "$BINDIR/mira"
-    chmod 755 "$BINDIR/mira"
-
+    cp bin/ymira "$BINDIR"
+    edit "$BINDIR/ymira"
+    chmod 755 "$BINDIR/ymira"
