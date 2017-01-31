@@ -36,6 +36,12 @@ _mira_batch_init = [];
 
 mira_require, "opt_init", MIRA_HOME + ["", "../lib/ylib/"] + "options.i";
 
+if (! is_func(nfft_new)) {
+  /* Attempt to pre-load YNFFT. */
+  include, "nfft.i", 3;
+}
+_mira_batch_xform = (is_func(nfft_new) ? "nfft" : "exact");
+
 /* regularization
  * clique (mu, region)
  * entropy (mu, type, normalized, prior, epsilon)
@@ -101,7 +107,7 @@ _MIRA_OPTIONS = opt_init\
     _lst("normalization", NULL, "VALUE", OPT_REAL, "Flux normalization (sum of pixels = VALUE)"),
     _lst("min", NULL, "LOWER", OPT_REAL, "Lower bound for the pixel values"),
     _lst("max", NULL, "UPPER", OPT_REAL, "Upper bound for the pixel values"),
-    _lst("xform", "nfft", "NAME", OPT_STRING, "Method to compute the Fourier transform"),
+    _lst("xform", _mira_batch_xform, "NAME", OPT_STRING, "Method to compute the Fourier transform"),
     "\nRegularization settings:",
     _lst("regul", NULL, "NAME", OPT_STRING, "Name of regularization method"),
     _lst("mu", 0.0, "VALUE(S)", OPT_REAL_LIST, "Global regularization weight"),
