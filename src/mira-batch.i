@@ -130,7 +130,7 @@ _MIRA_OPTIONS = opt_init\
     "\nOutput image:",
     _lst("overwrite", NULL, NULL, OPT_FLAG, "Overwrite output if it exists"),
     _lst("bitpix", -32, "BITPIX", OPT_INTEGER, "Bits per pixel"),
-    _lst("save_initial", NULL, NULL, OPT_FLAG, "Save initial image as a secondary HDU in result"),
+    _lst("save_initial", NULL, NULL, OPT_FLAG, "Save initial image as a secondary HDU in the result"),
     "\nReconstruction strategy:",
     _lst("bootstrap", NULL, "COUNT", OPT_INTEGER, "Number of bootstrapping iterations"),
     _lst("recenter", NULL, NULL, OPT_FLAG, "Recenter result of bootstrapping iterations"),
@@ -150,6 +150,7 @@ _MIRA_OPTIONS = opt_init\
     _lst("sgtol", NULL, "REAL", OPT_REAL, "Gradient tolerance for the line search"),
     _lst("sxtol", NULL, "REAL", OPT_REAL, "Step tolerance for the line search"),
     "\nMiscellaneous:",
+    _lst("debug", NULL, NULL, OPT_FLAG, "Debug mode"),
     _lst("help", NULL, NULL, OPT_HELP, "Print out this help"),
     _lst("version", MIRA_VERSION, NULL, OPT_VERSION, "Print out version number")));
 
@@ -213,6 +214,9 @@ func mira_main(argv0, argv)
     return;
   }
   final_filename = argv(0);
+  if (! opt.debug) {
+    error = opt_error;
+  }
 
   /* Check bitpix. */
   if (opt.bitpix != 8 && opt.bitpix != 16 && opt.bitpix != 32 &&
