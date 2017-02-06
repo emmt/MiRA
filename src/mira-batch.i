@@ -200,7 +200,6 @@ func mira_main(argv0, argv)
   /* Constants and shortcuts. */
   FALSE = 0n;
   TRUE = 1n;
-  monochromatic = TRUE;
   format = mira_format;
 
   opt = opt_parse(_MIRA_OPTIONS, argv);
@@ -360,13 +359,11 @@ func mira_main(argv0, argv)
     naxis2 = img.naxis2;
     naxis3 = (naxis >= 3 ? img.naxis3 : 1);
     eq_nocopy, initial, img.arr;
-    if (monochromatic) {
-      if (naxis == 3) {
+    if (naxis == 3) {
         if (naxis3 != 1) {
           opt_error, "Expecting a 2D initial image";
         }
         initial = initial(,,avg);
-      }
     }
     // FIXME: only the pixel size is considered...
 
@@ -437,7 +434,6 @@ func mira_main(argv0, argv)
                     eff_band = opt.effband,
                     wavemin = opt.wavemin,
                     wavemax = opt.wavemax,
-                    monochromatic = monochromatic,
                     quiet = opt.quiet);
 
   mira_config, master, dim=dim, pixelsize=pixelsize, xform=opt.xform;

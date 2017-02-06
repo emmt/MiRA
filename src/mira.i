@@ -173,6 +173,12 @@ MIRA_GOLDEN      = ['\xff', '\x95', '\x0e'];
 MIRA_RED         = ['\xc5', '\x00', '\x0b'];
 MIRA_BLUE        = ['\x00', '\x84', '\xd1'];
 
+/* Customization for plots. */
+MIRA_TEXTCOLOR = "black";
+MIRA_FRAMECOLOR = "darkgray";
+MIRA_FRAMEWIDTH = 2;
+MIRA_FONT = P_TIMES;
+MIRA_TEXTHEIGHT = 14*P_NDC_POINT;
 MIRA_EMPH = +sqrt(2); // emphasis for titles
 
 /* Various global options. */
@@ -289,8 +295,6 @@ _MIRA_LENGTH_UNITS_TABLE = h_new("m",           MIRA_METER,
  *   MASTER.vis - complex visibility data (see below for layout)
  *   MASTER.vis2 - powerspectrum data (see below for layout)
  *   MASTER.vis3 - bispectrum data (see below for layout)
- *   MASTER.monochromatic - monochromatic or gray case?
- *   MASTER.monochromatic_option - monochromatic option as set by user
  *   MASTER.u - list of measured spatial frequencies
  *   MASTER.v - list of measured spatial frequencies
  *   MASTER.w - list of measured wavelenghts
@@ -375,7 +379,7 @@ _MIRA_LENGTH_UNITS_TABLE = h_new("m",           MIRA_METER,
  *
  *     DB.u ~ MASTER.u(DB.idx)*DB.sgn
  *     DB.v ~ MASTER.v(DB.idx)*DB.sgn
- *     DB.w ~ MASTER.w(DB.idx)            // not in monochromatic mode
+ *     DB.w ~ MASTER.w(DB.idx)
  *
  *   where MASTER is the parent of datablock DB
  *
@@ -383,7 +387,7 @@ _MIRA_LENGTH_UNITS_TABLE = h_new("m",           MIRA_METER,
 
 func mira_new(.., wavemin=, wavemax=,
               eff_wave=, eff_band=, wave_tol=,
-              quiet=, base_tol=, monochromatic=,
+              quiet=, base_tol=,
               noise_method=, noise_level=,
               cleanup_bad_data=, target=, goodman=,
               no_t3=, no_vis=, no_vis2=)
@@ -401,6 +405,10 @@ func mira_new(.., wavemin=, wavemax=,
        EFF_BAND = Effective spectral bandwidth (units: meters), default value
            is 1e-7 (0.1 micron).
 
+       WAVEMIN = Lower bound for the selected wavelength range (in meters).
+
+       WAVEMAX = Upper bound for the selected wavelength range (in meters).
+
        WAVE_TOL = Tolerance for wavelength grouping (units: meters).  Default
            value is 1e-10 (1 Ångström).  This tolerance is used to decide
            whether different wavelengths correspond to the same one.
@@ -408,9 +416,6 @@ func mira_new(.., wavemin=, wavemax=,
        BASE_TOL = Tolerance for baseline grouping (units: meters).  Default
            value is 1e-3 (1 millimeter).  This tolerance is used to decide
            whether different positions correspond to the same baseline.
-
-       MONOCHROMATIC = True if a monochromatic (gray) model of the object
-           brightness distribution is to be reconstructed.
 
        NO_VIS = True to not use complex visibilities (OI_VIS data-blocks).
 
@@ -460,7 +465,6 @@ func mira_new(.., wavemin=, wavemax=,
  */
 {
   if (is_void(quiet)) quiet = 0;
-  if (is_void(monochromatic)) monochromatic = 1n;
 
   /* Get spectral bandwidth parameters (in meters). */
   choice = ((is_void(wavemin)  ? 0 : 1) |
@@ -511,7 +515,6 @@ func mira_new(.., wavemin=, wavemax=,
                  eff_band = eff_band,
                  wave_tol = wave_tol,
                  base_tol = base_tol,
-                 monochromatic_option = monochromatic,
                  flags = 0,
                  flux_weight = 0.0,
                  flux_mean = 1.0,
@@ -916,90 +919,71 @@ func _mira_build_coordinate_list(master)
     return;
   }
 
-  /* Figure out whether or not we are in "monochromatic" mode. */
-  w_digit = mira_digitize(master.w, master.wave_tol);
-  number_of_wavelengths = numberof(w_digit.value);
-  if (number_of_wavelengths > 1) {
-    monochromatic = (master.monochromatic_option ? 1n : 0n);
-    w = w_digit.value;
-  } else {
-    monochromatic = 1n;
-    w = w_digit.value(1);
-  }
-  h_set, master, w = w, monochromatic = monochromatic;
-
-
   /*
   ** Make a list of "unique" coordinates using a *slow* O(N^2) algorithm.
   */
 
-  if (monochromatic) {
+  local u_inp, v_inp;
+  eq_nocopy, u_inp, master.u;
+  eq_nocopy, v_inp, master.v;
+  number = numberof(u_inp);
+  u_out = array(double, number); /* maximum size */
+  v_out = array(double, number); /* maximum size */
+  n_out = array(long, number); /* maximum size */
+  idx = array(long, number);
+  sgn = array(long, number);
+  mid_wavelength = 0.5*(max(master.w) + min(master.w));
+  freq_tol = master.base_tol/mid_wavelength;
 
-    local u_inp, v_inp;
-    eq_nocopy, u_inp, master.u;
-    eq_nocopy, v_inp, master.v;
-    number = numberof(u_inp);
-    u_out = array(double, number); /* maximum size */
-    v_out = array(double, number); /* maximum size */
-    n_out = array(long, number); /* maximum size */
-    idx = array(long, number);
-    sgn = array(long, number);
-    mid_wavelength = 0.5*(max(master.w) + min(master.w));
-    freq_tol = master.base_tol/mid_wavelength;
+  j = k = 1;
+  u_out(k) = u_inp(j);
+  v_out(k) = v_inp(j);
+  n_out(k) = 1;
+  idx(j) = k;
+  sgn(j) = 1;
+  while (++j <= number) {
 
-    j = k = 1;
-    u_out(k) = u_inp(j);
-    v_out(k) = v_inp(j);
-    n_out(k) = 1;
-    idx(j) = k;
-    sgn(j) = 1;
-    while (++j <= number) {
+    /* Get j-th position. */
+    u = u_inp(j);
+    v = v_inp(j);
 
-      /* Get j-th position. */
-      u = u_inp(j);
-      v = v_inp(j);
-
-      /* Search +/-position among list of positions. */
-      u_tmp = u_out(1:k);
-      v_tmp = v_out(1:k);
-      rp = (temp = u - u_tmp)*temp + (temp = v - v_tmp)*temp;
-      rn = (temp = u + u_tmp)*temp + (temp = v + v_tmp)*temp;
-      rp_min = min(rp);
-      rn_min = min(rn);
-      if (min(rp_min, rn_min) > freq_tol) {
-        /* Got a new position. */
-        idx(j) = ++k;
-        sgn(j) = 1;
-        u_out(k) = u;
-        v_out(k) = v;
-        n_out(k) = 1;
-      } else if (rp_min <= rn_min) {
-        idx(j) = (kp = rp(mnx));
-        sgn(j) = 1;
-        np1 = (n = n_out(kp)) + 1;
-        u_out(kp) = (n*u_out(kp) + u)/np1;
-        v_out(kp) = (n*v_out(kp) + v)/np1;
-        n_out(kp) = np1;
-      } else {
-        idx(j) = (kp = rn(mnx));
-        sgn(j) = 1;
-        np1 = (n = n_out(kp)) + 1;
-        u_out(kp) = (n*u_out(kp) - u)/np1;
-        v_out(kp) = (n*v_out(kp) - v)/np1;
-        n_out(kp) = np1;
-      }
+    /* Search +/-position among list of positions. */
+    u_tmp = u_out(1:k);
+    v_tmp = v_out(1:k);
+    rp = (temp = u - u_tmp)*temp + (temp = v - v_tmp)*temp;
+    rn = (temp = u + u_tmp)*temp + (temp = v + v_tmp)*temp;
+    rp_min = min(rp);
+    rn_min = min(rn);
+    if (min(rp_min, rn_min) > freq_tol) {
+      /* Got a new position. */
+      idx(j) = ++k;
+      sgn(j) = 1;
+      u_out(k) = u;
+      v_out(k) = v;
+      n_out(k) = 1;
+    } else if (rp_min <= rn_min) {
+      idx(j) = (kp = rp(mnx));
+      sgn(j) = 1;
+      np1 = (n = n_out(kp)) + 1;
+      u_out(kp) = (n*u_out(kp) + u)/np1;
+      v_out(kp) = (n*v_out(kp) + v)/np1;
+      n_out(kp) = np1;
+    } else {
+      idx(j) = (kp = rn(mnx));
+      sgn(j) = 1;
+      np1 = (n = n_out(kp)) + 1;
+      u_out(kp) = (n*u_out(kp) - u)/np1;
+      v_out(kp) = (n*v_out(kp) - v)/np1;
+      n_out(kp) = np1;
     }
-    if (k < number) {
-      u_out = u_out(1:k);
-      v_out = v_out(1:k);
-      n_out = n_out(1:k);
-    }
-    write, format="There are %d sampled frequencies out of %d measurements.\n",
-        k, number;
-
-  } else {
-    error, "only monochromatic mode is implemented by MiRA";
   }
+  if (k < number) {
+    u_out = u_out(1:k);
+    v_out = v_out(1:k);
+    n_out = n_out(1:k);
+  }
+  write, format="There are %d sampled frequencies out of %d measurements.\n",
+    k, number;
 
 
   /*
@@ -1441,7 +1425,10 @@ func mira_new_nfft_xform(u, v, pixelsize, nx, ny)
  */
 {
   if (! is_func(nfft_new)) {
-    include, "nfft.i", 1;
+    include, "nfft.i", 3;
+    if (! is_func(nfft_new)) {
+      error, "plugin YNFFT is not installed";
+    }
   }
   if (! is_vector(u) || ! is_vector(v) || numberof(u) != numberof(v)) {
     error, "arguments U and V must be vectors of same length";
@@ -2766,6 +2753,16 @@ func mira_get_v(dat) { return dat.v; }
      MiRA instance DAT.  These are the frequencies of the complex visibilities
      computed by the linear model.
 
+   SEE ALSO: mira_get_w.
+*/
+
+func mira_get_eff_wave(dat) { return dat.eff_wave; }
+func mira_get_eff_band(dat) { return dat.eff_band; }
+/* DOCUMENT mira_get_eff_wave(dat);
+         or mira_get_eff_band(dat);
+
+     Get effective wavelength and bandwidth for the data in MiRA instance DAT.
+
    SEE ALSO: mira_apply_xform, mira_config.
 */
 
@@ -2876,8 +2873,47 @@ func mira_extract_region(arr, dim)
   }
 }
 
-func mira_plot_image(img, dat, clear=, cmin=, cmax=, zformat=, keeplimits=,
-                     normalize=, pixelsize=, pixelunits=, cmap=)
+func mira_plot_style(win, aspect=, verb=, dpi=, xmin=, xmax=, ymin=, ymax=, xlog=,
+                     ylog=, square=, clear=, cmap=, framewidth=, frame=, font=,
+                     textcolor=, textheight=, linecolor=, viewport=)
+/* DOCUMENT mira_plot_style;
+         or mira_plot_style, win, key1=val1, key2=val2, ...;
+
+     Implement common graphics style for MiRA plots and initialize window
+     WIN for plotting.
+
+   SEE ALSO: p_style, p_colormap;
+ */
+{
+  if (is_void(dpi)) {
+    if (! is_void(win)) window, win;
+  } else {
+    if (is_void(win)) win = current_window();
+    if (win >= 0) winkill, win;
+    window, win, dpi=dpi;
+  }
+  if (clear) fma;
+  if (is_void(viewport) && is_void(aspect)) {
+    /* Default square viewport. */
+    viewport = [0.192286,0.605671,0.42779,0.841175];
+  }
+  p_style, frame=(is_void(frame) ? 1n : frame),
+    aspect = aspect, viewport = viewport,
+    font = p_font(font, MIRA_FONT),
+    framewidth = p_real(framewidth, MIRA_FRAMEWIDTH),
+    verb = verb,
+    color = p_color(linecolor, MIRA_FRAMECOLOR),
+    textcolor = p_color(textcolor, MIRA_TEXTCOLOR),
+    textheight = p_real(textheight, MIRA_TEXTHEIGHT),
+    tickwidth = 1, gridlevel = 0;
+  if (! is_void(cmap)) p_colormap, cmap;
+  logxy, p_boolean(xlog), p_boolean(ylog);
+  limits, xmin, xmax, ymin, ymax;
+  limits, square=p_boolean(square);
+}
+
+func mira_plot_image(img, dat, clear=, cmin=, cmax=, keeplimits=,
+                     normalize=, pixelsize=, pixelunits=, cmap=, nlabs=)
 /* DOCUMENT mira_plot_image, img;
          or mira_plot_image, img, dat;
 
@@ -2892,8 +2928,8 @@ func mira_plot_image(img, dat, clear=, cmin=, cmax=, zformat=, keeplimits=,
      after drawing the image (useful in animate mode); if CLEAR = 0 or
      undefined, then fma is not called.
 
-     Keyword ZFORMAT can be used to specify the format for the color bar
-     labels (see pl_cbar).
+     Keyword NLABS can be used to specify the approximative number of labels
+     for the color bar(see pl_cbar).
 
      Keyword PIXELSIZE and PIXELUNITS can be used to specify the size of the
      pixel in given angular units and the name of these units.  Both must be
@@ -2923,7 +2959,7 @@ func mira_plot_image(img, dat, clear=, cmin=, cmax=, zformat=, keeplimits=,
 
   if (is_hash(dat)) {
     pixelsize = dat.pixelsize/MIRA_MILLIARCSECOND;
-    pixelunits = "milliarcseconds";
+    pixelunits = "mas";
   } else {
     if (is_void(pixelsize) || is_void(pixelunits)) {
       pixelsize = 1.0;
@@ -2953,8 +2989,10 @@ func mira_plot_image(img, dat, clear=, cmin=, cmax=, zformat=, keeplimits=,
   if (! is_void(cmap)) p_colormap, cmap;
   _pl_orig_pli, img, "", x0, y0, x1, y1, cmin=cmin, cmax=cmax;
   if (! keeplimits) mira_fix_image_axis, x0, x1, y0, y1;
-  pl_cbar, cmin=cmin, cmax=cmax, position="right", format=zformat, nlabs=11;
-  pl_title, "relative !a ("+pixelunits+")", "relative !d ("+pixelunits+")";
+  pl_cbar, cmin=cmin, cmax=cmax, position="right",
+    nlabs=(is_void(nlabs) ? 7 : nlabs),
+    labeloptions=P_LABEL_POW10;
+  pl_title, "!D!a ("+pixelunits+")", "!D!d ("+pixelunits+")";
   if (clear && clear < 0) fma;
 }
 
@@ -3215,7 +3253,7 @@ local mira_plot_baselines, mira_plot_frequencies;
 func mira_plot_frequencies(this, color=, symbol=, size=, fill=,
                            notitle=, keeplimits=)
 {
-  if (is_void(symbol)) symbol = 4;
+  if (is_void(symbol)) symbol = P_CIRCLE;
   if (is_void(size)) size = 0.33;
   local u, v;
   eq_nocopy, u, this.u;
@@ -3230,9 +3268,9 @@ func mira_plot_frequencies(this, color=, symbol=, size=, fill=,
   plp, v*1e-6, u*1e-6, color=color, symbol=symbol, size=size, fill=fill;
   if (! keeplimits) mira_fix_image_axis;
   if (! notitle) {
-    xytitles,
-      "u-spatial frequency (Mega-cycles/radian)",
-      "v-spatial frequency (Mega-cycles/radian)";
+    pl_title,
+      "u (Mega-cycles/radian)",
+      "v (Mega-cycles/radian)";
   }
 }
 
@@ -3999,9 +4037,13 @@ func mira_wrap_image(arr, dat)
   naxis2 = dims(3);
   naxis3 = (naxis >= 3 ? dims(4) : 1);
   if (is_hash(dat)) {
-    w = mira_get_w(dat);
-    x = mira_get_x(dat);
-    y = mira_get_y(dat);
+    local w, x, y;
+    eq_nocopy, w, mira_get_w(dat);
+    eq_nocopy, x, mira_get_x(dat);
+    eq_nocopy, y, mira_get_y(dat);
+    if (naxis3 == 1) {
+      w = median(w);
+    }
     if (naxis1 != numberof(x) ||
         naxis2 != numberof(y) ||
         naxis3 != numberof(w)) {
@@ -4024,15 +4066,15 @@ func mira_wrap_image(arr, dat)
                 ctype2 = "DEC--TAN",
                 cunit2 = "arcsec");
     if (naxis < 3) {
-      return img;
+      return h_set(img, wavelength=w);
     }
     return h_set(img,
                  naxis3 = naxis3,
                  crpix3 = 1.0,
-                 crval3 = w(1)/MIRA_MICROMETER,
-                 cdelt3 = (numberof(w) > 1 ? avg(w(dif)) : 1.0)/MIRA_MICROMETER,
+                 crval3 = w(1)/MIRA_NANOMETER,
+                 cdelt3 = (numberof(w) > 1 ? avg(w(dif)) : 1.0)/MIRA_NANOMETER,
                  ctype3 = "WAVELENGTH",
-                 cunit3 = "micrometer");
+                 cunit3 = "nm");
   } else if (is_void(dat)) {
     i1 = mira_central_index(naxis1);
     i2 = mira_central_index(naxis2);
