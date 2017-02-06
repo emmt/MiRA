@@ -56,11 +56,12 @@ unpack it.  For instance:
 
 ## Prerequisites
 
-You must have [Yorick](http://dhmunro.github.io/yorick-doc/) (version 2.2.04 or better), [Yeti](https://github.com/emmt/Yeti) (version 6.3.2 or better) and
-[OptimPackLegacy](https://github.com/emmt/OptimPackLegacy)
-(version 1.4.0 or better) installed.  For faster operations, you may want to use
-[YNFFT](https://github.com/emmt/ynfft) (version 1.0.3 or better), a Yorick plugin for the *Nonequispaced
-Fast Fourier Transform*.
+You must have [Yorick](http://dhmunro.github.io/yorick-doc/) (version 2.2.04 or
+superior), [Yeti](https://github.com/emmt/Yeti) (version 6.3.2 or superior) and
+[OptimPackLegacy](https://github.com/emmt/OptimPackLegacy) (version 1.4.0 or
+superior) installed.  For faster operations, you may want to use
+[YNFFT](https://github.com/emmt/ynfft) (version 1.0.3 or superior), a Yorick
+plugin for the *Nonequispaced Fast Fourier Transform*.
 
 
 ## Installation of MiRA software
