@@ -3538,6 +3538,279 @@ func mira_rdif(a, b)
   return (a == b ? 0.0 : 2.0*abs(a - b)/(abs(a) + abs(b)));
 }
 
+func mira_resample_image(src, pad=, norm=,
+                         naxis1=, crpix1=, crval1=, cdelt1=, cunit1=,
+                         naxis2=, crpix2=, crval2=, cdelt2=, cunit2=,
+                         naxis3=, crpix3=, crval3=, cdelt3=, cunit3=)
+/* DOCUMENT mira_resample_image(src, key=val, ...);
+
+     Resample an image (as returned by `mira_read_image`) to given parameters,
+     all passed as keywords and with default values taken from SRC.  Number of
+     samples, index of reference position, coordinate at reference position and
+     increment along n-th axis may be set with keywords NAXISn, CRPIXn, CRVALn
+     and CDELTn respectively.  It is assumed that keywords CRVALn and CDELTn
+     are in units given by keyword CUNITn if specified, in units given by
+     SRC.CUNITn otherwise.  Units (via keywords CUNITn, with n the axis number)
+     may be changed but must be consistent (a lenght cannot be converted into
+     an angle).
+
+     Keywords PAD and NORM can be used to specify the padding value for
+     extrapolating pixels and whether or not to preserve the normalization.
+
+   SEE ALSO: mira_resample_axis.
+ */
+{
+  rdif = mira_rdif;
+  eps = 1e-14;
+  local arr;
+  eq_nocopy, arr, src.arr;
+  naxis = src.naxis;
+  dst = h_new(naxis=naxis);
+  if (naxis >= 1) {
+    if (is_void(cunit1)) {
+      cunit1 = src.cunit1;
+    }
+    if (is_scalar(cunit1) && is_string(cunit1)) {
+      factor = mira_convert_units(src.cunit1, cunit1);
+    } else {
+      error, "bad value for CUNIT1";
+    }
+    if (is_void(naxis1)) {
+      naxis1 = src.naxis1;
+    }
+    if (is_scalar(naxis1) && is_integer(naxis1) && naxis1 >= 1) {
+      naxis1 = long(naxis1)
+    } else {
+      error, "bad value for NAXIS1";
+    }
+    if (is_void(crpix1)) {
+      crpix1 = src.crpix1;
+    }
+    if (is_scalar(crpix1) && identof(crpix1) <= Y_DOUBLE) {
+      crpix1 = double(crpix1);
+    } else {
+      error, "bad value for CRPIX1";
+    }
+    if (is_void(crval1)) {
+      crval1 = factor*src.crval1;
+    }
+    if (is_scalar(crval1) && identof(crval1) <= Y_DOUBLE) {
+      crval1 = double(crval1);
+    } else {
+      error, "bad value for CRVAL1";
+    }
+    if (is_void(cdelt1)) {
+      cdelt1 = factor*src.cdelt1;
+    }
+    if (is_scalar(cdelt1) && identof(cdelt1) <= Y_DOUBLE && cdelt1 != 0) {
+      cdelt1 = double(cdelt1);
+    } else {
+      error, "bad value for CDELT1";
+    }
+    h_set, dst, naxis1 = naxis1, crpix1 = crpix1, crval1 = crval1,
+      cdelt1 = cdelt1, cunit1 = cunit1, ctype1 = src.ctype1;
+    if (dst.naxis1 != src.naxis1 ||
+        rdif(dst.cdelt1, factor*src.cdelt1) > eps ||
+        rdif(dst.crval1 - dst.crpix1*dst.cdelt1,
+             factor*(src.crval1 - src.crpix1*src.cdelt1)) > eps) {
+      arr = mira_resample_axis(arr, src.crpix1, factor*src.crval1,
+                               factor*src.cdelt1, dst.naxis1,
+                               dst.crpix1, dst.crval1, dst.cdelt1,
+                               1, pad=pad, norm=norm);
+    }
+  }
+  if (naxis >= 2) {
+    if (is_void(cunit2)) {
+      cunit2 = src.cunit2;
+    }
+    if (is_scalar(cunit2) && is_string(cunit2)) {
+      factor = mira_convert_units(src.cunit2, cunit2);
+    } else {
+      error, "bad value for CUNIT2";
+    }
+    if (is_void(naxis2)) {
+      naxis2 = src.naxis2;
+    }
+    if (is_scalar(naxis2) && is_integer(naxis2) && naxis2 >= 2) {
+      naxis2 = long(naxis2)
+    } else {
+      error, "bad value for NAXIS2";
+    }
+    if (is_void(crpix2)) {
+      crpix2 = src.crpix2;
+    }
+    if (is_scalar(crpix2) && identof(crpix2) <= Y_DOUBLE) {
+      crpix2 = double(crpix2);
+    } else {
+      error, "bad value for CRPIX2";
+    }
+    if (is_void(crval2)) {
+      crval2 = factor*src.crval2;
+    }
+    if (is_scalar(crval2) && identof(crval2) <= Y_DOUBLE) {
+      crval2 = double(crval2);
+    } else {
+      error, "bad value for CRVAL2";
+    }
+    if (is_void(cdelt2)) {
+      cdelt2 = factor*src.cdelt2;
+    }
+    if (is_scalar(cdelt2) && identof(cdelt2) <= Y_DOUBLE && cdelt2 != 0) {
+      cdelt2 = double(cdelt2);
+    } else {
+      error, "bad value for CDELT2";
+    }
+    h_set, dst, naxis2 = naxis2, crpix2 = crpix2, crval2 = crval2,
+      cdelt2 = cdelt2, cunit2 = cunit2, ctype2 = src.ctype2;
+    if (dst.naxis2 != src.naxis2 ||
+        rdif(dst.cdelt2, factor*src.cdelt2) > eps ||
+        rdif(dst.crval2 - dst.crpix2*dst.cdelt2,
+             factor*(src.crval2 - src.crpix2*src.cdelt2)) > eps) {
+      arr = mira_resample_axis(arr, src.crpix2, factor*src.crval2,
+                               factor*src.cdelt2, dst.naxis2,
+                               dst.crpix2, dst.crval2, dst.cdelt2,
+                               2, pad=pad, norm=norm);
+    }
+  }
+  if (naxis >= 3) {
+    if (is_void(cunit3)) {
+      cunit3 = src.cunit3;
+    }
+    if (is_scalar(cunit3) && is_string(cunit3)) {
+      factor = mira_convert_units(src.cunit3, cunit3);
+    } else {
+      error, "bad value for CUNIT3";
+    }
+    if (is_void(naxis3)) {
+      naxis3 = src.naxis3;
+    }
+    if (is_scalar(naxis3) && is_integer(naxis3) && naxis3 >= 3) {
+      naxis3 = long(naxis3)
+    } else {
+      error, "bad value for NAXIS3";
+    }
+    if (is_void(crpix3)) {
+      crpix3 = src.crpix3;
+    }
+    if (is_scalar(crpix3) && identof(crpix3) <= Y_DOUBLE) {
+      crpix3 = double(crpix3);
+    } else {
+      error, "bad value for CRPIX3";
+    }
+    if (is_void(crval3)) {
+      crval3 = factor*src.crval3;
+    }
+    if (is_scalar(crval3) && identof(crval3) <= Y_DOUBLE) {
+      crval3 = double(crval3);
+    } else {
+      error, "bad value for CRVAL3";
+    }
+    if (is_void(cdelt3)) {
+      cdelt3 = factor*src.cdelt3;
+    }
+    if (is_scalar(cdelt3) && identof(cdelt3) <= Y_DOUBLE && cdelt3 != 0) {
+      cdelt3 = double(cdelt3);
+    } else {
+      error, "bad value for CDELT3";
+    }
+    h_set, dst, naxis3 = naxis3, crpix3 = crpix3, crval3 = crval3,
+      cdelt3 = cdelt3, cunit3 = cunit3, ctype3 = src.ctype3;
+    if (dst.naxis3 != src.naxis3 ||
+        rdif(dst.cdelt3, factor*src.cdelt3) > eps ||
+        rdif(dst.crval3 - dst.crpix3*dst.cdelt3,
+             factor*(src.crval3 - src.crpix3*src.cdelt3)) > eps) {
+      arr = mira_resample_axis(arr, src.crpix3, factor*src.crval3,
+                               factor*src.cdelt3, dst.naxis3,
+                               dst.crpix3, dst.crval3, dst.cdelt3,
+                               3, pad=pad, norm=norm);
+    }
+  }
+  return h_set(dst, arr=arr);
+}
+
+func mira_resample_axis(arr, crpix1, crval1, cdelt1,
+                        n2, crpix2, crval2, cdelt2,
+                        which, pad=, norm=)
+/* DOCUMENT mira_resample_axis(arr, crpix1, crval1, cdelt1,
+                                n2, crpix2, crval2, cdelt2,
+                                which);
+
+     Resample array ARR along one of its axis.  Resampling is performed by
+     finite difference of the integration of a piecewise linear approximation.
+     This is suitable to preserve positivity and for downsmapling or
+     upsampling.
+
+     Arguments CRPIX1, CRVAL1 and CDELT1 are respectively the index of the
+     reference point, the coordinate of the reference point and the coordinate
+     increment along the resampled axis in the source array ARR.
+
+     Arguments N2, CRPIX2, CRVAL2 and CDELT2 are respectively the number of
+     samples, the index of the reference point, the coordinate of the reference
+     point and the coordinate increment along the resampled axis in the
+     destination array.
+
+     Arguments CRVAL1, CDELT1, CRVAL2 and CDELT2 are assumed to be given in the
+     same units.
+
+     Optional argument WHICH specify the axis to resample (the first one by
+     default).
+
+     Keyword PAD may be used to specify a value for extrapolated values (the
+     nearest value is used by default).
+
+     Keyword NORM may be set true to preserve the normalization of the result.
+
+   SEE ALSO: integ.
+ */
+{
+  if (! is_array(arr) || identof(arr) > Y_DOUBLE) {
+    error, "expecting an array of reals";
+  }
+  dims = dimsof(arr);
+  rank = numberof(dims) - 1;
+  if (is_void(which)) {
+    which = 1;
+  }
+  if (which <= 0) {
+    which += rank;
+  }
+  if (which <= 0 || which > rank) {
+    error, "out of bound axis index";
+  }
+  if (! is_void(pad)) {
+    dims(1 + which) += 2;
+    tmp = array(double(pad), dims);
+    /**/ if (which ==  1) tmp(2:-1,..) = arr;
+    else if (which ==  2) tmp(,2:-1,..) = arr;
+    else if (which ==  3) tmp(,,2:-1,..) = arr;
+    else if (which ==  4) tmp(,,,2:-1,..) = arr;
+    else if (which ==  5) tmp(,,,,2:-1,..) = arr;
+    else if (which ==  6) tmp(,,,,,2:-1,..) = arr;
+    else if (which ==  7) tmp(,,,,,,2:-1,..) = arr;
+    else if (which ==  8) tmp(,,,,,,,2:-1,..) = arr;
+    else if (which ==  9) tmp(,,,,,,,,2:-1,..) = arr;
+    else if (which == 10) tmp(,,,,,,,,,2:-1,..) = arr;
+    else error, "too many dimensions";
+    eq_nocopy, arr, tmp;
+    crpix1 += 1.0;
+  }
+  n1 = dims(1 + which);
+  x1 = (double(indgen(n1)) - crpix1)*cdelt1 + crval1;
+  x2 = (double(indgen(n2 + 1)) - (crpix2 + 0.5))*cdelt2 + crval2;
+  arr = integ(arr, x1, x2, which);
+  a = 1.0/(norm ? cdelt1 : cdelt2);
+  if (which ==  1) return a*arr(dif,..);
+  if (which ==  2) return a*arr(,dif,..);
+  if (which ==  3) return a*arr(,,dif,..);
+  if (which ==  4) return a*arr(,,,dif,..);
+  if (which ==  5) return a*arr(,,,,dif,..);
+  if (which ==  6) return a*arr(,,,,,dif,..);
+  if (which ==  7) return a*arr(,,,,,,dif,..);
+  if (which ==  8) return a*arr(,,,,,,,dif,..);
+  if (which ==  9) return a*arr(,,,,,,,,dif,..);
+  if (which == 10) return a*arr(,,,,,,,,,dif,..);
+  error, "too many dimensions";
+}
 func mira_rescale(a, .., scale=, rgb=, cubic=)
 /* DOCUMENT mira_rescale(a, dimlist)
          or mira_rescale(a, scale=FACT)
