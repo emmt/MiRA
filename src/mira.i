@@ -3485,12 +3485,19 @@ func mira_weight_to_stdev(w)
   return s;
 }
 
+local mira_rdif;
 func mira_relative_absolute_difference(a, b)
 /* DOCUMENT mira_relative_absolute_difference(a, b);
+         or mira_rdif(a, b);
 
-     Returns elementwise relative absolute difference between A and B defined
-     as: 0                                             if A(i) = B(i)
+     The function `mira_relative_absolute_difference` returns the elementwise
+     relative absolute difference between A and B defined by:
+
+         0                                             if A(i) = B(i)
          2*abs(A(i) - B(i))/(abs(A(i)) + abs(B(i))     otherwise
+
+     The function `mira_rdif` returns the elementwise relative absolute
+     difference between *scalars* A and B.
 
    SEE ALSO: mira.
  */
@@ -3500,6 +3507,11 @@ func mira_relative_absolute_difference(a, b)
   if (! is_array((i = where(diff)))) return rdif;
   rdif(i) = diff(i)/(abs(a) + abs(b))(i);
   return rdif + rdif;
+}
+
+func mira_rdif(a, b)
+{
+  return (a == b ? 0.0 : 2.0*abs(a - b)/(abs(a) + abs(b)));
 }
 
 func mira_rescale(a, .., scale=, rgb=, cubic=)
