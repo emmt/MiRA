@@ -227,7 +227,10 @@ func _mira_parse_units(tab, cunit, def)
   return (h_has(tab, str) ? h_get(tab, str) : def);
 }
 
-_MIRA_ANGULAR_UNITS_TABLE = h_new("mas",             MIRA_MAS,
+_MIRA_ANGULAR_UNITS_TABLE = h_new("arcsec",          MIRA_ARCSECOND,
+                                  "arcsecond",       MIRA_ARCSECOND,
+                                  "arcseconds",      MIRA_ARCSECOND,
+                                  "mas",             MIRA_MAS,
                                   "milliarcsec",     MIRA_MAS,
                                   "milliarcsecond",  MIRA_MAS,
                                   "milliarcseconds", MIRA_MAS,
@@ -252,6 +255,27 @@ _MIRA_LENGTH_UNITS_TABLE = h_new("m",           MIRA_METER,
                                  "nm",          1e-9*MIRA_METER,
                                  "nanometer",   1e-9*MIRA_METER,
                                  "nanometers",  1e-9*MIRA_METER);
+
+func mira_convert_units(src, dst)
+/* DOCUMENT mira_convert_units(src, dst);
+
+     Returns the factor to convert a value in units SRC into a value in units
+     DST.
+
+   SEE ALSO: mira_parse_angular_units.
+ */
+{
+  local table;
+  if (src == dst) return 1.0;
+  eq_nocopy, table, _MIRA_ANGULAR_UNITS_TABLE;
+  if (! h_has(table, dst) || ! h_has(table, src)) {
+    eq_nocopy, table, _MIRA_LENGTH_UNITS_TABLE;
+    if (! h_has(table, dst) || ! h_has(table, src)) {
+      error, "unknown or incompatiple units";
+    }
+  }
+  return table(src)/table(dst);
+}
 
 
 /*---------------------------------------------------------------------------*/
