@@ -63,8 +63,10 @@ Specify the maximum wavelength; for example, \fB\-wavemin=1.7µm\fR.
 This the upper bound of the spectral range to consider.
 .\"
 .SS Image Settings
-At least the pixel size (with option \fB\-pixelsize\fR) and the image
-dimensions (with options \fB\-fov\fR or \fB\-dim\fR) must be specified.
+If no initial image is provided as a FITS file (see option \fB\-initial\fR),
+the pixel size (with option \fB\-pixelsize\fR) and the image dimensions (with
+options \fB\-fov\fR or \fB\-dim\fR) must be specified.  If an initial image
+file is given, the initial image may be resized to match these settings.
 .TP
 \fB\-pixelsize\fR=\fI\,angle\/\fR
 Specify the angular size of pixels.  For example, \fB\-pixelsize=0.1mas\fR.
@@ -117,9 +119,14 @@ Specify the a priori full half width at half maximum (FWHM).
 For example: \fB\-gamma=15mas\fR.
 .\"
 .SS Initial Image
+The image reconstruction starts with an initial image which may be provided by
+the user or automatically generated.
 .TP
 \fB\-initial\fR=\fI\,name\/\fR
-Specify the FITS file or method for initial image.
+Specify the FITS file or method for initial image.  If argument \fI\,name\/\fR
+is \fBDirac\fR or \fBRandom\fR (the default), the initial image is a centered
+point-like object or a map of random pixels.  Otherwise, \fI\,name\/\fR is the
+name of a FITS file with the initial image.
 .TP
 \fB\-seed\fR=\fI\,value\/\fR
 Specify the seed for the random generator.

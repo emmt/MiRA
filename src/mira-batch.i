@@ -322,26 +322,26 @@ func mira_main(argv0, argv)
       opt_error, "Invalid value for `-pixelsize=...`";
     }
   }
-  if (! is_void(opt.fov)) {
-    if (! is_void(opt.dim)) {
-      opt_error, "Only one of `-fov=...` or `-dim=...` can be specified";
-    }
-    if (is_void(opt.pixelsize)) {
-      opt_error, "Option `-pixelsize=...` must be specified with `-fov=...`";
-    }
+  choice = ((is_void(opt.fov) ? 0 : 1) |
+            (is_void(opt.dim) ? 0 : 2));
+  if (choice == 1) {
     fov = _mira_cli_parse_angle(opt.fov, "`-fov=...`");
     if (fov <= 0) {
       opt_error, "Invalid value for `-fov=...`";
     }
-    dim = lround(fov/pixelsize);
-  } else if (! is_void(opt.dim)) {
+    if (! is_void(opt.pixelsize)) {
+      dim = lround(fov/pixelsize);
+    }
+  } else if (choice == 2) {
     if (opt.dim <= 0) {
       opt_error, "Bad value for `-dim=...`";
     }
     dim = opt.dim;
+  } else if (choice == 3) {
+    opt_error, "Only one of `-fov=...` or `-dim=...` can be specified";
   } else if (! initial_filename) {
     opt_error, ("Image dimensions must be specified with `-dim=...` "
-                + "or `-fov=..` when no initial image is given");
+                + "or `-fov=..` when the initial image is not from a file");
   }
 
   /* Check some options. */
@@ -352,50 +352,78 @@ func mira_main(argv0, argv)
   /* Initial image. */
   local initial;
   if (initial_filename) {
-    /* Read initial image. */
+    /* Read initial image and fix orientation. */
     img = mira_read_image(initial_filename);
     naxis = img.naxis;
+    for (i = 1; i <= naxis; ++i) {
+      cdelt_i = swrite(format="cdelt%d", i);
+      if (h_get(img, cdelt_i) < 0) {
+        /**/ if (i ==  1) h_set, img, arr = img.arr(::-1,..);
+        else if (i ==  2) h_set, img, arr = img.arr(,::-1,..);
+        else if (i ==  3) h_set, img, arr = img.arr(,,::-1,..);
+        else if (i ==  4) h_set, img, arr = img.arr(,,,::-1,..);
+        else if (i ==  5) h_set, img, arr = img.arr(,,,,::-1,..);
+        else if (i ==  6) h_set, img, arr = img.arr(,,,,,::-1,..);
+        else if (i ==  7) h_set, img, arr = img.arr(,,,,,,::-1,..);
+        else if (i ==  8) h_set, img, arr = img.arr(,,,,,,,::-1,..);
+        else if (i ==  9) h_set, img, arr = img.arr(,,,,,,,,::-1,..);
+        else if (i == 10) h_set, img, arr = img.arr(,,,,,,,,,::-1,..);
+        crpix_i = swrite(format="crpix%d", i);
+        naxis_i = swrite(format="naxis%d", i);
+        h_set, img,
+          cdelt_i, -h_get(img, cdelt_i),
+          crpix_i, h_get(img, naxis_i) + 1 - h_get(img, crpix_i);
+      }
+    }
+
+    /* Check number of axis. */
+    if (naxis < 2 || naxis > 3) {
+      opt_error, "Expecting a 2D/3D initial image";
+    }
     naxis1 = img.naxis1;
     naxis2 = img.naxis2;
     naxis3 = (naxis >= 3 ? img.naxis3 : 1);
-    eq_nocopy, initial, img.arr;
     if (naxis == 3) {
-        if (naxis3 != 1) {
-          opt_error, "Expecting a 2D initial image";
-        }
-        initial = initial(,,avg);
+      if (naxis3 != 1) {
+        write, format="WARNING - %s\n",
+          "Converting 3D image into a 2D grayscaled image";
+      }
+      h_set, img, arr = img.arr(,,avg), naxis=2;
+      h_pop, img, "naxis3";
+      h_pop, img, "crpix3";
+      h_pop, img, "crval3";
+      h_pop, img, "cdelt3";
+      h_pop, img, "cunit3";
+      h_pop, img, "ctype3";
+      naxis = 2;
     }
-    // FIXME: only the pixel size is considered...
 
-    /* Figure out pixel size if not overriden by command line argument. */
+    /* Maybe resample initial image. */
+    siunit = "radian"; // pixelsize and FOV are in SI units
+    cdelt1 = mira_convert_units(siunit,img.cunit1)*img.cdelt1;
+    cdelt2 = mira_convert_units(siunit,img.cunit2)*img.cdelt2;
     if (is_void(pixelsize)) {
-      /* Get pixel size from FITS header and fix the orientation of the
-         image. */
-      cdelt1 = img.cdelt1;
-      cdelt2 = img.cdelt2;
-      cunit1 = mira_parse_angular_unit(img.cunit1, 0);
-      cunit2 = mira_parse_angular_unit(img.cunit2, 0);
-      if (cunit1 == 0 || cunit2 == 0) {
-        opt_error, ("Unknown units in CUNIT1 or CUNIT2, "
-                    + "can be overriden by `-pixelsize`");
-      }
-      pixsiz1 = cdelt1*cunit1;
-      pixsiz2 = cdelt2*cunit2;
-      if (abs(pixsiz1 - pixsiz2) > 1e-7*max(abs(pixsiz1), abs(pixsiz2))) {
-        opt_error, "Non-square pixels not supported";
-      }
-      pixelsize = (abs(pixsiz1) + abs(pixsiz2))/2;
-      if (pixsiz1 < 0) initial = unref(initial)(::-1,..);
-      if (pixsiz2 < 0) initial = unref(initial)(,::-1,..);
+      pixelsize = min(cdelt1, cdelt2);
     }
-
-    /* Fix dimensions of initial image. */
     if (is_void(dim)) {
-      dim = max(img.naxis1, img.naxis2);
+      if (is_void(fov)) {
+        fov1 = mira_convert_units(img.cunit1, siunit)*img.cdelt1*img.naxis1;
+        fov2 = mira_convert_units(img.cunit2, siunit)*img.cdelt2*img.naxis2;
+        fov = max(fov1, fov2);
+      }
+      dim = lround(fov/pixelsize);
     }
-    if (dim != img.naxis1 || dim != img.naxis2) {
-      initial = mira_extract_region(initial, dim);
-    }
+    cunit = "mas";
+    cdelt = mira_convert_units(siunit, cunit)*pixelsize;
+    crpix = (dim/2) + 1;
+    crval = 0.0;
+    img = mira_resample_image(img, pad=0, norm=1n,
+                              naxis1=dim,   naxis2=dim,
+                              crpix1=crpix, crpix2=crpix,
+                              crval1=crval, crval2=crval,
+                              cdelt1=cdelt, cdelt2=cdelt,
+                              cunit1=cunit, cunit2=cunit);
+    eq_nocopy, initial, img.arr;
 
   } else if (initial_random) {
     if (! is_void(opt.seed)) {
@@ -407,7 +435,7 @@ func mira_main(argv0, argv)
     initial = random(dim, dim);
   } else if (initial_dirac) {
     initial = array(double, dim, dim);
-    initial(dim/2 +1, dim/2 + 1) = 1.0;
+    initial((dim/2) + 1, (dim/2) + 1) = 1.0;
   } else {
     opt_error, "Option -initial=\""+initial_name+"\" not yet implemented";
   }
