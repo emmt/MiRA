@@ -4780,7 +4780,7 @@ func mira_conjgrad(A, b, x, tol=, maxiter=, precond=, show=, quiet=)
   if (is_void(tol)) {
     atol = 1e-6;
     rtol = 0.0;
-  } else if (identof(tol) <= Y_DOUBLE && (n = numberof(tol)) <= 1
+  } else if (identof(tol) <= Y_DOUBLE && ((n = numberof(tol)) == 1 || n == 2)
              && min(tol) >= 0) {
     atol = double(tol(1));
     rtol = (n >= 2 ? double(tol(2)) : 0.0);
