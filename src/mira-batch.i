@@ -89,7 +89,7 @@ _mira_batch_xform = (is_func(nfft_new) ? "nfft" : "exact");
 
 NULL = []; /* FIXME: make a private function to hide local variables */
 _MIRA_OPTIONS = opt_init\
-  ("Usage: mira [OPTIONS] INPUT [...] OUTPUT",
+  ("Usage: ymira [OPTIONS] INPUT [...] OUTPUT",
    "Image reconstruction.  INPUT and [...] are the OI-FITS data file and OUTPUT " +
    "is the result saved into a FITS file.",
    _lst\
@@ -109,7 +109,7 @@ _MIRA_OPTIONS = opt_init\
     _lst("max", NULL, "UPPER", OPT_REAL, "Upper bound for the pixel values"),
     _lst("xform", _mira_batch_xform, "NAME", OPT_STRING, "Method to compute the Fourier transform"),
     "\nRegularization settings:",
-    _lst("regul", NULL, "NAME", OPT_STRING, "Name of regularization method"),
+    _lst("regul", NULL, "NAME", OPT_STRING, "Name of regularization method (use -regul=help for more information)"),
     _lst("mu", 0.0, "VALUE(S)", OPT_REAL_LIST, "Global regularization weight"),
     _lst("tau", 1E-6, "VALUE", OPT_REAL, "Edge preserving threshold"),
     _lst("eta", 1.0, "VALUE(S)", OPT_REAL_LIST, "Gradient scales along dimensions"),
@@ -207,6 +207,30 @@ func mira_main(argv0, argv)
     /* Options "-help", or "-usage", or "-version" have been set. */
     return;
   }
+  if (opt.regul == "help") {
+    write, format="\n%s\n", "Available regularizations:";
+    write, format="\n  -regul=%s -tau=...\n  %s\n  %s\n",
+      "hyperbolic_smoothness",
+      "Edge-preserving smoothness with hyperbolic norm and threshold TAU,",
+      "approximates total variation (TV) with TAU very small.";
+    write, format="\n  -regul=%s -tau=...\n  %s\n",
+      "Huber_smoothness",
+      "Edge-preserving smoothness with Huber semi-norm and threshold TAU.";
+    write, format="\n  -regul=%s\n  %s\n",
+      "quadratic_smoothness",
+      "Quadratic smoothness.";
+    write, format="\n  -regul=%s -gamma=...\n  %s\n",
+      "quadratic_compactness",
+      "Quadratic compactness with full-width at half maximum GAMMA.";
+    write, format="\n  -regul=%s -gamma=...\n  %s\n",
+      "Huber_compactness",
+      "L1-L2 compactness with Huber norm and full-width at half maximum GAMMA.";
+    write, format="\n  -regul=%s -gamma=...\n  %s\n",
+      "hyperbolic_compactness",
+      "L1-L2 compactness with Huber norm and full-width at half maximum GAMMA.";
+    write, format="%s\n", "";
+    quit;
+  }
   argc = numberof(argv);
   if (argc < 2) {
     opt_usage, _MIRA_OPTIONS;
@@ -233,16 +257,54 @@ func mira_main(argv0, argv)
     if (min(opt.mu) < 0.0) {
       opt_error, "Value(s) of `-mu` must be >= 0.0";
     }
+
+#if 0
+    if (strpart(regul_name, 1:11) == "hyperbolic_") {
+      regul_loss = "hyperbolic";
+      regul_type = strpart(regul_name, 12:0);
+    } else if (strpart(regul_name, 1:6) == "Huber_") {
+      regul_loss = "Huber";
+      regul_type = strpart(regul_name, 7:0);
+    } else if (strpart(regul_name, 1:10) == "quadratic_") {
+      regul_loss = "quadratic";
+      regul_type = strpart(regul_name, 11:0);
+    } else {
+      regul_loss = "quadratic";
+      regul_type = regul_name;
+    }
+    if (regul_loss != "quadratic" && opt.tau <= 0.0) {
+      opt_error, "Value of `-tau` must be > 0.0";
+    }
+    if (regul_type == "smoothness") {
+      /* Quadratic or edge-preserving smoothness prior. */
+      regul = rgl_new("newsmoothness");
+      if (regul_loss == "quadratic") {
+        grow, comment, swrite(format="Regularization: \"%s\" with MU=%s",
+                              regul_name);
+      } else {
+        if (min(opt.eta) <= 0.0) {
+          opt_error, "Values of `-eta` must be > 0.0";
+        }
+        rgl_config, regul, tau=opt.tau, eta=opt.eta, loss=regul_loss;
+        grow, comment,
+          swrite(format="Regularization: \"%s\" with MU=%s, TAU=%g, ETA=%s",
+                 regul_name, format(opt.mu), opt.tau, format(opt.eta));
+      }
+    } else {
+      ...;
+    }
+#endif
+
     if (regul_name == "hyperbolic") {
-      /* Edge-preserving smoothness prior. */
+      /* Quadratic or edge-preserving smoothness prior. */
+      regul = rgl_new("hyperbolic");
       if (opt.tau <= 0.0) {
         opt_error, "Value of `-tau` must be > 0.0";
       }
       if (min(opt.eta) <= 0.0) {
         opt_error, "Values of `-eta` must be > 0.0";
       }
-      regul = rgl_new("hyperbolic");
-      rgl_config, regul, tau=opt.tau, eta=opt.eta;
+      rgl_config, regul, tau=opt.tau, eta=opt.eta; //, loss=regul_loss;
       grow, comment,
         swrite(format="Regularization: \"%s\" with MU=%s, TAU=%g, ETA=%s",
                regul_name, format(opt.mu), opt.tau, format(opt.eta));
