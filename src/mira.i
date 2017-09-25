@@ -3448,7 +3448,8 @@ func mira_polar_to_cartesian(amp, amperr, phi, phierr, what, goodman=)
       crr = cs*cs*var1 + sn*sn*var2;
       cri = cs*sn*(var1 - var2);
       cii = sn*sn*var1 + cs*cs*var2;
-      a = 1.0/(var1*var2);
+      tmp = var1*var2; // Hack by Florent Millour to cope with GRAVITY data
+      a = (tmp != 0)/(tmp + !tmp);
       wrr(j3) =  a*cii;
       wri(j3) = -a*cri;
       wii(j3) =  a*crr;
