@@ -457,10 +457,8 @@ func mira_new(.., wavemin=, wavemax=,
            recommended if you are sure that all the data really come from the
            same object).
 
-       CLEANUP_BAD_DATA = Delete invalid data?  If true, data with invalid
-           error bars (ERR <= 0) get removed.  If CLEANUP_BAD_DATA > 1, then
-           data with out of range amplitudes (AMP < 0 or AMP > 1) get also
-           removed.
+       CLEANUP_BAD_DATA = Delete invalid data?  If true, data with out of range
+           amplitudes (AMP < 0 or AMP > 1) get removed.
 
        GOODMAN = True to force Goodman approximation for the penalty with
            respect to complex visibility or bispectrum data (default is
@@ -617,9 +615,8 @@ func mira_add_oidata(this, .., quiet=, noise_method=, noise_level=,
      Keywords NOISE_METHOD and NOISE_LEVEL can be used to add some noise to
      the data.
 
-     If keyword CLEANUP_BAD_DATA is true, then data with invalid error bars
-     (ERR <= 0) get removed.  If CLEANUP_BAD_DATA > 1, then data with out of
-     range amplitudes (AMP < 0 or AMP > 1) get also removed.
+     If keyword CLEANUP_BAD_DATA is true, then data with out of range
+     amplitudes (AMP < 0 or AMP > 1) get removed.
 
      Keyword GOODMAN can be used to force Goodman approximation for the
      penalty with respect to complex visibility or bispectrum data (default is
@@ -750,26 +747,45 @@ func mira_add_oidata(this, .., quiet=, noise_method=, noise_level=,
       one_over_wavelength = 1.0/wavelength;
       freq_tol = this.base_tol/this.eff_wave;
       if (type == OIFITS_TYPE_VIS) {
-        local u, v, w;
         u = (one_over_wavelength*oifits_get_ucoord(data, db)(target_select))(*);
         v = (one_over_wavelength*oifits_get_vcoord(data, db)(target_select))(*);
         amp    = oifits_get_visamp(data, db)(select);
         amperr = oifits_get_visamperr(data, db)(select);
-        phi    = oifits_get_visphi(data, db)(select)*MIRA_DEGREE;
-        phierr = oifits_get_visphierr(data, db)(select)*MIRA_DEGREE;
-        if (cleanup_bad_data) {
-          good = ((amperr > 0.0)&(phierr > 0.0));
-          if (cleanup_bad_data > 1) good &= ((amp >= 0.0)&(amp <= 1.0));
-          good = where(good);
-          if (! is_array(good)) continue;
-          u      = u(good);
-          v      = v(good);
-          w      = w(good);
-          amp    = amp(good);
-          amperr = amperr(good);
-          phi    = phi(good);
-          phierr = phierr(good);
+        phi    = oifits_get_visphi(data, db)(select);
+        phierr = oifits_get_visphierr(data, db)(select);
+        bad    = oifits_get_flag(data, db);
+        if (! is_void(bad)) {
+          bad = bad(select);
+          if (anyof(bad)) {
+            i = where(! bad);
+            if (! is_array(i)) continue; // no valid data here
+            u      = u(i);
+            v      = v(i);
+            w      = w(i);
+            amp    = amp(i);
+            amperr = amperr(i);
+            phi    = phi(i);
+            phierr = phierr(i);
+          }
         }
+        bad = ((amperr <= 0.0) | (phierr <= 0.0));
+        if (anyof(bad)) _mira_warn, "there are invalid error bars";
+        if (cleanup_bad_data) {
+          bad |= ((amp < 0.0) | (amp > 1.0));
+        }
+        if (anyof(bad)) {
+          i = where(! bad);
+          if (! is_array(i)) continue; // no valid data here
+          u      = u(i);
+          v      = v(i);
+          w      = w(i);
+          amp    = amp(i);
+          amperr = amperr(i);
+          phi    = phi(i);
+          phierr = phierr(i);
+        }
+        phi    *= MIRA_DEGREE;
+        phierr *= MIRA_DEGREE;
         temp = mira_polar_to_cartesian(amp, amperr, phi, phierr,
                                        "visibility", goodman=goodman);
         child = _mira_get_datablock(this, "vis", MIRA_COMPLEX_VISIBILITY);
@@ -788,21 +804,36 @@ func mira_add_oidata(this, .., quiet=, noise_method=, noise_level=,
           "wii",    temp.wii;
         // FIXME: flux_weight += sum(child.amp_weight*(child.amp_data)^2);
       } else if (type == OIFITS_TYPE_VIS2) {
-        local u, v, w;
         u = (one_over_wavelength*oifits_get_ucoord(data, db)(target_select))(*);
         v = (one_over_wavelength*oifits_get_vcoord(data, db)(target_select))(*);
         vis2data = oifits_get_vis2data(data, db)(select);
         vis2err  = oifits_get_vis2err(data, db)(select);
+        bad      = oifits_get_flag(data, db);
+        if (! is_void(bad)) {
+          bad = bad(select);
+          if (anyof(bad)) {
+            i = where(! bad);
+            if (! is_array(i)) continue; // no valid data here
+            u        = u(i);
+            v        = v(i);
+            w        = w(i);
+            vis2data = vis2data(i);
+            vis2err  = vis2err(i);
+          }
+        }
+        bad = ((amperr <= 0.0) | (phierr <= 0.0));
+        if (anyof(bad)) _mira_warn, "there are invalid error bars";
         if (cleanup_bad_data) {
-          good = (vis2err > 0.0);
-          if (cleanup_bad_data > 1) good &= ((vis2data >= 0.0)&(vis2data <= 1.0));
-          good = where(good);
-          if (! is_array(good)) continue;
-          u        = u(good);
-          v        = v(good);
-          w        = w(good);
-          vis2data = vis2data(good);
-          vis2err  = vis2err(good);
+          bad |= ((vis2data < 0.0) | (vis2data > 1.0));
+        }
+        if (anyof(bad)) {
+          i = where(! bad);
+          if (! is_array(i)) continue; // no valid data here
+          u        = u(i);
+          v        = v(i);
+          w        = w(i);
+          vis2data = vis2data(i);
+          vis2err  = vis2err(i);
         }
         child = _mira_get_datablock(this, "vis2", MIRA_POWER_SPECTRUM);
         h_grow, child, flatten = 1,
@@ -814,30 +845,51 @@ func mira_add_oidata(this, .., quiet=, noise_method=, noise_level=,
           "vis2wght", mira_stdev_to_weight(vis2err);
         // FIXME: flux_weight += 4.0*sum(child.vis2wght*(child.vis2data)^2);
       } else if (type == OIFITS_TYPE_T3) {
-        local u1, u2, v1, v2, w;
         u1 = (one_over_wavelength*oifits_get_u1coord(data, db)(target_select))(*);
         v1 = (one_over_wavelength*oifits_get_v1coord(data, db)(target_select))(*);
         u2 = (one_over_wavelength*oifits_get_u2coord(data, db)(target_select))(*);
         v2 = (one_over_wavelength*oifits_get_v2coord(data, db)(target_select))(*);
         amp    = oifits_get_t3amp(data, db)(select);
         amperr = oifits_get_t3amperr(data, db)(select);
-        phi    = oifits_get_t3phi(data, db)(select)*MIRA_DEGREE;
-        phierr = oifits_get_t3phierr(data, db)(select)*MIRA_DEGREE;
-        if (cleanup_bad_data) {
-          good = ((amperr > 0.0)&(phierr > 0.0));
-          if (cleanup_bad_data > 1) good &= ((amp >= 0.0)&(amp <= 1.0));
-          good = where(good);
-          if (! is_array(good)) continue;
-          u1     = u1(good);
-          v1     = v1(good);
-          u2     = u2(good);
-          v2     = v2(good);
-          w      = w(good);
-          amp    = amp(good);
-          amperr = amperr(good);
-          phi    = phi(good);
-          phierr = phierr(good);
+        phi    = oifits_get_t3phi(data, db)(select);
+        phierr = oifits_get_t3phierr(data, db)(select);
+        bad    = oifits_get_flag(data, db);
+        if (! is_void(bad)) {
+          bad = bad(select);
+          if (anyof(bad)) {
+            i = where(! bad);
+            if (! is_array(i)) continue; // no valid data here
+            u1     = u1(i);
+            v1     = v1(i);
+            u2     = u2(i);
+            v2     = v2(i);
+            w      = w(i);
+            amp    = amp(i);
+            amperr = amperr(i);
+            phi    = phi(i);
+            phierr = phierr(i);
+          }
         }
+        bad = ((amperr <= 0.0) | (phierr <= 0.0));
+        if (anyof(bad)) _mira_warn, "there are invalid error bars";
+        if (cleanup_bad_data) {
+          bad |= ((amp < 0.0) | (amp > 1.0));
+        }
+        if (anyof(bad)) {
+          i = where(! bad);
+          if (! is_array(i)) continue; // no valid data here
+          u1     = u1(i);
+          v1     = v1(i);
+          u2     = u2(i);
+          v2     = v2(i);
+          w      = w(i);
+          amp    = amp(i);
+          amperr = amperr(i);
+          phi    = phi(i);
+          phierr = phierr(i);
+        }
+        phi    *= MIRA_DEGREE;
+        phierr *= MIRA_DEGREE;
         temp = mira_polar_to_cartesian(amp, amperr, phi, phierr,
                                        "bispectrum", goodman=goodman);
         child = _mira_get_datablock(this, "vis3", MIRA_BISPECTRUM);
@@ -3448,8 +3500,7 @@ func mira_polar_to_cartesian(amp, amperr, phi, phierr, what, goodman=)
       crr = cs*cs*var1 + sn*sn*var2;
       cri = cs*sn*(var1 - var2);
       cii = sn*sn*var1 + cs*cs*var2;
-      tmp = var1*var2; // Hack by Florentin Millour to cope with GRAVITY data
-      a = (tmp != 0)/(tmp + !tmp);
+      a = 1.0/(var1*var2);
       wrr(j3) =  a*cii;
       wri(j3) = -a*cri;
       wii(j3) =  a*crr;
