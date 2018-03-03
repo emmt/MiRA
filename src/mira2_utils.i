@@ -458,6 +458,10 @@ func mira_safe_atan(y, x)
      throws an error when (x,y) == (0,0), mira_atan may be defined as atan
      or as mira_safe_atan.  So that the faster version is used if possible.
 
+     According to the man pages of the atan function (in libm, the standard
+     mathematical library), it seems guaranteed that atan(y,x) = ±0, whenever x
+     = ±0.  So I may be a bit paranoid...
+
    SEE ALSO: atan.
  */
 {
