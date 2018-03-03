@@ -417,6 +417,23 @@ func mira_cast_real_as_complex(r) /* DOCUMENTED */
   return r;
 }
 
+local mira_cmult_re, mira_cmult_im;
+/* DOCUMENT mira_cmult_re(re1,im1, re2,im2);
+         or mira_cmult_im(re1,im1, re2,im2);
+
+     yield the real and imaginary parts of the complex multiplication of
+     re1 + 1i*im1 by re2 + 1i*im2.
+ */
+func mira_cmult_re(re1,im1, re2,im2)
+{
+  return re1*re2 - im1*im2;
+}
+
+func mira_cmult_im(re1,im1, re2,im2)
+{
+  return re1*im2 + im1*re2;
+}
+
 _MIRA_DEBUG_STYLE  = ansi_term(ANSI_TERM_BOLD,ANSI_TERM_FG_CYAN);
 func mira_debug(a0,a1,a2,a3,a4,a5,a6,a7,a8,a9)
 {
