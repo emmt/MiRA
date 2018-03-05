@@ -444,6 +444,87 @@ func mira_debug(a0,a1,a2,a3,a4,a5,a6,a7,a8,a9)
   write, format="%sDEBUG - %s%s\n", _MIRA_DEBUG_STYLE, str, _MSG_RESET_STYLE;
 }
 
+func mira_cat(.., last=)
+/* DOCUMENT mira_cat(.., last=0/1);
+
+     yields an array which concatenate all given arguments ignoring void
+     arguments.  Non-void input arguments are indexed by the last or first
+     index of the returned array depending whether keyword LAST is true or
+     false.  Hence, if LAST is true, the result is as with [...], the
+     concatenate operator of Yorick.  All non-void input arguments are
+     converted to a common type and dimension list.  If all arguments are void,
+     a void result is returned.
+
+   SEE ALSO: grow.
+ */
+{
+  local type, dims, rank, arg, args;
+  argc = 0;
+  while (more_args()) {
+    eq_nocopy, arg, next_arg();
+    if (is_array(arg) && identof(arg) <= Y_STRING) {
+      if (argc == 0) {
+        /* Fetch type and dimensions of the first argument. */
+        type = structof(arg);
+        dims = dimsof(arg);
+        rank = numberof(dims);
+        args = _lst(arg);
+      } else {
+        /* Update the type and the dimension list. */
+        argtype = structof(arg);
+        if (type != argtype) {
+          if (type == string) {
+            error, "cannot concatenate string and numerical arrays";
+          }
+          type = structof(type(0) + argtype(0));
+        }
+        argdims = dimsof(arg);
+        argrank = numberof(argdims);
+        minrank = min(argrank, rank);
+        if (minrank >= 1) {
+          /* Common dimensions must be comptatible. */
+          a = dims(2:minrank);
+          b = argdims(2:minrank);
+          if (anyof((a != b) & (min(a,b) != 1))) {
+            error, "incompatible dimensions";
+          }
+          if (argrank > rank) {
+            eq_nocopy, dims, argdims;
+            rank = argrank;
+          }
+          dims(2:minrank) = max(a,b);
+        } else if (argrank > rank) {
+          eq_nocopy, dims, argdims;
+          rank = argrank;
+        }
+        args = _cat(arg, args);
+      }
+      ++argc;
+    } else if (! is_void(arg)) {
+      error, "argment(s) must be void or numerical arrays";
+    }
+  }
+  if (argc > 0) {
+    if (last) {
+      /* Make the argument index the last one. */
+      arr = array(type, dims, argc);
+      for (k = argc; k > 0; --k) {
+        arr(..,k) = _car(args);
+        args = _cdr(args);
+      }
+    } else {
+      /* Make the argument index the first one. */
+      arr = array(type, argc, dims);
+      for (k = argc; k > 0; --k) {
+        arr(k,..) = _car(args);
+        args = _cdr(args);
+      }
+    }
+    return arr;
+  }
+}
+
+
 /*---------------------------------------------------------------------------*/
 /* SAFE ATAN(Y,X) */
 
