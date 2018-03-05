@@ -248,17 +248,50 @@ func mira_xform_name(master)
   return (is_string(master.xform) ? master.xform : master.xform.name);
 }
 
-func mira_pixel_size(master)
+local mira_pixel_size, mira_maximum_pixel_size;
 /* DOCUMENT mira_pixel_size(master);
+         or mira_maximum_pixel_size(master);
+         or mira_maximum_pixel_size, master;
 
-     yields the angular size (in radians) of the pixels for the image restored
-     with MiRA instance `master`.  The image pixel size can be changed with
-     `mira_config`.
+     The first function yields the angular size (in radians) of the pixels for
+     the image restored with MiRA instance `master`.  The image pixel size can
+     be changed with `mira_config`.
+
+     The second function yields the maximum pixel size allowed to avoid
+     aliasing.  The returned value depends on the current set of selected data
+     and image dimensions.  When called as a subroutine, the maximum pixel size
+     is nicely printed.
 
    SEE ALSO: mira_config.
  */
+
+func mira_pixel_size(master) /* DOCUMENTED */
 {
   return master.pixelsize;
+}
+
+func mira_maximum_pixel_size(master) /* DOCUMENTED */
+{
+  /* Make sure to apply data selection. */
+  if (master.stage < 1) {
+    _mira_select_data, master;
+  }
+
+  local ufreq, vfreq;
+  coords = master.coords;
+  if (h_has(coords, "ufreq")) {
+    eq_nocopy, ufreq, coords.ufreq;
+    eq_nocopy, vfreq, coords.vfreq;
+  } else {
+    ufreq = coords.u/coords.wave;
+    vfreq = coords.v/coords.wave;
+  }
+  theta = 0.5/max(max(abs(ufreq)), max(abs(vfreq)));
+  if (am_subroutine()) {
+    inform, "Maximum pixel size = %g rad = %g mas\n",
+      theta, theta/MIRA_MILLIARCSECOND;
+  }
+  return theta;
 }
 
 func mira_image_size(master, i)
@@ -272,6 +305,37 @@ func mira_image_size(master, i)
  */
 {
   return is_void(i) ? master.dims : master.dims(i+1);
+}
+
+local mira_smearingfactor, mira_smearingfunction;
+/* DOCUMENT mira_smearingfactor(master, 0/1);
+         or mira_smearingfunction(master, 0/1);
+
+     yield the value of the smearing factor or the name of the smearing
+     function in MiRA instance MASTER.  If 2nd argument is true, the returned
+     value is that of the image to complex visibilities transform.
+
+   SEE ALSO: mira_update, mira_config.
+ */
+
+func mira_smearingfactor(master, xform) /* DOCUMENTED */
+{
+  if (xform) {
+    mira_update, master;
+    return master.xform.smearingfactor;
+  } else {
+    return master.smearingfactor;
+  }
+}
+
+func mira_smearingfunction(master, xform) /* DOCUMENTED */
+{
+  if (xform) {
+    mira_update, master;
+    return master.xform.smearingfunction;
+  } else {
+    return master.smearingfunction;
+  }
 }
 
 local mira_minimal_wavelength, mira_maximal_wavelength;
