@@ -190,7 +190,7 @@ func _mira_select_data(master)
 {
   /* Check assumptions and reset selected data blocks and coordinates. */
   if (master.stage != 0) {
-    error, "private routine called at wrong stage";
+    throw, "private routine called at wrong stage";
   }
   oidata = master.oidata;
   wavemin = master.wavemin;
@@ -267,11 +267,7 @@ func _mira_select_data(master)
     }
   }
 
-  // FIXME:
-  return master;
-
-  /* Reduce the list of coordinates to a minimum and set stage. */
-  _mira_reduce_coordinates, master, debug=1n; // FIXME: turn debug off
+  /* Set stage and return. */
   return h_set(master, stage = 1);
 }
 
@@ -290,6 +286,9 @@ func _mira_grow_coordinates(master, u, v, wave, band)
  */
 {
   /* Check existing coordinates. */
+  if (master.stage != 0) {
+    throw, "private routine called at wrong stage";
+  }
   coords = master.coords;
   n = numberof(coords.u);
   if (numberof(coords.v) != n || numberof(coords.wave) != n ||
@@ -327,8 +326,7 @@ func _mira_grow_coordinates(master, u, v, wave, band)
   zero = [];
 
   /* Perhaps round `u` and `v`. */
-  p = master.baseline_precision;
-  if (p != 0) {
+  if ((p = master.baseline_precision) > 0) {
     u = p*round(u/p);
     v = p*round(v/p);
   }
@@ -351,92 +349,6 @@ func _mira_grow_coordinates(master, u, v, wave, band)
     wave = grow(coords.wave, wave),
     band = grow(coords.band, band);
   return idx;
-}
-
-func _mira_reduce_coordinates(master, debug=)
-/* DOCUMENT _mira_reduce_coordinates, master;
-     Private subroutine to reduce the list of coordinates stored in master to a
-     minimum. */
-{
-  /* Get coordinates (should be flat vectors of doubles or void). */
-  coords = master.coords;
-  local u, v, wave, band;
-  eq_nocopy, u, coords.u;
-  eq_nocopy, v, coords.v;
-  eq_nocopy, wave, coords.wave;
-  eq_nocopy, band, coords.band;
-
-  /* Check coordinates. */
-  argset = ((is_void(u)    ? 0 : 1) |
-            (is_void(v)    ? 0 : 2) |
-            (is_void(wave) ? 0 : 4) |
-            (is_void(band) ? 0 : 8));
-  if (argset == 3) {
-    mode = 1;
-  } else if (argset == 7) {
-    mode = 2;
-  } else if (argset == 15) {
-    mode = 3;
-  } else if (argset == 0) {
-    /* Nothing to do... */
-    return;
-  } else {
-    error, "bad number of coordinates";
-  }
-
-  /* Sort coordinates (FIXME: for a (modest) optimization, use xsort). */
-  if (mode == 1) {
-    i = msort(u, v);
-  } else if (mode == 2) {
-    i = msort(wave, u, v);
-  } else {
-    i = msort(wave, band, u, v);
-  }
-
-  /* Select unique coordinates. */
-  i1 = i(1:-1);
-  i2 = i(2:0);
-  uniq = (u(i2) != u(i1)) | (v(i2) != v(i1));
-  if (mode > 1) uniq |= (wave(i2) != wave(i1));
-  if (mode > 2) uniq |= (band(i2) != band(i1));
-  uniq = grow(1n, uniq);
-
-  /* Build indirection indices and extract unique coordinates. */
-  (idx = array(long, numberof(i)))(i) = long(uniq)(psum);
-  i = i(where(uniq));
-  u = u(i);
-  v = v(i);
-  if (mode > 1) wave = wave(i);
-  if (mode > 2) band = band(i);
-  if (debug) {
-    if (max(abs(coords.u - u(idx))) != 0 ||
-        max(abs(coords.v - v(idx))) != 0) {
-      error, "bug: something wrong with `(u,v)`!";
-    }
-    if (mode > 1 && max(abs(coords.wave - wave(idx))) != 0) {
-      error, "bug: something wrong with `wave`!";
-    }
-    if (mode > 2 && max(abs(coords.band - band(idx))) != 0) {
-      error, "bug: something wrong with `band`!";
-    }
-  }
-
-  /* Overwrite coordinates and indirections for every data block. */
-  h_set, coords, u=u, v=u, wave=wave, band=band;
-  for (db = _mira_first(master); db; db = _mira_next(master, db)) {
-    if (h_has(db, "idx")) {
-      h_set, db, idx = idx(db.idx);
-    }
-    if (h_has(db, "idx1")) {
-      h_set, db, idx1 = idx(db.idx1);
-    }
-    if (h_has(db, "idx2")) {
-      h_set, db, idx2 = idx(db.idx2);
-    }
-    if (h_has(db, "idx2")) {
-      h_set, db, idx3 = idx(db.idx3);
-    }
-  }
 }
 
 func _mira_check_baselines(&u, &v, nrows)
@@ -475,7 +387,7 @@ func _mira_append_vis2_data(master, oidata, oidb, wave, band,
                                band(-:1:nrows,)(select));
   dat = oifits_get_vis2data(oidata, oidb)(select);
   err = oifits_get_vis2err(oidata, oidb)(select);
-  db = _mira_find_datablock(master, MIRA_FIT_VIS2, _mira_vis2_init);
+  db = _mira_find_datablock(master, MIRA_FIT_VIS2, _MIRA_VIS2_OPS);
   mira_grow_fields, db,
     "idx", abs(idx),
     "dat", dat,
@@ -524,7 +436,7 @@ func _mira_append_vis_data(master, oidata, oidb, wave, band,
                                    oifits_get_visphierr(oidata, oidb)(j)*DEG,
                                    "visibility", goodman = 0n);
       db = _mira_find_datablock(master, MIRA_FIT_VIS|MIRA_CONVEX_APPROX,
-                                _mira_vis_init);
+                                _MIRA_VIS_OPS);
       sgn = double(sign(idx));
       mira_grow_fields, db,
         "idx", abs(idx),
@@ -542,7 +454,7 @@ func _mira_append_vis_data(master, oidata, oidb, wave, band,
       idx = _mira_grow_coordinates(master, u(j), v(j), wave(j), band(j));
       dat = oifits_get_visamp(oidata, oidb)(j);
       err = oifits_get_visamperr(oidata, oidb)(j);
-      db = _mira_find_datablock(master, MIRA_FIT_VISAMP, _mira_visamp_init);
+      db = _mira_find_datablock(master, MIRA_FIT_VISAMP, _MIRA_VISAMP_OPS);
       mira_grow_fields, db,
         "idx", abs(idx),
         "dat", dat,
@@ -559,7 +471,7 @@ func _mira_append_vis_data(master, oidata, oidb, wave, band,
       idx = _mira_grow_coordinates(master, u(j), v(j), wave(j), band(j));
       dat = oifits_get_visphi(oidata, oidb)(j)*DEG;
       err = oifits_get_visphierr(oidata, oidb)(j)*DEG;
-      db = _mira_find_datablock(master, MIRA_FIT_VISPHI, _mira_visphi_init);
+      db = _mira_find_datablock(master, MIRA_FIT_VISPHI, _MIRA_VISPHI_OPS);
       mira_grow_fields, db,
         "idx", abs(idx),
         "dat", double(sign(idx))*dat,
@@ -619,11 +531,11 @@ func _mira_append_t3_data(master, oidata, oidb, wave, band,
                                    oifits_get_t3phierr(oidata, oidb)(j)*DEG,
                                    "bispectrum", goodman = 0n);
       db = _mira_find_datablock(master, MIRA_FIT_T3|MIRA_CONVEX_APPROX,
-                                _mira_t3_init);
+                                _MIRA_T3_OPS);
+      idx = mira_cat(idx1, idx2, idx3);
       mira_grow_fields, db,
-        "idx1", abs(idx1), "sgn1", double(sign(idx1)),
-        "idx2", abs(idx2), "sgn2", double(sign(idx2)),
-        "idx3", abs(idx3), "sgn3", double(sign(idx3)),
+        "idx", abs(idx),
+        "sgn", double(sign(idx)),
         "re", ws.re, "im", ws.im,
         "wrr", ws.wrr, "wii", ws.wii, "wri", ws.wri;
     }
@@ -642,11 +554,11 @@ func _mira_append_t3_data(master, oidata, oidb, wave, band,
       idx3 = _mira_grow_coordinates(master, u3(j), v3(j), wtmp, btmp);
       dat = oifits_get_t3amp(oidata, oidb)(j);
       err = oifits_get_t3amperr(oidata, oidb)(j);
-      db = _mira_find_datablock(master, MIRA_FIT_T3AMP, _mira_t3amp_init);
+      db = _mira_find_datablock(master, MIRA_FIT_T3AMP, _MIRA_T3AMP_OPS);
+      idx = mira_cat(idx1, idx2, idx3);
       mira_grow_fields, db,
-        "idx1", abs(idx1),
-        "idx2", abs(idx2),
-        "idx3", abs(idx3),
+        "idx", abs(idx),
+        "sgn", double(sign(idx)),
         "dat", dat,
         "wgt", 1.0/(err*err);
     }
@@ -665,35 +577,40 @@ func _mira_append_t3_data(master, oidata, oidb, wave, band,
       idx3 = _mira_grow_coordinates(master, u3(j), v3(j), wtmp, btmp);
       dat = oifits_get_t3phi(oidata, oidb)(j)*DEG;
       err = oifits_get_t3phierr(oidata, oidb)(j)*DEG;
-      db = _mira_find_datablock(master, MIRA_FIT_T3PHI, _mira_t3phi_init);
+      db = _mira_find_datablock(master, MIRA_FIT_T3PHI, _MIRA_T3PHI_OPS);
+      idx = mira_cat(idx1, idx2, idx3);
       mira_grow_fields, db,
-        "idx1", abs(idx1), "sgn1", double(sign(idx1)),
-        "idx2", abs(idx2), "sgn2", double(sign(idx2)),
-        "idx3", abs(idx3), "sgn3", double(sign(idx3)),
+        "idx", abs(idx),
+        "sgn", double(sign(idx)),
         "dat", dat,
         "wgt", 1.0/(err*err);
     }
   }
 }
 
-/*---------------------------------------------------------------------------*/
-/* DATA CLASS "CONSTRUCTORS" */
-
-func _mira_find_datablock(master, bits, init)
+func _mira_find_datablock(master, bits, ops)
 /* DOCUMENT db = _mira_find_datablock(master, bits);
-         or db = _mira_find_datablock(master, bits, init);
+         or db = _mira_find_datablock(master, bits, ops);
 
      Yields a MiRA datablock identified by BITS (a bitwise combination of
      MIRA_FIT_* constants) in MiRA instance MASTER.  If no such datablock is
-     found, a void result is returned unless INIT is provided.  Optional
-     argument INIT is a "constructor" function to initialize the contents of a
-     new datablock of a given kind (i.e., as specified by BITS).
+     found, a void result is returned unless OPS is provided.  Optional
+     argument OPS is a table of virtual operations to work with the contents of
+     a new datablock of a given kind (i.e., as specified by BITS).
 
-   SEE ALSO: _mira_select_data, MIRA_FIT_VIS2, _mira_vis2_init, MIRA_FIT_VIS,
-             _mira_vis_init, MIRA_FIT_VISAMP, _mira_visamp_init,
-             MIRA_FIT_VISPHI, _mira_visphi_init, MIRA_FIT_T3, _mira_t3_init,
-             MIRA_FIT_T3AMP, _mira_t3amp_init, MIRA_FIT_T3PHI,
-             _mira_t3phi_init.
+     ------------------------------------
+     Bits             Table of Operations
+     ------------------------------------
+     MIRA_FIT_VIS2    _MIRA_VIS2_OPS
+     MIRA_FIT_VIS     _MIRA_VIS_OPS
+     MIRA_FIT_VISAMP  _MIRA_VISAMP_OPS
+     MIRA_FIT_VISPHI  _MIRA_VISPHI_OPS
+     MIRA_FIT_T3      _MIRA_T3_OPS
+     MIRA_FIT_T3AMP   _MIRA_T3AMP_OPS
+     MIRA_FIT_T3PHI   _MIRA_T3PHI_OPS
+     ------------------------------------
+
+   SEE ALSO: _mira_select_data.
  */
 {
   for (db = _mira_first(master); db; db = _mira_next(master, db)) {
@@ -701,70 +618,11 @@ func _mira_find_datablock(master, bits, init)
       return db;
     }
   }
-  if (! is_void(init)) {
-    db = init(h_new(bits=bits, next=master.first));
+  if (! is_void(ops)) {
+    db = h_new(bits=bits, next=master.first, ops=ops, idx=where(0));
     h_set, master, first=db;
   }
   return db;
 }
 
-func _mira_vis2_init(db)
-{
-  return h_set(db, ops=_MIRA_VIS2_OPS,
-               idx=where(0),
-               dat=[],
-               wgt=[]);
-}
-
-func _mira_vis_init(db)
-{
-  return h_set(db, ops=_MIRA_VIS_OPS,
-               idx=where(0),
-               re=[], im=[],
-               wrr=[], wri=[], wii=[]);
-}
-
-func _mira_visamp_init(db)
-{
-  return h_set(db, ops=_MIRA_VISAMP_OPS,
-               idx=where(0),
-               dat=[],
-               wgt=[]);
-}
-func _mira_visaphi_init(db)
-{
-  return h_set(db, ops=_MIRA_VISPHI_OPS,
-               idx=where(0),
-               dat=[],
-               wgt=[]);
-}
-
-func _mira_t3_init(db)
-{
-  return h_set(db, ops=_MIRA_T3_OPS,
-               idx1=where(0), sgn1=[],
-               idx2=where(0), sgn2=[],
-               idx3=where(0), sgn3=[],
-               re=[], im=[],
-               wrr=[], wri=[], wii=[]);
-}
-
-func _mira_t3amp_init(db)
-{
-  return h_set(db, ops=_MIRA_T3AMP_OPS,
-               idx1=where(0),
-               idx2=where(0),
-               idx3=where(0),
-               dat=[],
-               wgt=[]);
-}
-
-func _mira_t3phi_init(db)
-{
-  return h_set(db, ops=_MIRA_T3PHI_OPS,
-               idx1=where(0), sgn1=[],
-               idx2=where(0), sgn2=[],
-               idx3=where(0), sgn3=[],
-               dat=[],
-               wgt=[]);
-}
+/*---------------------------------------------------------------------------*/
