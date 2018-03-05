@@ -187,7 +187,9 @@ func _mira_define_xform(master)
       A1 = _mira_xform_coefs([], q*ufreq*x(-,));
       A2 = _mira_xform_coefs([], q*vfreq*y(-,));
     }
-    xform = h_new(name=xform, A1=A1, A2=A2);
+    xform = h_new(name=xform,
+                  A1re=A1(1,..), A1im=A1(2,..),
+                  A2re=A2(1,..), A2im=A2(2,..));
     h_evaluator, xform, "_mira_apply_separable_xform";
 
   } else if (xform == "nonseparable") {
@@ -278,13 +280,30 @@ func _mira_apply_separable_xform(this, x, job)
 {
   if (! job) {
     /* Direct transform. */
-    return ((this.A1(,,+)*x(+,))*this.A2)(,,sum);
+    re = this.A1re(,+)*x(+,);
+    im = this.A1im(,+)*x(+,);
+    return _mira_fake_complex((this.A2re*re)(,sum) - (this.A2im*im)(,sum),
+                              (this.A2re*im)(,sum) + (this.A2im*re)(,sum));
   } else if (job == 1) {
     /* Apply adjoint operator */
-    return ((this.A1*x)(*,))(+,)*((this.A2)(*,))(+,);
+    if (numberof((dims = dimsof(x))) != 3 || dims(2) != 2) {
+      throw, "expecting a 2-by-m array";
+    }
+    re = x(1,);
+    im = x(2,);
+    return (this.A1re(+,)*(this.A2re*re + this.A2im*im)(+,) +
+            this.A1im(+,)*(this.A2re*im - this.A2im*re)(+,));
   } else {
     error, "unsupported value for JOB";
   }
+}
+
+func _mira_fake_complex(re, im)
+{
+  z = array(double, 2, dimsof(re, im));
+  z(1,..) = re;
+  z(2,..) = im;
+  return z;
 }
 
 func _mira_apply_nonseparable_xform(this, x, job)
