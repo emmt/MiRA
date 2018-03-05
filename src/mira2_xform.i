@@ -1,7 +1,8 @@
 /*
  * mira2_xform.i -
  *
- * Models of the image to complex visibilities transfrom in MiRA.
+ * Models of the image to complex visibilities transform in MiRA (nonuniform
+ * Fourier transform and, optionally, spectral bandwidth smearing).
  *
  *-----------------------------------------------------------------------------
  *
@@ -72,19 +73,19 @@ func _mira_define_xform(master)
   /* Figure out whether or not account for spectral bandwidth smearing. */
   smearing = (smearingfunction != "none" && smearingfactor > 0);
   if (smearing && xform == "nfft") {
-    warn, ("spectral bandwidth smearing is ignored with xform=\"nfft\" "+
-           "smearingfactor=0 (set smearingfunction=\"none\" or "+
-           "smearingfactor=0 to avoid this message)");
+    warn, ("Spectral bandwidth smearing is ignored with xform=\"nfft\" "+
+           "(set smearingfunction=\"none\" or smearingfactor=0 to avoid "+
+           "this message).");
     smearing = 0n;
   }
   if (! smearing && xform != "nfft") {
     warn, ("when spectral bandwidth smearing is ignored, xform=\"nfft\" "+
-           "is faster that xform=\""+xform+"\"");
+           "is faster that xform=\""+xform+"\".");
   }
   if (smearing && xform == "separable" && smearingfunction != "gauss") {
-    warn, ("non-Gaussian smearing function with separable model is not "+
+    warn, ("Non-Gaussian smearing function with separable model is not "+
            "recommended (set smearingfunction=\"gauss\" or "+
-           "xform=\"nonseparable\" to avoid this message)");
+           "xform=\"nonseparable\" to avoid this message).");
   }
 
   /* Select reduced list of coordinates. */
@@ -94,6 +95,14 @@ func _mira_define_xform(master)
     mode = 1;
   }
   _mira_reduce_coordinates, master, mode;
+
+  /* Check pixel size. */
+  maxpixelsize = mira_maximum_pixel_size(master);
+  if (pixelsize > maxpixelsize) {
+    warn, ("Current pixelsize (%g mas) is too large which will yield " +
+           "aliasing.  Maximum pixelsize to avoid aliasing is %g mas."),
+      pixelsize/MIRA_MILLIARCSECOND, maxpixelsize/MIRA_MILLIARCSECOND;
+  }
 
   /* Get the coordinates (and check them). */
   local u, v, wave, band, ufreq, vfreq;
@@ -462,8 +471,6 @@ func _mira_reduce_coordinates(master, mode, debug=)
       h_set, db, idx = idx(db.idx);
     }
   }
-
-  h_show, coords;
 
   /* Overwrite coordinates in MASTER and update stage. */
   return h_set(master, coords=h_set(coords, mode=mode), stage=2);
