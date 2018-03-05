@@ -32,12 +32,17 @@ if (! is_scalar(MIRA_SRCDIR) || ! is_string(MIRA_SRCDIR)) {
  *
  *  - Stage 0: merging of OI-FITS data for a given target.
  *
- *  - Stage 1: selecting individual measurements.  This depends on parameters
- *    such as `wavemin`, `wavemax`, `freqmin`, `freqmax`, etc.  The list of
- *    observed baselines (or frequencies) is built during this stage.  Changing
- *    anything here also result in rebuilding the linear operator (see below).
+ *  - Stage 1: selection of individual measurements.  This depends on
+ *    parameters such as `wavemin`, `wavemax`, `freqmin`, `freqmax`, etc.  The
+ *    list of observed baselines (or frequencies) is built during this stage.
+ *    Changing anything here also result in rebuilding the linear operator (see
+ *    below).
  *
- *  - Stage 2: building the `xform` operator which computes the nonuniform
+ *  - Stage 2: reduction of the number of coordinates depending on whether the
+ *    model of the linear transform between the image and the observed
+ *    frequencies depends on (u/λ,v/λ), on (u,v,λ), or on (u,v,λ,Δλ).
+ *
+ *  - Stage 3: building the `xform` operator which computes the nonuniform
  *    Fourier transform of the image.  This depends on parameters such as the
  *    image dimensions, the pixel size and the specific model for the transform
  *    to use.
@@ -64,7 +69,7 @@ func mira_new(.., target=, wavemin=, wavemax=, pixelsize=, dims=, xform=,
 */
 {
   /* Get precision (in meters) for rounding baselines. */
-  if (! scalar_double(baseline_precision, 1e-3) || baseline_precision <= 0) {
+  if (! scalar_double(baseline_precision, 1e-5) || baseline_precision <= 0) {
     error, "absolute baseline precision must be a strictly positive length";
   }
 
