@@ -79,7 +79,7 @@ func mira_new(.., target=, wavemin=, wavemax=, pixelsize=, dims=, xform=,
   }
   master = h_new(oidata = oifits_new(), target = target,
                  stage = 0, xform="nfft",
-                 smearingfactor = 1.0, smearingfunction = sinc,
+                 smearingfactor = 1.0, smearingfunction = "none",
                  dims=[2,128,128], pixelsize = 5*MIRA_MILLIARCSECOND,
                  wavemin = 0.0, wavemax = MIRA_INF,
                  first = [],
@@ -140,39 +140,37 @@ func mira_config(master, wavemin=, wavemax=, dims=, pixelsize=, xform=,
 {
   /* Check all options. */
   if (! mira_length(wavemin, master.wavemin) || wavemin < 0.0) {
-    error, "minimum wavelength must be a nonnegative length";
+    throw, "minimum wavelength must be a nonnegative length";
   }
   if (! mira_length(wavemax, master.wavemax) || wavemax < 0.0) {
-    error, "maximum wavelength must be a nonnegative length";
+    throw, "maximum wavelength must be a nonnegative length";
   }
   if (wavemin > wavemax) {
-    error, "minimum wavelength > maximum wavelength";
+    throw, "minimum wavelength > maximum wavelength";
   }
   if (! mira_angle(pixelsize, master.pixelsize) || pixelsize <= 0.0) {
-    error, "pixel size must be a strictly positive angle";
+    throw, "pixel size must be a strictly positive angle";
   }
   master_xform = mira_xform_name(master);
   if (! scalar_string(xform, master_xform)) {
-    error, "`xform` must be a string";
+    throw, "`xform` must be a string";
   }
-  if (xform != "simple" && xform != "nfft") {
-    error, "unknown `xform` name";
-  }
-  if (xform != "simple" && (! is_void(smearingfactor) &&
-                            smearingfactor != 0)) {
-    warn, "use xform=\"simple\" to account for bandwidth smearing";
+  if (xform != "nfft" && xform != "nonseparable" && xform != "separable") {
+    throw, ("unknown `xform` name (must be one of \"nfft\", \"separable\" " +
+            "or \"nonseparable\"");
   }
   if (! scalar_double(smearingfactor, master.smearingfactor) ||
       smearingfactor < 0) {
-    error, "keyword SMEARINGFACTOR must have a nonnegative value";
+    throw, "`smearingfactor` must have a nonnegative value";
   }
-  if (is_void(smearingfunction)) {
-    smearingfunction = master.smearingfunction;
+  if (! scalar_string(smearingfunction, master.smearingfunction)) {
+    throw, "`smearingfunction` must be a string";
   }
-  if (! is_func(smearingfunction) && ! is_hash(smearingfunction)) {
-    error, "keyword SMEARINGFUNCTION must be set with a function";
+  if (smearingfunction != "sinc" && smearingfunction != "gauss" &&
+      smearingfunction != "none") {
+    throw, ("unknown `smearingfunction` name (must be one of \"none\", " +
+            "\"sinc\" or \"gauss\"");
   }
-
   bad_dims = 1n;
   if (is_void(dims)) {
     dims = mira_image_size(master);
@@ -192,12 +190,12 @@ func mira_config(master, wavemin=, wavemax=, dims=, pixelsize=, xform=,
     }
   }
   if (bad_dims) {
-    error, "invalid image dimension(s)";
+    throw, "invalid image dimension(s)";
   }
   master_flags = master.flags;
   if (! is_scalar(master_flags) || structof(master_flags) != int) {
     if (! is_scalar(master_flags) || int(master_flags) != master_flags) {
-      error, "invalid current flags";
+      throw, "invalid current flags";
     }
     master_flags = int(master.flags);
     h_set, master, flags = master_flags;
@@ -206,7 +204,7 @@ func mira_config(master, wavemin=, wavemax=, dims=, pixelsize=, xform=,
     flags = master_flags;
   }
   if (! is_scalar(flags) || ! is_integer(flags) || int(flags) != flags) {
-    error("invalid flags");
+    throw("invalid flags");
   }
   flags = int(flags);
 
@@ -335,7 +333,7 @@ MIRA_FIT_T3  = (MIRA_FIT_T3AMP | MIRA_FIT_T3PHI);
 /*---------------------------------------------------------------------------*/
 /* UPDATING RESSOURCES AND MODEL */
 
-func mira_update(master, img)
+func mira_update(master, img, force=)
 /* DOCUMENT mira_update, master;
          or mira_update, master, img;
 
@@ -348,10 +346,13 @@ func mira_update(master, img)
              mira_model_re, mira_model_im, mira_model_amp, mira_model_phi.
  */
 {
+  if (force) {
+    h_set, master, stage = 0;
+  }
   if (master.stage < 1) {
     _mira_select_data, master;
   }
-  if (master.stage < 2) {
+  if (master.stage < 3) {
     _mira_define_xform, master;
   }
   if (! is_void(img)) {
