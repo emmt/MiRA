@@ -208,7 +208,11 @@ _MIRA_ANGLE_UNITS = h_new("radian", 1e0,
                           "arcsecond", MIRA_ARCSEC,
                           "arcsec", MIRA_ARCSEC,
                           "milliarcsecond", 1e-3*MIRA_ARCSEC,
-                          "mas", 1e-3*MIRA_ARCSEC);
+                          "milliarcsec", 1e-3*MIRA_ARCSEC,
+                          "mas", 1e-3*MIRA_ARCSEC,
+                          "microarcsecond", 1e-6*MIRA_ARCSEC,
+                          "microarcsec", 1e-6*MIRA_ARCSEC,
+                          "µas", 1e-6*MIRA_ARCSEC);
 
 /*--------------------------------------------------------------------------*/
 /* MISCELLANEOUS */
