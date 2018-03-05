@@ -67,30 +67,31 @@ func mira_cost_and_gradient(master, x, &grd)
   return cost;
 }
 
-func mira_polar_to_cartesian(amp, amperr, phi, phierr, what, goodman=)
-/* DOCUMENT ws = mira_polar_to_cartesian(amp, amperr, phi, phierr, what)
+func mira_polar_to_cartesian(amp, amperr, phi, phierr, what,
+                             goodman=, use_covar=)
+/* DOCUMENT tbl = mira_polar_to_cartesian(amp, amperr, phi, phierr, what)
 
      Convert complex data given in polar coordinates `(amp,phi)` with their
      standard deviations `(amperr,phierr)` into Cartesian coordinates `(re,im)`
      and associated noise model.  The result is a hash table:
 
-       ws.re  = real part of complex data
-       ws.im  = imaginary part of complex data
-       ws.wrr = statistical weight for real part of residuals
-       ws.wii = statistical weight for imaginary part of residuals
-       ws.wri = statistical weight for real times imaginary parts of residuals
+       tbl.re  = real part of complex data
+       tbl.im  = imaginary part of complex data
+       tbl.wrr = statistical weight for real part of residuals
+       tbl.wii = statistical weight for imaginary part of residuals
+       tbl.wri = statistical weight for real times imaginary parts of residuals
 
      The quadratic penalty writes:
 
-       err =     ws.wrr*(ws.re - re)^2
-             +   ws.wii*(ws.im - im)^2
-             + 2*ws.wri*(ws.re - re)*(ws.im - im);
+       err =     tbl.wrr*(tbl.re - re)^2
+             +   tbl.wii*(tbl.im - im)^2
+             + 2*tbl.wri*(tbl.re - re)*(tbl.im - im);
+
+     With Goodman approximation, wrr = wii = wgt and wri = 0.
 
    SEE ALSO: mira_cost.
  */
 {
-  local re, im, wrr, wri, wii;
-
   if (min(amp) < 0.0) {
     k = where(amp < 0.0);
     warn, "There are %d negative %s amplitude(s)!!! [FIXED]",
@@ -103,47 +104,108 @@ func mira_polar_to_cartesian(amp, amperr, phi, phierr, what, goodman=)
   sin_phi = sin(phi);
   re = amp*cos_phi;
   im = amp*sin_phi;
-  test = (amperr > 0.0) & (phierr > 0.0) & (amp > 0.0);
-  k = where(test);
+  tbl = h_new(re=re, im=im);
+
+  /* Deal with valid nonzero complex visibilities. */
+  k = where((amperr > 0.0) & (phierr > 0.0) & (amp > 0.0));
   if (goodman) {
-    /* Use Goodman approximation with SIGMA such that the area of ellipsoids
-     * at one standard deviation are the same:
-     *    PI*SIGMA^2 = PI*(RHO*SIGMA_THETA)*SIGMA_RHO
+    /* Use Goodman approximation with SIGMA such that the area of ellipsoids at
+     * one standard deviation are the same (this also amount to having the same
+     * determinant of the covariance matrices):
+     *
+     *     PI*SIGMA^2 = PI*(RHO*SIGMA_THETA)*SIGMA_RHO
+     *
      * hence:
-     *    SIGMA = sqrt(RHO*SIGMA_THETA*SIGMA_RHO)
+     *
+     *     SIGMA = sqrt(RHO*SIGMA_THETA*SIGMA_RHO)
+     *
      * If SIGMA_THETA or SIGMA_RHO is invalid, take:
-     *    SIGMA = SIGMA_RHO
-     *    SIGMA = RHO*SIGMA_THETA
+     *
+     *     SIGMA = SIGMA_RHO
+     *     SIGMA = RHO*SIGMA_THETA
+     *
      * accordingly.
      */
-    wrr = wri = array(double, dimsof(test));
+    wgt = array(double, dimsof(re));
+    h_set, tbl, goodman=1n, wgt=wgt;
     if (is_array(k)) {
-      /* Valid amplitude and phase data. */
-      wrr(k) = 1.0/(amp(k)*phierr(k)*amperr(k));
+      wgt(k) = 1.0/(amp(k)*phierr(k)*amperr(k));
     }
-    eq_nocopy, wii, wrr;
   } else {
-    /* Use convex quadratic local approximation. */
-    wrr = wri = wii = array(double, dimsof(test));
+    /*
+     * Use convex quadratic local approximation.
+     *
+     * We consider complex data in polar form: ρ⋅exp(i⋅ϕ)
+     * and a complex model: z.
+     *
+     * The amplitude and phase standard deviations directly yield the
+     * covariance anti-residuals in a frame whose first axis is parallel to
+     * the complex data vector:
+     *
+     *     err = err_para⋅u_para + err_perp⋅u_perp
+     *
+     * with u_para = [cosϕ, sinϕ] and v_para = [-sinϕ, cosϕ] the unit vectors
+     * parallel and perpendicular to the data vector.  Assuming independent
+     * errors along these 2 axes, the covariance writes:
+     *
+     *     Cov(err) = var_para⋅u_para⋅u_para' + var_perp⋅u_perp⋅u_perp'
+     *              = [cov_rr, cov_ri; cov_ri, cov_im]
+     *
+     * with:
+     *
+     *     cov_rr = cos²ϕ⋅var_para + sin²ϕ⋅var_perp,
+     *     cov_ri = cosϕ⋅sinϕ⋅(var_para - var_perp),
+     *     cov_ii = cos²ϕ⋅var_perp + sin²ϕ⋅var_para,
+     *
+     * Remarks: (i) det(Cov(err)) = var_para⋅var_perp; (ii) as expected, that
+     * Re(err) and Im(err) are correlated if var_para > var_perp, uncorrelated
+     * if var_para = var_perp and anti-correlated if var_para < var_perp.
+     */
+    wrr = wri = wii = array(double, dimsof(re));
+    h_set, tbl, goodman=0n, wrr=wrr, wri=wri, wii=wii;
     if (is_array(k)) {
-      /* Valid amplitude and phase data. */
-      err1 = amperr(k);
-      var1 = err1*err1;
-      err2 = amp(k)*phierr(k);
-      var2 = err2*err2;
+      std_para = amperr(k);
+      std_perp = amp(k)*phierr(k);
       cs = cos_phi(k);
       sn = sin_phi(k);
-      crr = cs*cs*var1 + sn*sn*var2;
-      cri = cs*sn*(var1 - var2);
-      cii = sn*sn*var1 + cs*cs*var2;
-      a = 1.0/(var1*var2);
-      wrr(k) =  a*cii;
-      wri(k) = -a*cri;
-      wii(k) =  a*crr;
+      cs_cs = cs*cs;
+      sn_sn = sn*sn;
+      if (use_covar) {
+        /* Using the covariances, it is possible to have 1 division instead of
+           2 but 2 more multiplications and a negation. */
+        var_para = std_para*std_para;
+        var_perp = std_perp*std_perp;
+        cov_rr = cs_cs*var_para + sn_sn*var_perp;
+        cov_ri = cs*sn*(var_para - var_perp);
+        cov_ii = cs_cs*var_perp + sn_sn*var_para;
+        one_over_det = 1.0/(var_para*var_perp);
+        wrr(k) =  one_over_det*cov_ii;
+        wri(k) = -one_over_det*cov_ri;
+        wii(k) =  one_over_det*cov_rr;
+      } else {
+        wgt_para = 1.0/(std_para*std_para);
+        wgt_perp = 1.0/(std_perp*std_perp);
+        wrr(k) = cs_cs*wgt_para + sn_sn*wgt_perp;
+        wri(k) = cs*sn*(wgt_para - wgt_perp);
+        wii(k) = cs_cs*wgt_perp + sn_sn*wgt_para;
+      }
     }
   }
 
-  return h_new(re=re, im=im, wrr=wrr, wri=wri, wii=wii);
+  /* Deal with valid zero complex visibilities. */
+  k = where((amperr > 0.0) & (amp == 0.0));
+  if (is_array(k)) {
+    std_para = amperr(k);
+    wgt_para = 1.0/(std_para*std_para);
+    if (goodman) {
+      tbl.wgt(k) = wgt_para;
+    } else {
+      tbl.wrr(k) = wgt_para;
+      tbl.wii(k) = wgt_para;
+    }
+  }
+
+  return tbl;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -201,25 +263,13 @@ func _mira_visphi_ndata(master, db)
 
 func _mira_vis_cost(master, db, grd)
 {
-  /* RE = real part of (anti-)residuals
-   * IM = imaginary part of (anti-)residuals
-   * COST = sum(WRR⋅RE^2 + 2⋅WRI⋅RE⋅IM + WII⋅IM⋅IM)
-   *      = sum((WRR⋅RE + WRI⋅IM)⋅RE + (WRI⋅RE + WII⋅IM)⋅IM)
-   *      = (1/2)⋅sum((∂COST/∂RE)⋅RE) + (1/2)⋅sum((∂COST/∂IM)⋅IM)
-   * ∂COST/∂RE = 2⋅(WRR⋅RE + WRI⋅IM)
-   * ∂COST/∂IM = 2⋅(WRI⋅RE + WII⋅IM)
-   */
   local idx; eq_nocopy, idx, db.idx;
-  re = mira_model_re(master, idx) - db.re; /* real part of residuals */
-  im = mira_model_im(master, idx) - db.im; /* imaginary part of residuals */
-  wr = db.wrr*re + db.wri*im;
-  wi = db.wri*re + db.wii*im;
-  cost = sum(wr*re) + sum(wi*im);
-  if (! is_void(grd)) {
-    grd(1, idx) += (wr + wr);
-    grd(2, idx) += (wi + wi);
-  }
-  return cost;
+  return _mira_visibility_cost(master.flags,
+                               mira_model_re(master, idx),
+                               mira_model_im(master, idx),
+                               db.wrr, db.wri, db.wii,
+                               db.re, db.im,
+                               idx, grd);
 }
 
 func _mira_visamp_cost(master, db, grd)
@@ -248,45 +298,249 @@ func _mira_visphi_cost(master, db, grd)
 
 func _mira_t3_ndata(master, db)
 {
-  return 2*numberof(db.idx1);
+  return 2*numberof(db.idx)/3;
 }
 
 func _mira_t3amp_ndata(master, db)
 {
-  return numberof(db.idx1);
+  return numberof(db.idx)/3;
 }
 
 func _mira_t3phi_ndata(master, db)
 {
-  return numberof(db.idx1);
+  return numberof(db.idx)/3;
 }
 
 func _mira_t3_cost(master, db, grd)
 {
-  local idx1; eq_nocopy, idx1, db.idx1;
-  local idx2; eq_nocopy, idx2, db.idx2;
-  local idx3; eq_nocopy, idx3, db.idx3;
-  trow("not yet implemented");
+  /* Declare variables shared by pre/post helper subroutines. */
+  local idx, sgn, re, im;
+  local t3re, t3im, t3idx, t3grd;
+  local re1, im1, re2, im2, re3, im3;
+  local re12, im12;
+
+  /* Initialize shared variables. */
+  _mira_t3_pre_cost, master, db;
+
+  /* Compute the cost (and its gradient) with respect to the bispectrum. */
+  cost = _mira_visibility_cost(master.flags, t3re, t3im,
+                               db.wrr, db.wri, db.wii,
+                               db.re, db.im,
+                               t3idx, t3grd);
+
+  /* If needed, update gradient w.r.t. the model complex visibilities. */
+  if (! is_void(grd)) {
+    _mira_t3_post_cost, grd;
+  }
+  return cost;
 }
 
 func _mira_t3amp_cost(master, db, grd)
 {
-  local idx1; eq_nocopy, idx1, db.idx1;
-  local idx2; eq_nocopy, idx2, db.idx2;
-  local idx3; eq_nocopy, idx3, db.idx3;
-  trow("not yet implemented");
+  /* Declare variables shared by pre/post helper subroutines. */
+  local idx, sgn, re, im;
+  local t3re, t3im, t3idx, t3grd;
+  local re1, im1, re2, im2, re3, im3;
+  local re12, im12;
+
+  /* Initialize shared variables. */
+  _mira_t3_pre_cost, master, db;
+
+  /* Compute the model of the bispectrum amplitude. */
+  t3amp = abs(t3re, t3im);
+
+  /* Compute the cost (and its gradient) with respect to the bispectrum. */
+  cost = _mira_amplitude_cost(master.flags, t3re, t3im, t3amp,
+                              db.wgt, db.dat, t3idx, t3grd);
+
+  /* If needed, update gradient w.r.t. the model complex visibilities. */
+  if (! is_void(grd)) {
+    _mira_t3_post_cost, grd;
+  }
+  return cost;
 }
 
 func _mira_t3phi_cost(master, db, grd)
 {
-  local idx1; eq_nocopy, idx1, db.idx1;
-  local idx2; eq_nocopy, idx2, db.idx2;
-  local idx3; eq_nocopy, idx3, db.idx3;
-  trow("not yet implemented");
+  /* Declare variables shared by pre/post helper subroutines. */
+  local idx, sgn, re, im;
+  local t3re, t3im, t3idx, t3grd;
+  local re1, im1, re2, im2, re3, im3;
+  local re12, im12;
+
+  /* Initialize shared variables. */
+  _mira_t3_pre_cost, master, db;
+
+  /* Compute the model of the phase closures. */
+  t3phi = sgn(+,)*mira_model_phi(master, idx)(+,);
+
+  /* Compute the cost (and its gradient) with respect to the bispectrum. */
+  cost = _mira_phase_cost(master.flags, t3re, t3im,
+                          t3re*t3re + t3im*t3im, t3phi,
+                          db.wgt, db.dat, t3idx, t3grd);
+
+  /* If needed, update gradient w.r.t. the model complex visibilities. */
+  if (! is_void(grd)) {
+    _mira_t3_post_cost, grd;
+  }
+  return cost;
+}
+
+func _mira_t3_pre_cost(master, db)
+{
+  extern idx, sgn, re, im;
+  extern t3re, t3im, t3idx, t3grd;
+  extern re1, im1, re2, im2, re3, im3;
+  extern re12, im12;
+  eq_nocopy, idx, db.idx;
+  eq_nocopy, sgn, db.sgn;
+  re = mira_model_re(master, idx);
+  im = mira_model_im(master, idx)*sgn;
+  re1 = re(1,);
+  im1 = im(1,);
+  re2 = re(2,);
+  im2 = im(2,);
+  re3 = re(3,);
+  im3 = im(3,);
+  re12 = mira_cmult_re(re1,im1, re2,im2);
+  im12 = mira_cmult_im(re1,im1, re2,im2);
+  t3re = mira_cmult_re(re12,im12, re3,im3);
+  t3im = mira_cmult_im(re12,im12, re3,im3);
+  if (is_void(grd)) {
+    t3idx = [];
+    t3grd = [];
+  } else {
+    n = numberof(t3re);
+    t3idx = indgen(n);
+    t3grd = array(double, 2, n);
+  }
+}
+
+func  _mira_t3_post_cost(grd)
+/* DOCUMENT _mira_t3_post_cost, grd;
+
+     Private subroutine to update the gradient w.r.t. the model complex
+     visibilities, stored in GRD, given G the gradient w.r.t. the complex
+     bispectrum.  RE and IM are the real and imaginary parts of the model
+     complex visibilities involved in the bispectrum.  SGN is sign of the
+     phase (or of the imaginary part) of the involved model complex
+     visibilities relative to the global model visibilities (IM is already
+     multiplied by SGN).  IDX gives the indices of the involved model complex
+     visibilities in the global model visibilities.
+
+     All arguments must be 2D arrays, GRD and G have a leading dimension of 2
+     (for the real and imaginary parts respectively), all the others have a
+     leading dimension of 3 (for the 3 involved complex visibilities in each
+     bispectrum).
+
+   SEE ALSO: _mira_t3_cost, _mira_t3amp_cost, _mira_t3phi_cost.
+ */
+{
+  extern idx, sgn, re, im;
+  extern t3re, t3im, t3idx, t3grd;
+  extern re1, im1, re2, im2, re3, im3;
+  extern re12, im12;
+  t3grd_re = t3grd(1,);
+  t3grd_im = t3grd(2,);
+  _mira_t3_post_cost_helper, idx(1,), sgn(1,),
+    mira_cmult_re(re2,im2, re3,im3),
+    mira_cmult_im(re2,im2, re3,im3);
+  _mira_t3_post_cost_helper, idx(2,), sgn(2,),
+    mira_cmult_re(re1,im1, re3,im3),
+    mira_cmult_im(re1,im1, re3,im3);
+  _mira_t3_post_cost_helper, idx(3,), sgn(3,), re12, im12;
+}
+
+func _mira_t3_post_cost_helper(idx, sgn, re, im)
+{
+  /*
+   * For f: ℂ ↦ ℝ, the gradient can be written as:
+   *
+   *     f'(z) = ∂f(z)/∂z = ∂f(z)/∂Re(z) + i⋅∂f(z)/∂Im(z)
+   *
+   * where z ∈ ℂ, then for any w ∈ ℂ:
+   *
+   *     ∂f(w⋅z)/∂z = conj(w)⋅f'(w.z)
+   *
+   * In the code below:
+   *
+   *     f'(w⋅z) = t3grd_re + i⋅t3grd_im
+   *     w = re + i⋅im
+   */
+  extern grd, t3grd_re, t3grd_im;
+  grd(1,idx) += (re*t3grd_re + im*t3grd_im);
+  grd(2,idx) += (re*t3grd_im - im*t3grd_re)*sgn;
 }
 
 /*--------------------------------------------------------------------------*/
 /* COST FUNCTIONS */
+
+func _mira_visibility_cost(flags, mdl_re, mdl_im, wgt_rr, wgt_ri, wgt_ii,
+                           dat_re, dat_im, idx, grd)
+/* DOCUMENT _mira_visibility_cost(flags, mdl_re, mdl_im,
+                                  wgt_rr, wgt_ri, wgt_ii,
+                                  dat_re, dat_im, idx, grd);
+
+     yields the misfit error of complex visibility data.  Arguments MDL_RE, and
+     MDL_IM are the real and imaginary parts of the model complex visibilities
+     corresponding to the data.  WGT_RR, WGT_RI and WGT_II gives the weights of
+     the complex data whose real and imaginary parts are DAT_RE and DAT_IM.
+     Optional arguments IDX and GRD gives the indices of the model complex
+     visibilities corresponding to the data and the array to integrate the
+     gradient of the misfit error with respect to the model complex amplitudes.
+
+   SEE ALSO: mira_polar_to_cartesian.
+ */
+{
+  /*
+   * The real and imaginary parts of the (anti-)residuals are respectively
+   * given by:
+   *
+   *     ERR_RE = MDL_RE - DAT_RE
+   *     ERR_IM = MDL_IM - DAT_IM
+   *
+   * then:
+   *
+   *     COST = sum(WGT_RR⋅ERR_RE^2 + 2⋅WGT_RI⋅ERR_RE⋅ERR_IM +
+   *                WGT_II⋅ERR_IM^2)
+   *
+   * can be rewritten as:
+   *
+   *     COST = sum((WGT_RR⋅ERR_RE + WGT_RI⋅ERR_IM)⋅ERR_RE +
+   *                (WGT_RI⋅ERR_RE + WGT_II⋅ERR_IM)⋅ERR_IM)
+   *          = (1/2)⋅sum((∂COST/∂MDL_RE)⋅ERR_RE) +
+   *            (1/2)⋅sum((∂COST/∂MDL_IM)⋅ERR_IM)
+   *
+   * where:
+   *
+   *     ∂COST/∂MDL_RE = 2⋅(WGT_RR⋅ERR_RE + WGT_RI⋅ERR_IM)
+   *     ∂COST/∂MDL_IM = 2⋅(WGT_RI⋅ERR_RE + WGT_II⋅ERR_IM)
+   *
+   * Introducing common expressions:
+   *
+   *     TMP_RE = WGT_RR⋅ERR_RE + WGT_RI⋅ERR_IM
+   *     TMP_IM = WGT_RI⋅ERR_RE + WGT_II⋅ERR_IM
+   *
+   * the cost and gradient simplifies to:
+   *
+   *     COST = sum(TMP_RE⋅ERR_RE) + sum(TMP_IM⋅ERR_IM)  (*)
+   *     ∂COST/∂MDL_RE = 2⋅TMP_RE
+   *     ∂COST/∂MDL_IM = 2⋅TMP_IM
+   *
+   * (*) sum(A)+sum(B) where A and B are arrays involves as many operations
+   *      as sum(A+B) but does not require temporary storage of A+B.
+   */
+  err_re = mdl_re - dat_re;
+  err_im = mdl_im - dat_im;
+  tmp_re = wgt_rr*err_re + wgt_ri*err_im;
+  tmp_im = wgt_ri*err_re + wgt_ii*err_im;
+  cost = sum(tmp_re*err_re) + sum(tmp_im*err_im);
+  if (! is_void(grd)) {
+    grd(1, idx) += (tmp_re + tmp_re);
+    grd(2, idx) += (tmp_im + tmp_im);
+  }
+  return cost;
+}
 
 func _mira_amplitude_cost(flags, re, im, mdl, wgt, dat, idx, grd)
 /* DOCUMENT _mira_amplitude_cost(flags, re, im, mdl, wgt, dat);
