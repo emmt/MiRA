@@ -77,9 +77,10 @@ func mira_polar_to_cartesian(amp, amperr, phi, phierr, what,
 
        tbl.re  = real part of complex data
        tbl.im  = imaginary part of complex data
-       tbl.wrr = statistical weight for real part of residuals
-       tbl.wii = statistical weight for imaginary part of residuals
-       tbl.wri = statistical weight for real times imaginary parts of residuals
+       tbl.wrr = statistical weights for real part of residuals
+       tbl.wii = statistical weights for imaginary part of residuals
+       tbl.wri = statistical weights for real times imaginary parts of
+                 residuals
 
      The quadratic penalty writes:
 
@@ -87,7 +88,12 @@ func mira_polar_to_cartesian(amp, amperr, phi, phierr, what,
              +   tbl.wii*(tbl.im - im)^2
              + 2*tbl.wri*(tbl.re - re)*(tbl.im - im);
 
-     With Goodman approximation, wrr = wii = wgt and wri = 0.
+     With Goodman approximation, wrr = wii = wgt and wri = 0.  The returned
+     table has then the following fields:
+
+       tbl.re  = real part of complex data
+       tbl.im  = imaginary part of complex data
+       tbl.wgt = statistical weights
 
    SEE ALSO: mira_cost.
  */
@@ -109,7 +115,8 @@ func mira_polar_to_cartesian(amp, amperr, phi, phierr, what,
   /* Deal with valid nonzero complex visibilities. */
   k = where((amperr > 0.0) & (phierr > 0.0) & (amp > 0.0));
   if (goodman) {
-    /* Use Goodman approximation with SIGMA such that the area of ellipsoids at
+    /*
+     * Use Goodman approximation with SIGMA such that the area of ellipsoids at
      * one standard deviation are the same (this also amount to having the same
      * determinant of the covariance matrices):
      *
@@ -157,9 +164,10 @@ func mira_polar_to_cartesian(amp, amperr, phi, phierr, what,
      *     cov_ri = cosϕ⋅sinϕ⋅(var_para - var_perp),
      *     cov_ii = cos²ϕ⋅var_perp + sin²ϕ⋅var_para,
      *
-     * Remarks: (i) det(Cov(err)) = var_para⋅var_perp; (ii) as expected, that
-     * Re(err) and Im(err) are correlated if var_para > var_perp, uncorrelated
-     * if var_para = var_perp and anti-correlated if var_para < var_perp.
+     * Remarks: (i) det(Cov(err)) = var_para⋅var_perp; (ii) as expected, for a
+     * positive angle ϕ ≤ 90°, Re(err) and Im(err) are correlated if var_para >
+     * var_perp, uncorrelated if var_para = var_perp and anti-correlated if
+     * var_para < var_perp.
      */
     wrr = wri = wii = array(double, dimsof(re));
     h_set, tbl, goodman=0n, wrr=wrr, wri=wri, wii=wii;
@@ -236,9 +244,8 @@ func _mira_vis2_cost(master, db, grd)
   wgt_err = db.wgt*err;
   cost = sum(wgt_err*err);
   if (! is_void(grd)) {
-    four_wgt_err = 4.0*unref(wgt_err);
-    grd(1, idx) += four_wgt_err*re;
-    grd(2, idx) += four_wgt_err*im;
+    fct = 4.0*unref(wgt_err);
+    _mira_update_gradient, grd, idx, fct*re, fct*im;
   }
   return cost;
 }
@@ -468,8 +475,9 @@ func _mira_t3_post_cost_helper(idx, sgn, re, im)
    *     w = re + i⋅im
    */
   extern grd, t3grd_re, t3grd_im;
-  grd(1,idx) += (re*t3grd_re + im*t3grd_im);
-  grd(2,idx) += (re*t3grd_im - im*t3grd_re)*sgn;
+  _mira_update_gradient, grd, idx,
+    (re*t3grd_re + im*t3grd_im),
+    (re*t3grd_im - im*t3grd_re)*sgn;
 }
 
 /*--------------------------------------------------------------------------*/
@@ -536,8 +544,7 @@ func _mira_visibility_cost(flags, mdl_re, mdl_im, wgt_rr, wgt_ri, wgt_ii,
   tmp_im = wgt_ri*err_re + wgt_ii*err_im;
   cost = sum(tmp_re*err_re) + sum(tmp_im*err_im);
   if (! is_void(grd)) {
-    grd(1, idx) += (tmp_re + tmp_re);
-    grd(2, idx) += (tmp_im + tmp_im);
+    _mira_update_gradient, grd, idx, tmp_re + tmp_re, tmp_im + tmp_im;
   }
   return cost;
 }
@@ -610,8 +617,7 @@ func _mira_amplitude_cost(flags, re, im, mdl, wgt, dat, idx, grd)
   cost += sum(wgt_err*err);
   if (! is_void(grd)) {
     fct = (wgt_err + wgt_err)/mdl;
-    grd(1, idx) += fct*re;
-    grd(2, idx) += fct*im;
+    _mira_update_gradient, grd, idx, fct*re, fct*im;
   }
   return cost;
 }
@@ -700,8 +706,7 @@ func _mira_phase_cost(flags, re, im, vis2, mdl, wgt, dat, idx, grd)
     cost += 4.0*sum(wgt*tmp*tmp);
     if (! is_void(grd)) {
       fct = (wgt + wgt)*sin(err)/vis2;
-      grd(1,idx) -= fct*im;
-      grd(2,idx) += fct*re;
+      _mira_update_gradient, grd, idx, -fct*im, fct*re;
     }
   } else if (bits == MIRA_HANIFF_APPROX) {
     /*
@@ -718,8 +723,7 @@ func _mira_phase_cost(flags, re, im, vis2, mdl, wgt, dat, idx, grd)
     cost += sum(arc_err*wgt_arc_err);
     if (! is_void(grd)) {
       fct = (wgt_arc_err + wgt_arc_err)/vis2;
-      grd(1,idx) -= fct*im;
-      grd(2,idx) += fct*re;
+      _mira_update_gradient, grd, idx, -fct*im, fct*re;
     }
   } else if (bits == MIRA_CONVEX_LIMIT) {
     /*
@@ -741,13 +745,24 @@ func _mira_phase_cost(flags, re, im, vis2, mdl, wgt, dat, idx, grd)
     cost += sum(wgt*sin_err*sin_err);
     if (! is_void(grd)) {
       fct = wgt*sin(err + err)/vis2;
-      grd(1,idx) -= fct*im;
-      grd(2,idx) += fct*re;
+      _mira_update_gradient, grd, idx, -fct*im, fct*re;
     }
   } else {
     error, "unknown choice for phase cost";
   }
   return cost;
+}
+
+func _mira_update_gradient(grd, idx, grd_re, grd_im, fast)
+{
+  if (fast) {
+    grd(1,idx) += grd_re;
+    grd(2,idx) += grd_im;
+  } else {
+    n = numberof(grd)/2;
+    grd(1,*) += histogram(idx, grd_re, top=n);
+    grd(2,*) += histogram(idx, grd_im, top=n);
+  }
 }
 
 /*---------------------------------------------------------------------------*/
