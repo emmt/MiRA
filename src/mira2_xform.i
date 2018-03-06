@@ -37,7 +37,7 @@ func _mira_define_xform(master)
    transform of the image into the complex visibilities in MiRA instance
    `master`.  This routine must be called after data selection (by
    `_mira_select_data`) and after changing any options related to the model.
-   Attribute `master.stage` is 1 on entry and is set to 2 on exit.  When
+   Attribute `master.stage` is 1 on entry and is set to 3 on exit.  When
    called as a fucntion, `master` is returned.
 
    The operator, say `xform`, is an object (actually a hash table with its own
@@ -70,22 +70,17 @@ func _mira_define_xform(master)
   smearingfactor = master.smearingfactor;
   smearingfunction = master.smearingfunction;
 
-  /* Figure out whether or not account for spectral bandwidth smearing. */
+  /* Figure out whether or not to account for spectral bandwidth smearing. */
   smearing = (smearingfunction != "none" && smearingfactor > 0);
-  if (smearing && xform == "nfft") {
-    warn, ("Spectral bandwidth smearing is ignored with xform=\"nfft\" "+
+  if (smearing && (xform == "nfft" || xform == "separable")) {
+    warn, ("Spectral bandwidth smearing is ignored with xform=\"%s\" "+
            "(set smearingfunction=\"none\" or smearingfactor=0 to avoid "+
-           "this message).");
+           "this message)."), xform;
     smearing = 0n;
   }
   if (! smearing && xform != "nfft") {
     warn, ("when spectral bandwidth smearing is ignored, xform=\"nfft\" "+
            "is faster that xform=\""+xform+"\".");
-  }
-  if (smearing && xform == "separable" && smearingfunction != "gauss") {
-    warn, ("Non-Gaussian smearing function with separable model is not "+
-           "recommended (set smearingfunction=\"gauss\" or "+
-           "xform=\"nonseparable\" to avoid this message).");
   }
 
   /* Select reduced list of coordinates. */
@@ -142,7 +137,7 @@ func _mira_define_xform(master)
 
   /* Convert smearing function name into a function. */
   if (smearingfunction == "none") {
-    smearingfunction = _mira_one();
+    smearingfunction = mira_no_smearing();
   } else if (smearingfunction == "gauss") {
     smearingfunction = mira_gaussian_smearing;
   } else if (smearingfunction == "sinc") {
@@ -151,42 +146,32 @@ func _mira_define_xform(master)
     throw, "unknown `smearingfunction` name";
   }
 
-  /* This model of the nonuniform Fourier transform is implemented by a
-   * simple matrix multiplication whose coefficients are given by:
+  /*
+   * The transform model is linear and can be implemented by a simple matrix
+   * multiplication whose coefficients are given by:
    *
-   *     exp(-i*2*pi*(x*u + y*v))
+   *     exp(-i⋅2⋅π⋅(x⋅u + y⋅v)/λ)⋅s(γ⋅Δλ⋅(x⋅u + y⋅v)/λ²)
    *
    * where `x` is the relative right ascension (RA), `y` is the relative
-   * declination (DEC) and `(u,v)` are the spatial frequencies (baselines
-   * divided by wavelength).  See Eq. (1) in Pauls, Young, Cotton & Monnier,
-   * "A Data Exchange Standard for Optical (Visible/IR) Interferometry",
-   * Publications of the Astronomical Society of the Pacific (PASP),
-   * vol. 117, pp. 1255-1262 (2005).
+   * declination (DEC), `(u,v)` are the baselines divided, `λ` is the
+   * wavelength, `Δλ` is the effective spectral bandwidth, `γ≈1` is a
+   * correction factor and `s` is the smearing function (specified by the
+   * `smearingfactor` and the `smearingfunction` options).  The complex
+   * exponential is given by Eq. (1) in Pauls, Young, Cotton & Monnier, "A Data
+   * Exchange Standard for Optical (Visible/IR) Interferometry", Publications
+   * of the Astronomical Society of the Pacific (PASP), vol. 117, pp. 1255-1262
+   * (2005).
    *
-   * FIXME: The nonuniform Fourier transform is separable in RA/DEC, the
-   *        smearing is also separable provided a Gaussian is used (instead
-   *        of a sinc).  Exploiting this can lead to a much smaller number of
-   *        coefficients.
+   * The nonuniform Fourier transform is separable in RA/DEC.  Exploiting this
+   * can lead to a much smaller number of coefficients if spectral bandwidth
+   * smearing is ignored.
    */
 
   if (xform == "separable") {
 
-    if (smearing) {
-      q = -2*MIRA_PI/wave;
-      if (smearingfactor > 0 && max(band) > 0) {
-        r = smearingfactor*band/(wave*wave);
-        A1 = _mira_xform_coefs(smearingfunction(r*u*x(-,)), q*u*x(-,));
-        A2 = _mira_xform_coefs(smearingfunction(r*v*y(-,)), q*v*y(-,));
-      } else {
-        smearing = 0n;
-        A1 = _mira_xform_coefs([], q*u*x(-,));
-        A2 = _mira_xform_coefs([], q*v*y(-,));
-      }
-    } else {
-      q = -2*MIRA_PI;
-      A1 = _mira_xform_coefs([], q*ufreq*x(-,));
-      A2 = _mira_xform_coefs([], q*vfreq*y(-,));
-    }
+    q = -2*MIRA_PI;
+    A1 = _mira_xform_coefs([], q*ufreq*x(-,));
+    A2 = _mira_xform_coefs([], q*vfreq*y(-,));
     xform = h_new(name=xform,
                   A1re=A1(1,..), A1im=A1(2,..),
                   A2re=A2(1,..), A2im=A2(2,..));
@@ -362,7 +347,7 @@ func mira_gaussian_smearing(t)
 MIRA_SINC_FWHM = 1.2067091288032283;
 MIRA_GAUSS_FWHM = sqrt(log(256));
 
-func _mira_one(t)
+func mira_no_smearing(t)
 {
   return array(1.0, dimsof(t));
 }
