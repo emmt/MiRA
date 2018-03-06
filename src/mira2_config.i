@@ -406,6 +406,10 @@ func mira_update(master, img, force=)
 
      When called as a function, `master` is returned.
 
+     Set keyword `force` true to force updating form the beginning (data
+     selection and building of the model operator).
+
+
    SEE ALSO: mira_cost, mira_cost_and_gradient, mira_model_vis, mira_model_vis2,
              mira_model_re, mira_model_im, mira_model_amp, mira_model_phi.
  */
