@@ -218,17 +218,17 @@ func mira_config(master, wavemin=, wavemax=, dims=, pixelsize=, xform=,
       flags = flags;
   }
   if (master.pixelsize != pixelsize) {
-    h_set, master, model = h_new(), stage = min(master.stage, 1),
+    h_set, master, model = h_new(), stage = min(master.stage, 2),
       pixelsize = pixelsize;
   }
   if (master_xform != xform || smearingfunction != master.smearingfunction ||
       smearingfactor != master.smearingfactor) {
-    h_set, master, model = h_new(), stage = min(master.stage, 1),
+    h_set, master, model = h_new(), stage = min(master.stage, 2),
       xform = xform, smearingfunction = smearingfunction,
       smearingfactor = smearingfactor;
   }
   if (! mira_same_dimensions(master.dims, dims)) {
-    h_set, master, model = h_new(), stage = min(master.stage, 1),
+    h_set, master, model = h_new(), stage = min(master.stage, 2),
       dims = dims;
   }
 
