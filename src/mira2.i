@@ -21,8 +21,8 @@
  * details.
  */
 
-local MIRA_SRCDIR, MIRA_VERSION;
-/* DOCUMENT MIRA_SRCDIR
+local MIRA_HOME, MIRA_VERSION;
+/* DOCUMENT MIRA_HOME
          or MIRA_VERSION
 
      Global variables defined by MiRA with respectively the name of the source
@@ -31,14 +31,14 @@ local MIRA_SRCDIR, MIRA_VERSION;
    SEE ALSO:
  */
 MIRA_VERSION = "2.0.0a";
-MIRA_SRCDIR = fulldirname(current_include());
+MIRA_HOME = fulldirname(current_include());
 require, "TiPi.i";
-//include, MIRA_SRCDIR+"TiPi.i";
-include, MIRA_SRCDIR+"mira2_utils.i";
-include, MIRA_SRCDIR+"mira2_config.i";
-include, MIRA_SRCDIR+"mira2_data.i";
-include, MIRA_SRCDIR+"mira2_xform.i";
-include, MIRA_SRCDIR+"mira2_cost.i";
+//include, MIRA_HOME+"TiPi.i";
+include, MIRA_HOME+"mira2_utils.i";
+include, MIRA_HOME+"mira2_config.i";
+include, MIRA_HOME+"mira2_data.i";
+include, MIRA_HOME+"mira2_xform.i";
+include, MIRA_HOME+"mira2_cost.i";
 
 local MIRA_DEBUG, MIRA_QUIET;
 /* DOCUMENT MIRA_DEBUG - perform debug checks?

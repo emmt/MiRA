@@ -20,10 +20,10 @@
  * details.
  */
 
-if (! is_scalar(MIRA_SRCDIR) || ! is_string(MIRA_SRCDIR)) {
+if (! is_scalar(MIRA_HOME) || ! is_string(MIRA_HOME)) {
   error, "include \"mira2.i\" first";
 }
-include, MIRA_SRCDIR+"oifits.i";
+include, MIRA_HOME+"oifits.i";
 
 /*---------------------------------------------------------------------------*/
 /* ADDING OI-FITS DATA TO AN INSTANCE */

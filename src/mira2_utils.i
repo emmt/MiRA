@@ -20,10 +20,10 @@
  * details.
  */
 
-if (! is_scalar(MIRA_SRCDIR) || ! is_string(MIRA_SRCDIR)) {
+if (! is_scalar(MIRA_HOME) || ! is_string(MIRA_HOME)) {
   error, "include \"mira2.i\" first";
 }
-include, MIRA_SRCDIR+"utils.i";
+include, MIRA_HOME+"utils.i";
 
 /*---------------------------------------------------------------------------*/
 /* UNIVERSAL CONSTANTS AND UNITS */
@@ -532,6 +532,31 @@ func mira_do_nothing(..) { ; }
 /* DOCUMENT mira_do_nothing(..)
      does nothing whatever the arguments, returns nothing.
  */
+
+func mira_require(fname, src)
+/* DOCUMENT mira_require, fname, src;
+
+     Include source file SRC if FNAME is not the name of an existing function.
+     If SRC is an array of strings, they are all tried in order.  An error is
+     raised if FNAME is not the name of an existing function after trying to
+     include each files in SRC.
+
+   SEE ALSO: include, is_func, require.
+ */
+{
+  i = 0;
+  n = numberof(src);
+  while (! symbol_exists(fname) ||
+         (c = is_func(symbol_def(fname))) == 0n || c == 3n) {
+    if (++i > n) {
+      throw, "function \""+fname+"\" not found in any of: "+sum(print(src));
+    }
+    if (MIRA_DEBUG) {
+      inform, "Trying to include \"%s\"...\n", src(i);
+    }
+    include, src(i), 3;
+  }
+}
 
 /*---------------------------------------------------------------------------*/
 /* SAFE ATAN(Y,X) */
