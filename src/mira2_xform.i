@@ -6,10 +6,10 @@
  *
  *-----------------------------------------------------------------------------
  *
- * Copyright (C) 2001-2018, Éric Thiébaut <eric.thiebaut@univ-lyon1.fr>
+ * This file is part of MiRA, a "Multi-aperture Image Reconstruction
+ * Algorithm", <https://github.com/emmt/MiRA>.
  *
- * This file is part of MiRA: a Multi-aperture Image Reconstruction
- * Algorithm (version 2).
+ * Copyright (C) 2001-2018, Éric Thiébaut <eric.thiebaut@univ-lyon1.fr>
  *
  * MiRA is free software; you can redistribute it and/or modify it under the
  * terms of the GNU General Public License version 2 as published by the Free
