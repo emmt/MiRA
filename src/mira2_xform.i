@@ -58,11 +58,6 @@ func _mira_define_xform(master)
    SEE ALSO: mira_update, _mira_select_data.
 */
 {
-  /* Suppress warnings on quiet mode. */
-  if (MIRA_QUIET) {
-    warn = mira_do_nothing;
-  }
-
   /* Check assumptions and get the parameters needed to define the
      transform. */
   if (master.stage < 1 || master.stage > 2) {
@@ -78,13 +73,15 @@ func _mira_define_xform(master)
   /* Figure out whether or not to account for spectral bandwidth smearing. */
   smearing = (smearingfunction != "none" && smearingfactor > 0);
   if (smearing && (xform == "nfft" || xform == "separable")) {
-    warn, ("Spectral bandwidth smearing is ignored with xform=\"%s\" "+
+    if (! MIRA_QUIET) {
+      warn, ("Spectral bandwidth smearing is ignored with xform=\"%s\" "+
            "(set smearingfunction=\"none\" or smearingfactor=0 to avoid "+
            "this message)."), xform;
+    }
     smearing = 0n;
   }
-  if (! smearing && xform != "nfft") {
-    warn, ("when spectral bandwidth smearing is ignored, xform=\"nfft\" "+
+  if (! MIRA_QUIET && ! smearing && xform != "nfft") {
+    warn, ("When spectral bandwidth smearing is ignored, xform=\"nfft\" "+
            "is faster that xform=\""+xform+"\".");
   }
 
@@ -276,7 +273,7 @@ func _mira_define_xform(master)
   } else {
     h_set, xform, smearingfactor=1.0, smearingfunction="none";
   }
-  return h_set(master, xform = xform, stage = 2);
+  return h_set(master, xform = xform, stage = 3);
 }
 
 /*---------------------------------------------------------------------------*/
