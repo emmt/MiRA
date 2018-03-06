@@ -58,9 +58,14 @@ func _mira_define_xform(master)
    SEE ALSO: mira_update, _mira_select_data.
 */
 {
+  /* Suppress warnings on quiet mode. */
+  if (MIRA_QUIET) {
+    warn = mira_do_nothing;
+  }
+
   /* Check assumptions and get the parameters needed to define the
      transform. */
-  if (master.stage != 1) {
+  if (master.stage < 1 || master.stage > 2) {
     error, "private routine called at wrong stage";
   }
   coords = master.coords;
@@ -89,7 +94,14 @@ func _mira_define_xform(master)
   } else {
     mode = 1;
   }
-  _mira_reduce_coordinates, master, mode;
+  if (master.stage != 1 && master.coords.mode != mode) {
+    /* Must redo data selection. */
+    h_set, master, stage=0;
+    _mira_select_data, master;
+  }
+  if (master.stage < 2) {
+    _mira_reduce_coordinates, master, mode;
+  }
 
   /* Check pixel size. */
   maxpixelsize = mira_maximum_pixel_size(master);
@@ -169,18 +181,20 @@ func _mira_define_xform(master)
 
   if (xform == "separable") {
 
+    local A1re, A1im, A2re, A2im;
     q = -2*MIRA_PI;
-    A1 = _mira_xform_coefs([], q*ufreq*x(-,));
-    A2 = _mira_xform_coefs([], q*vfreq*y(-,));
-    xform = h_new(name=xform,
-                  A1re=A1(1,..), A1im=A1(2,..),
-                  A2re=A2(1,..), A2im=A2(2,..));
+    _mira_cos_sin, A1re, A1im, q*ufreq*x(-,);
+    _mira_cos_sin, A2re, A2im, q*vfreq*y(-,);
+    xform = h_new(name=xform, A1re=A1re, A1im=A1im, A2re=A2re, A2im=A2im);
     h_evaluator, xform, "_mira_apply_separable_xform";
 
   } else if (xform == "nonseparable") {
 
+    local A1re, A1im, A2re, A2im;
     if (smearing) {
       q = -2*MIRA_PI/wave;
+      _mira_cos_sin, A1re, A1im, q*u*x(-,);
+      _mira_cos_sin, A2re, A2im, q*v*y(-,);
       if (smearingfactor > 0 && max(band) > 0) {
         r = smearingfactor*band/(wave*wave);
         fct = smearingfunction(r*u*x(-,) + r*v*y(-,-,));
@@ -188,11 +202,18 @@ func _mira_define_xform(master)
         smearing = 0n;
         fct = [];
       }
-      A = _mira_xform_coefs(unref(fct), q*u*x(-,) + q*v*y(-,-,));
     } else {
       q = -2*MIRA_PI;
-      A = _mira_xform_coefs([], q*ufreq*x(-,) + q*vfreq*y(-,-,));
+      _mira_cos_sin, A1re, A1im, q*ufreq*x(-,);
+      _mira_cos_sin, A2re, A2im, q*vfreq*y(-,);
     }
+    Are = A1re*A2re(,-,) - A1im*A2im(,-,);
+    Aim = A1re*A2im(,-,) + A1im*A2re(,-,);
+    if (smearing) {
+      Are = unref(Are)*fct;
+      Aim = unref(Aim)*unref(fct);
+    }
+    A = _mira_fake_complex(unref(Are), unref(Aim));
     xform = h_new(name=xform, A=A);
     h_evaluator, xform, "_mira_apply_nonseparable_xform";
 
@@ -355,32 +376,20 @@ func mira_no_smearing(t)
 /*---------------------------------------------------------------------------*/
 /* UTILITIES FOR COMPUTING XFORM MODELS */
 
-func _mira_xform_coefs(rho, phi)
-/* DOCUMENT z = _mira_xform_coefs(rho, phi);
-     yields a 2-by-dimsof(PHI) array Z such that:
+func _mira_cos_sin(&re, &im, phi)
+/* DOCUMENT _mira_cos_sin, re, im, phi;
+     overwrites caller's variables RE and IM with:
 
-         Z(1,..) = RHO*cos(PHI)
-         Z(2,..) = RHO*sin(PHI)
+         re = cos(PHI)
+         im = sin(PHI)
 
-     if RHO is not void and:
-
-         Z(1,..) = cos(PHI)
-         Z(2,..) = sin(PHI)
-
-     otherwise. */
+     otherwise.
+*/
 {
   /* Note: use `unref` to reduce the memory requirements (only works if
      arguments are temporary expressions). */
-  if (is_void(rho)) {
-    z = array(double, 2, dimsof(phi));
-    z(1,..) = cos(phi);
-    z(2,..) = sin(unref(phi));
-  } else {
-    z = array(double, 2, dimsof(rho, phi));
-    z(1,..) = rho*cos(phi);
-    z(2,..) = unref(rho)*sin(unref(phi));
-  }
-  return z;
+  re = cos(phi);
+  im = sin(unref(phi));
 }
 
 /*---------------------------------------------------------------------------*/

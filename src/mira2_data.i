@@ -196,7 +196,7 @@ func _mira_select_data(master)
   wavemin = master.wavemin;
   wavemax = master.wavemax;
   h_set, master, first = [], stage = 0,
-    coords = h_new(u = [], v = [], wave = [], band = []);
+    coords = h_new(mode = 0, u = [], v = [], wave = [], band = []);
 
   /* Iterate over OI-FITS data blocks for selection. */
   local wave, band;
