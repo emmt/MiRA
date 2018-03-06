@@ -33,7 +33,7 @@ func mira_ndata(master)
 {
  // FIXME: check stage?
   n = 0;
-  for (db = _mira_first(master); db; _mira_next(master, db)) {
+  for (db = _mira_first(master); db; db = _mira_next(master, db)) {
     n += db.ops.ndata(master, db);
   }
   return n;
@@ -42,9 +42,9 @@ func mira_ndata(master)
 func mira_cost(master, x)
 {
   /* Update model and integrate cost for each datablock. */
-  _mira_update_model, master, x;
+  mira_update, master, x;
   cost = 0.0;
-  for (db = _mira_first(master); db; _mira_next(master, db)) {
+  for (db = _mira_first(master); db; db = _mira_next(master, db)) {
     cost += db.ops.cost(master, db);
   }
   return cost;
@@ -54,10 +54,10 @@ func mira_cost_and_gradient(master, x, &grd)
 {
   /* Update model and integrate cost and gradient with respect to the complex
      visibilities. */
-  _mira_update_model, master, x;
+  mira_update, master, x;
   cost = 0.0;
   grd = array(double, dimsof(mira_model_vis(master)));
-  for (db = _mira_first(master); db; _mira_next(master, db)) {
+  for (db = _mira_first(master); db; db = _mira_next(master, db)) {
     cost += db.ops.cost(master, db, grd);
   }
 
