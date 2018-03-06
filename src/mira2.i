@@ -21,19 +21,17 @@
  * details.
  */
 
+local MIRA_SRCDIR, MIRA_VERSION;
+/* DOCUMENT MIRA_SRCDIR
+         or MIRA_VERSION
+
+     Global variables defined by MiRA with respectively the name of the source
+     directory of MiRA and the version of MiRA.
+
+   SEE ALSO:
+ */
 MIRA_VERSION = "2.0.0a";
-local MIRA_SRCDIR;
-func _mira_init(path)
-{
-  extern MIRA_SRCDIR;
-  fullpath = filepath(path);
-  i = strfind("/", path, back=1)(2);
-  if (i <= 0) {
-    error, "_mira_init must be called with the result of current_include()";
-  }
-  MIRA_SRCDIR = strpart(fullpath, 1:i);
-}
-_mira_init, current_include();
+MIRA_SRCDIR = fulldirname(current_include());
 require, "TiPi.i";
 //include, MIRA_SRCDIR+"TiPi.i";
 include, MIRA_SRCDIR+"mira2_utils.i";
@@ -161,5 +159,3 @@ mira_define_table, _MIRA_T3PHI_OPS,
   init = symlink_to_variable(_mira_t3phi_init),
   cost = symlink_to_variable(_mira_t3phi_cost),
   ndata = symlink_to_variable(_mira_t3phi_ndata);
-
-
