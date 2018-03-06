@@ -28,12 +28,14 @@ main = mira_new(TEST_DIR+"../Contest1_J.oifits");
 //u = uniquevalues(h.u);
 //v = uniquevalues(h.v);
 
-func model(main, pixelsize=, xform=, smearingfunction=, smearingfactor=)
+func model(main, force=, pixelsize=, xform=, smearingfunction=,
+           smearingfactor=)
 {
+  MIRA_QUIET = 1n;
   if (is_void(smearingfactor)) smearingfactor = 1;
   mira_config, main, pixelsize=pixelsize, xform=xform,
     smearingfunction=smearingfunction, smearingfactor=smearingfactor;
-  mira_update, main, force=1;
+  mira_update, main, force=force;
   return main.xform;
 }
 
@@ -77,6 +79,51 @@ func stop(n)
 /* Without smearing. */
 write, format="\n%s%s%s\n", _INFO_STYLE,
               "Tests without smearing", _RESET_STYLE;
+
+if (1n) {
+  repeat = 100;
+
+  k = repeat+1;
+  start, "build NFFT operator:                          ";
+  while(--k) {
+    H = model(main, force=1, pixelsize="0.3mas", xform="nfft",
+              smearingfunction="none", smearingfactor=1);
+  }
+  stop, repeat;
+
+  k = repeat+1;
+  start, "build separable operator:                     ";
+  while(--k) {
+    H = model(main, force=1, pixelsize="0.3mas", xform="separable",
+              smearingfunction="none", smearingfactor=1);
+  }
+  stop, repeat;
+
+  repeat = 20;
+  k = repeat+1;
+  start, "build nonseparable operator (smearing=none):  ";
+  while(--k) {
+    H = model(main, force=1, pixelsize="0.3mas", xform="nonseparable",
+              smearingfunction="none", smearingfactor=1);
+  }
+  stop, repeat;
+
+  k = repeat+1;
+  start, "build nonseparable operator (smearing=sinc):  ";
+  while(--k) {
+    H = model(main, force=1, pixelsize="0.3mas", xform="nonseparable",
+              smearingfunction="sinc", smearingfactor=1);
+  }
+  stop, repeat;
+
+  k = repeat+1;
+  start, "build nonseparable operator (smearing=gauss): ";
+  while(--k) {
+    H = model(main, force=1, pixelsize="0.3mas", xform="nonseparable",
+              smearingfunction="gauss", smearingfactor=1);
+  }
+  stop, repeat;
+}
 
 H0 = model(main, pixelsize="0.3mas", xform="nfft",
            smearingfunction="none", smearingfactor=1);
@@ -128,13 +175,18 @@ err = max(abs(g2 - g1));
 report, err < 1e-10, "adjoint separable vs. nonseparable (%g)", err;
 
 repeat = 100;
-k = repeat+1; start,"direct NFFT operator:         "; while(--k)z0=H0(img);stop,repeat;
-k = repeat+1; start,"direct nonseparable operator: "; while(--k)z1=H1(img);stop,repeat;
-k = repeat+1; start,"direct separable operator:    "; while(--k)z2=H2(img);stop,repeat;
 
-k = repeat+1; start,"adjoint NFFT operator:        "; while(--k)g0=H0(z,1);stop,repeat;
-k = repeat+1; start,"adjoint nonseparable operator:"; while(--k)g1=H1(z,1);stop,repeat;
-k = repeat+1; start,"adjoint separable operator:   "; while(--k)g2=H2(z,1);stop,repeat;
+k = repeat+1; start,"apply direct NFFT operator:         "; while(--k)z0=H0(img);stop,repeat;
+k = repeat+1; start,"apply direct nonseparable operator: "; while(--k)z1=H1(img);stop,repeat;
+k = repeat+1; start,"apply direct separable operator:    "; while(--k)z2=H2(img);stop,repeat;
+
+k = repeat+1; start,"apply direct NFFT operator:         "; while(--k)z0=H0(img);stop,repeat;
+k = repeat+1; start,"apply direct nonseparable operator: "; while(--k)z1=H1(img);stop,repeat;
+k = repeat+1; start,"apply direct separable operator:    "; while(--k)z2=H2(img);stop,repeat;
+
+k = repeat+1; start,"apply adjoint NFFT operator:        "; while(--k)g0=H0(z,1);stop,repeat;
+k = repeat+1; start,"apply adjoint nonseparable operator:"; while(--k)g1=H1(z,1);stop,repeat;
+k = repeat+1; start,"apply adjoint separable operator:   "; while(--k)g2=H2(z,1);stop,repeat;
 
 /* With smearing. */
 write, format="\n%s%s%s\n", _INFO_STYLE,
