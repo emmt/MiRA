@@ -40,6 +40,15 @@ include, MIRA_SRCDIR+"mira2_data.i";
 include, MIRA_SRCDIR+"mira2_xform.i";
 include, MIRA_SRCDIR+"mira2_cost.i";
 
+local MIRA_DEBUG, MIRA_QUIET;
+/* DOCUMENT MIRA_DEBUG - perform debug checks?
+         or MIRA_QUIET - suppress (some) warning messages?
+
+     Global variables defined by MiRA to globally set debug and quiet modes.
+ */
+MIRA_DEBUG = 1n;
+MIRA_QUIET = 0n;
+
 /*
   MiRA structure:
      master.oidata = OI-FITS data
