@@ -219,3 +219,10 @@ res41 = sum(y*S2(x));
 res42 = sum(S2(y,1)*x);
 err4 = reldif(res41, res42);
 report, err4 < 1e-10, "direct/adjoint inner product test for nonseparable + gauss (%g)", err4;
+
+/* Checking gradients. */
+x = random(mira_image_size(main));
+x /= sum(x);
+mira_cost_and_gradient, main, x, grd;
+myfunc=closure("mira_cost", main);
+checkgradient, myfunc, grd, x, number=1000;
