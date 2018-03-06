@@ -528,6 +528,10 @@ func mira_cat(.., last=)
   }
 }
 
+func mira_do_nothing(..) { ; }
+/* DOCUMENT mira_do_nothing(..)
+     does nothing whatever the arguments, returns nothing.
+ */
 
 /*---------------------------------------------------------------------------*/
 /* SAFE ATAN(Y,X) */
