@@ -219,13 +219,41 @@ _MIRA_ANGLE_UNITS = h_new("radian", 1e0,
 
 func mira_sky_coordinates(n, s)
 /* DOCUMENT mira_sky_coordinates(n, s);
-     Yields a vector of `n` coordinates with step `s` and centered according to
+
+     yields a vector of `n` coordinates with step `s` and centered according to
      conventions in `fftshift` and `nfft`.
 
    SEE ALSO: fftshift, nfft.
  */
 {
   return double(s)*indgen(-(n/2):n-1-(n/2))
+}
+
+func mira_central_index(dim) { return (dim/2) + 1; }
+/* DOCUMENT mira_central_index(dim);
+
+     yields the index of the central element along a spatial dimension of
+     length DIM.  The same conventions as for `mira_coordinates` or `fftshift`
+     are used.
+
+   SEE ALSO: mira_sky_coordinates, mira_limits.
+ */
+
+func mira_limits(dim, stp)
+/* DOCUMENT mira_limits(dim);
+         or mira_limits(dim, stp);
+
+     yields the endpoints of the coordinates along a spatial dimension of length
+     DIM with a step STP (1.0 by default). The same conventions as for
+     `mira_central_index` or `fftshift` are used.
+
+   SEE ALSO: mira_coordinates, mira_central_index.
+ */
+{
+  c = double(mira_central_index(dim));
+  c0 = 1 - c;
+  c1 = dim - c;
+  return (is_void(stp) ? [c0,c1] : [stp*c0,stp*c1]);
 }
 
 /*--------------------------------------------------------------------------*/

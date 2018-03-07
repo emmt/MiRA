@@ -209,9 +209,11 @@ func mira_config(master, wavemin=, wavemax=, dims=, pixelsize=, xform=,
   flags = int(flags);
 
   /* Apply changes if any. */
+  changes = 0;
   if (master.wavemin != wavemin || master.wavemax != wavemax) {
     h_set, master, model = h_new(), stage = min(master.stage, 0),
       wavemin = wavemin, wavemax = wavemax;
+    changes |= 2;
   }
   if (master_flags != flags) {
     h_set, master, model = h_new(), stage = min(master.stage, 0),
@@ -220,6 +222,7 @@ func mira_config(master, wavemin=, wavemax=, dims=, pixelsize=, xform=,
   if (master.pixelsize != pixelsize) {
     h_set, master, model = h_new(), stage = min(master.stage, 2),
       pixelsize = pixelsize;
+    changes |= 1;
   }
   if (master_xform != xform || smearingfunction != master.smearingfunction ||
       smearingfactor != master.smearingfactor) {
@@ -230,6 +233,21 @@ func mira_config(master, wavemin=, wavemax=, dims=, pixelsize=, xform=,
   if (! mira_same_dimensions(master.dims, dims)) {
     h_set, master, model = h_new(), stage = min(master.stage, 2),
       dims = dims;
+    changes |= 1;
+  }
+
+  if ((changes&1) != 0 ||
+      ! h_has(master, "img_x") ||  ! h_has(master, "img_y")) {
+    pixelsize = mira_pixel_size(master);
+    nx = mira_image_size(master, 1);
+    ny = mira_image_size(master, 2);
+    h_set, master,
+      img_x = mira_sky_coordinates(nx, pixelsize),
+      img_y = mira_sky_coordinates(ny, pixelsize);
+  }
+  if ((changes&2) != 0 || ! h_has(master, "img_wave")) {
+    // FIXME: should use mean/median data wavelength.
+    h_set, master, img_wave = (master.wavemin + master.wavemax)/2.0;
   }
 
   return master;
@@ -268,6 +286,38 @@ local mira_pixel_size, mira_maximum_pixel_size;
 func mira_pixel_size(master) /* DOCUMENTED */
 {
   return master.pixelsize;
+}
+
+
+local mira_image_x, mira_image_x, mira_image_wave;
+/* DOCUMENT mira_image_x(master);
+         or mira_image_x(master);
+         or mira_image_wave(master);
+
+     The two first functions yield the relative right ascension (RA) and declination (DEC)
+     (in radians) of the pixels for the image restored with MiRA instance
+     `master`.  The image pixel size and dimensions can be changed with
+     `mira_config`.
+
+     The third function yields the wavelength(s) of the restored image along
+     its 3rd axis.
+
+   SEE ALSO: mira_config, mira_image_size, mira_pixel_size.
+ */
+
+func mira_image_x(master) /* DOCUMENTED */
+{
+  return master.img_x;
+}
+
+func mira_image_y(master) /* DOCUMENTED */
+{
+  return master.img_y;
+}
+
+func mira_image_wave(master) /* DOCUMENTED */
+{
+  return master.img_wave;
 }
 
 func mira_maximum_pixel_size(master) /* DOCUMENTED */

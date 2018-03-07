@@ -109,12 +109,12 @@ func _mira_define_xform(master)
   }
 
   /* Get the coordinates (and check them). */
-  local u, v, wave, band, ufreq, vfreq;
+  local u, v, wave, band, ufreq, vfreq, x, y;
   vector_double = mira_vector_double;
-  nx = mira_image_size(master, 1);
-  ny = mira_image_size(master, 2);
-  x = mira_sky_coordinates(nx, pixelsize);
-  y = mira_sky_coordinates(ny, pixelsize);
+  eq_nocopy, x, mira_image_x(master);
+  eq_nocopy, y, mira_image_y(master);
+  nx = numberof(x);
+  ny = numberof(y);
   if (! vector_double(x)) error, "X must be a vector of reals";
   if (! vector_double(y)) error, "Y must be a vector of reals";
   if (mode == 1) {

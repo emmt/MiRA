@@ -31,6 +31,7 @@ main = mira_new(TEST_DIR+"../Contest1_J.oifits");
 func model(main, force=, pixelsize=, xform=, smearingfunction=,
            smearingfactor=)
 {
+  MIRA_DEBUG = 0n;
   MIRA_QUIET = 1n;
   if (is_void(smearingfactor)) smearingfactor = 1;
   mira_config, main, pixelsize=pixelsize, xform=xform,
