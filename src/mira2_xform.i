@@ -29,7 +29,9 @@ if (! is_scalar(MIRA_HOME) || ! is_string(MIRA_HOME)) {
 /*---------------------------------------------------------------------------*/
 /* MODELS OF THE IMAGE TO COMPLEX VISIBILITIES TRANSFORM */
 
-local _mira_apply_simple_xform, _mira_apply_nfft_xform;
+local _mira_apply_separable_xform;
+local _mira_apply_nonseparable_xform
+local _mira_apply_nfft_xform;
 func _mira_define_xform(master)
 /* DOCUMENT _mira_define_xform, master;
 
