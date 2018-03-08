@@ -77,6 +77,26 @@ func stop(n)
   write, format=" %.5g µs/evaluation%s\n", t(3)*1e6, _RESET_STYLE;
 }
 
+func testsymbols
+{
+  names = symbol_names(-1);
+  sel = strgrep("^_?(mira|MIRA)_", names);
+  names = names(where(sel(1,..) <= sel(2,..)));
+  n = numberof(names);
+  if (n > 0) {
+    names = names(sort(names));
+    for (i = 1; i <= n; ++i) {
+      name = names(i);
+      if (! symbol_exists(name)) {
+        warn, "symbol \"%s\" is undefined", name;
+      } else if (is_void(symbol_def(name))) {
+        warn, "symbol \"%s\" is void", name;
+      }
+    }
+  }
+}
+testsymbols;
+
 /* Without smearing. */
 write, format="\n%s%s%s\n", _INFO_STYLE,
               "Tests without smearing", _RESET_STYLE;
