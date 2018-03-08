@@ -3572,8 +3572,8 @@ func mira_relative_absolute_difference(a, b)
          0                                             if A(i) = B(i)
          2*abs(A(i) - B(i))/(abs(A(i)) + abs(B(i))     otherwise
 
-     The function `mira_rdif` returns the elementwise relative absolute
-     difference between *scalars* A and B.
+     The function `mira_rdif` returns the relative absolute difference between
+     *scalars* A and B.
 
    SEE ALSO: mira.
  */
