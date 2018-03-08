@@ -129,42 +129,35 @@ func mira_default_image(master)
 
 mira_define_table, _MIRA_VIS_OPS,
   class = "vis",
-  init = symlink_to_variable(_mira_vis_init),
   cost = symlink_to_variable(_mira_vis_cost),
   ndata = symlink_to_variable(_mira_vis_ndata);
 
 mira_define_table, _MIRA_VISAMP_OPS,
   class = "visamp",
-  init = symlink_to_variable(_mira_visamp_init),
   cost = symlink_to_variable(_mira_visamp_cost),
   ndata = symlink_to_variable(_mira_visamp_ndata);
 
 mira_define_table, _MIRA_VISPHI_OPS,
   class = "visphi",
-  init = symlink_to_variable(_mira_visphi_init),
   cost = symlink_to_variable(_mira_visphi_cost),
   ndata = symlink_to_variable(_mira_visphi_ndata);
 
 mira_define_table, _MIRA_VIS2_OPS,
   class = "vis2",
-  init = symlink_to_variable(_mira_vis2_init),
   cost = symlink_to_variable(_mira_vis2_cost),
   ndata = symlink_to_variable(_mira_vis2_ndata);
 
 mira_define_table, _MIRA_T3_OPS,
   class = "t3",
-  init = symlink_to_variable(_mira_t3_init),
   cost = symlink_to_variable(_mira_t3_cost),
   ndata = symlink_to_variable(_mira_t3_ndata);
 
 mira_define_table, _MIRA_T3AMP_OPS,
   class = "t3amp",
-  init = symlink_to_variable(_mira_t3amp_init),
   cost = symlink_to_variable(_mira_t3amp_cost),
   ndata = symlink_to_variable(_mira_t3amp_ndata);
 
 mira_define_table, _MIRA_T3PHI_OPS,
   class = "t3phi",
-  init = symlink_to_variable(_mira_t3phi_init),
   cost = symlink_to_variable(_mira_t3phi_cost),
   ndata = symlink_to_variable(_mira_t3phi_ndata);
