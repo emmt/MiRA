@@ -468,38 +468,17 @@ func mira_update(master, img, force=)
     h_set, master, stage = 0;
   }
   if (master.stage < 1) {
-    if (MIRA_DEBUG) {
-      write, format="%s", "select data: ";
-      tic;
-    }
     _mira_select_data, master;
-    if (MIRA_DEBUG) {
-      toc;
-    }
   }
   if (master.stage < 3) {
-    if (MIRA_DEBUG) {
-      write, format="%s", "build xform: ";
-      tic;
-    }
     _mira_define_xform, master;
-    if (MIRA_DEBUG) {
-      toc;
-    }
   }
   if (! is_void(img)) {
     /* Compute complex visibilities (derived quantities will be computed on
        demand). */
-    if (MIRA_DEBUG) {
-      write, format="%s", "apply xform: ";
-      tic;
-    }
     vis = master.xform(img);
     h_set, master.model, img=img, vis=vis, re=[], im=[],
       vis2=[], amp=[], phi=[];
-    if (MIRA_DEBUG) {
-      toc;
-    }
   }
   return master;
 }
