@@ -149,7 +149,7 @@ _MIRA_LENGTH_UNITS = h_new("meter",      1e0,    "m",  1e0,
 //                         "light-year", MIRA_LIGHT_YEAR,
 //                         "ly", MIRA_LIGHT_YEAR);
 
-local _MIRA_ANGLE_UNITS;
+local _MIRA_ANGULAR_UNITS;
 func mira_angle(&var, def)
 /* DOCUMENT mira_angle(var)
          or mira_angle(var, def)
@@ -180,8 +180,8 @@ func mira_angle(&var, def)
       n = sread(var, format="%f %[^\a]", value, units);
       if (n == 2) {
         units = strtrim(units, 3, blank=" \t\n\v\f");
-        if (h_has(_MIRA_ANGLE_UNITS, units)) {
-          var = value*h_get(_MIRA_ANGLE_UNITS, units);
+        if (h_has(_MIRA_ANGULAR_UNITS, units)) {
+          var = value*h_get(_MIRA_ANGULAR_UNITS, units);
           return 1n;
         }
       } else if (n == 1) {
@@ -201,21 +201,42 @@ func mira_angle(&var, def)
 }
 errs2caller, mira_angle;
 
-_MIRA_ANGLE_UNITS = h_new("radian", 1e0,
-                          "rad", 1e0,
-                          "degree", MIRA_DEGREE,
-                          "deg", MIRA_DEGREE,
-                          "arcsecond", MIRA_ARCSEC,
-                          "arcsec", MIRA_ARCSEC,
-                          "milliarcsecond", 1e-3*MIRA_ARCSEC,
-                          "milliarcsec", 1e-3*MIRA_ARCSEC,
-                          "mas", 1e-3*MIRA_ARCSEC,
-                          "microarcsecond", 1e-6*MIRA_ARCSEC,
-                          "microarcsec", 1e-6*MIRA_ARCSEC,
-                          "µas", 1e-6*MIRA_ARCSEC);
+_MIRA_ANGULAR_UNITS = h_new("radian", 1e0,
+                            "rad", 1e0,
+                            "degree", MIRA_DEGREE,
+                            "deg", MIRA_DEGREE,
+                            "arcsecond", MIRA_ARCSEC,
+                            "arcsec", MIRA_ARCSEC,
+                            "milliarcsecond", 1e-3*MIRA_ARCSEC,
+                            "milliarcsec", 1e-3*MIRA_ARCSEC,
+                            "mas", 1e-3*MIRA_ARCSEC,
+                            "microarcsecond", 1e-6*MIRA_ARCSEC,
+                            "microarcsec", 1e-6*MIRA_ARCSEC,
+                            "µas", 1e-6*MIRA_ARCSEC);
+
+func mira_convert_units(src, dst)
+/* DOCUMENT mira_convert_units(src, dst);
+
+     Returns the factor to convert a value in units SRC into a value in units
+     DST.
+
+   SEE ALSO: mira_parse_angular_units.
+ */
+{
+  local table;
+  if (src == dst) return 1.0;
+  eq_nocopy, table, _MIRA_ANGULAR_UNITS;
+  if (! h_has(table, dst) || ! h_has(table, src)) {
+    eq_nocopy, table, _MIRA_LENGTH_UNITS;
+    if (! h_has(table, dst) || ! h_has(table, src)) {
+      error, "unknown or incompatiple units";
+    }
+  }
+  return table(src)/table(dst);
+}
 
 /*--------------------------------------------------------------------------*/
-/* MISCELLANEOUS */
+/* COORDINATES */
 
 func mira_sky_coordinates(n, s)
 /* DOCUMENT mira_sky_coordinates(n, s);
@@ -464,6 +485,35 @@ func mira_cmult_re(re1,im1, re2,im2)
 func mira_cmult_im(re1,im1, re2,im2)
 {
   return re1*im2 + im1*re2;
+}
+
+local mira_rdif;
+func mira_relative_absolute_difference(a, b)
+/* DOCUMENT mira_relative_absolute_difference(a, b);
+         or mira_rdif(a, b);
+
+     The function `mira_relative_absolute_difference` returns the elementwise
+     relative absolute difference between A and B defined by:
+
+         0                                             if A(i) = B(i)
+         2*abs(A(i) - B(i))/(abs(A(i)) + abs(B(i))     otherwise
+
+     The function `mira_rdif` returns the relative absolute difference between
+     *scalars* A and B.
+
+   SEE ALSO: mira.
+ */
+{
+  diff = a - b;
+  rdif = array(double, dimsof(diff));
+  if (! is_array((i = where(diff)))) return rdif;
+  rdif(i) = diff(i)/(abs(a) + abs(b))(i);
+  return rdif + rdif;
+}
+
+func mira_rdif(a, b)
+{
+  return (a == b ? 0.0 : 2.0*abs(a - b)/(abs(a) + abs(b)));
 }
 
 _MIRA_DEBUG_STYLE  = ansi_term(ANSI_TERM_BOLD,ANSI_TERM_FG_CYAN);
