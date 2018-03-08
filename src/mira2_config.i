@@ -47,7 +47,7 @@ if (! is_scalar(MIRA_HOME) || ! is_string(MIRA_HOME)) {
  *    image dimensions, the pixel size and the specific model for the transform
  *    to use.
  */
-func mira_new(.., target=, wavemin=, wavemax=, pixelsize=, dims=, xform=,
+func mira_new(.., target=, wavemin=, wavemax=, flags=, pixelsize=, dims=, xform=,
               smearingfunction=, smearingfactor=,
               quiet=, noise_method=, noise_level=, baseline_precision=)
 /* DOCUMENT obj = mira_new(oidata, ..., target=...);
