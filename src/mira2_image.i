@@ -298,6 +298,62 @@ func mira_resample_axis(arr, crpix1, crval1, cdelt1,
   error, "too many dimensions";
 }
 
+func mira_recenter(x, quiet=)
+/* DOCUMENT mira_recenter(x);
+
+     Recenter model image X at its photo-centre rounded to nearest pixel.
+     Argument X must have at least 2 dimensions, the first 2 dimensions of X
+     are considered to be the angular direction.  Extra dimensions are ignored
+     for the recentering (they can represent other coordinates for instance
+     the wavelength or the time).  Along a dimensions of lenght N, the center
+     is at (N - N/2)-th pixel -- with integer division -- which corresponds to
+     the model of the Fourier transform assumed by MiRA.
+
+     Unless keyword QUIET is true, the coordinates of the center get printed
+     out.
+
+   SEE ALSO: mira_solve.
+ */
+{
+  sx = sum(x);
+  if (sx <= 0.0) {
+    return x;
+  }
+
+  dimlist = dimsof(x);
+  n1 = dimlist(2);
+  n2 = dimlist(3);
+  o1 = n1 - (n1/2);
+  o2 = n2 - (n2/2);
+  c1 = sum(double(indgen(n1) - o1)     * x)/sx;
+  c2 = sum(double(indgen(n2) - o2)(-,) * x)/sx;
+  if (! quiet) {
+    write, format="Offsets of photo-center: (%+.1f, %+.1f) pixels.\n", c1, c2;
+  }
+  i1 = lround(c1);
+  i2 = lround(c2);
+  if (i1 == 0 && i2 == 0) {
+    return x;
+  }
+  if (i1 > 0) {
+    dst1 = 1:n1-i1;
+    src1 = 1+i1:n1;
+  } else {
+    dst1 = 1-i1:n1;
+    src1 = 1:n1+i1;
+  }
+  if (i2 > 0) {
+    dst2 = 1:n2-i2;
+    src2 = 1+i2:n2;
+  } else {
+    dst2 = 1-i2:n2;
+    src2 = 1:n2+i2;
+  }
+  xp = array(structof(x), dimsof(x));
+  xp(dst1, dst2, ..) = x(src1, src2, ..);
+  return xp;
+}
+
 /*---------------------------------------------------------------------------*/
 /* SAVE/LOAD IMAGES */
 
