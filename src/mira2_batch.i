@@ -150,10 +150,10 @@ _MIRA_OPTIONS = opt_init\
     _lst("bootstrap", NULL, "COUNT", OPT_INTEGER, "Number of bootstrapping iterations"),
     _lst("recenter", NULL, NULL, OPT_FLAG, "Recenter result of bootstrapping iterations"),
     _lst("threshold", NULL, "FRACTION", OPT_REAL, "Level for soft-thresholding input image(s)"),
-    "\nMessages and graphics:",
+    "\nMessages:", //"\nMessages and graphics:",
     _lst("quiet", NULL, NULL, OPT_FLAG, "Suppress most messages"),
     _lst("verb", NULL, "COUNT", OPT_INTEGER, "Verbose level"),
-    _lst("view", 0, "MASK", OPT_INTEGER, "Bitwise mask to specify which graphics to show"),
+    //_lst("view", 0, "MASK", OPT_INTEGER, "Bitwise mask to specify which graphics to show"),
     "\nOptimizer Settings:",
     _lst("mem", NULL, "COUNT", OPT_INTEGER, "Number of previous steps to memorize in VMLMB"),
     _lst("ftol", NULL, "REAL", OPT_REAL, "Function tolerance for the global convergence"),
@@ -169,59 +169,77 @@ _MIRA_OPTIONS = opt_init\
     _lst("help", NULL, NULL, OPT_HELP, "Print out this help"),
     _lst("version", MIRA_VERSION, NULL, OPT_VERSION, "Print out version number")));
 
-func mira_yesno(value, name)
-/* DOCUMENT bool = mira_yesno(value, name);
+func _mira_is_nonnegative(x) { return x >= 0; }
+func _mira_is_strictly_positive(x) { return x > 0; }
 
-     yields true/false depending whether VALUE is "yes" or "no"; otherwise,
-     throw an error using NAME as the name of the option in the message.
+func _mira_get_angle(opt, key, check)
+{
+  local str;
+  eq_nocopy, str, h_get(opt, key);
+  if (! is_void(str)) {
+    dummy = units = string();
+    value = 0.0;
+    if (sread(str, value, units, dummy) != 2) {
+      opt_error, "Expecting value and units for `-"+key+"=...`";
+    }
+    fact = mira_parse_angular_units(units, 0);
+    if (fact == 0) {
+      opt_error, "Invalid units for `-"+key+"=...`";
+    }
+    value *= fact;
+    if (is_func(check) && ! check(value)) {
+      opt_error, "Invalid value for `-"+key+"=...`";
+    }
+    return value;
+  }
+}
+errs2caller, _mira_get_angle;
+
+func _mira_get_length(opt, key, check)
+{
+  local str;
+  eq_nocopy, str, h_get(opt, key);
+  if (! is_void(str)) {
+    dummy = units = string();
+    value = 0.0;
+    if (sread(str, value, units, dummy) != 2) {
+      opt_error, "Expecting value and units for `-"+key+"=...`";
+    }
+    fact = mira_parse_length_units(units, 0);
+    if (fact == 0) {
+      opt_error, "Invalid units for `-"+key+"=...`";
+    }
+    value *= fact;
+    if (is_func(check) && ! check(value)) {
+      opt_error, "Invalid value for `-"+key+"=...`";
+    }
+    return value;
+  }
+}
+errs2caller, _mira_get_length;
+
+func _mira_get_yesno(opt, key)
+/* DOCUMENT bool = _mira_get_yesno(opt, key);
+     yields true/false depending whether field KEY is "yes" or "no" (or not
+     set) in option table OPT; otherwise, throw an error.
 
    SEE ALSO: opt_error.
  */
 {
-  if (is_scalar(value) && is_string(value)) {
-    if (value == "yes") {
+  local str;
+  eq_nocopy, str, h_get(opt, key);
+  if (is_scalar(str) && is_string(str)) {
+    if (str == "yes") {
       return 1n;
-    } else if (value == "no") {
+    } else if (str == "no") {
       return 0n;
     }
+  } else if (is_void(str)) {
+    return 0n;
   }
-  opt_error, "Invalid value for `-"+name+"`, expecting `yes` or `no`";
+  opt_error, "Invalid value for `-"+key+"=...`, expecting `yes` or `no`";
 }
-errs2caller, mira_yesno;
-
-func _mira_cli_parse_angle(str, opt)
-{
-  if (is_void(opt)) {
-    opt = "angle";
-  }
-  dummy = units = string();
-  value = 0.0;
-  if (sread(str, value, units, dummy) != 2) {
-    opt_error, "Expecting value and units for " + opt;
-  }
-  fact = mira_parse_angular_units(units, 0);
-  if (fact == 0) {
-    opt_error, "Invalid units for " + opt;
-  }
-  return value*fact;
-}
-
-func _mira_cli_parse_length(str, opt)
-{
-  if (is_void(opt)) {
-    opt = "length";
-  }
-  dummy = units = string();
-  value = 0.0;
-  if (sread(str, value, units, dummy) != 2) {
-    opt_error, "Expecting value and units for " + opt;
-  }
-  fact = mira_parse_length_units(units, 0);
-  if (fact == 0) {
-    opt_error, "Invalid units for " + opt;
-  }
-  return value*fact;
-}
+errs2caller, _mira_get_yesno;
 
 func mira_format(val) { return sum(print(val)); }
 /* DOCUMENT mira_format(arg);
@@ -235,7 +253,11 @@ func mira_main(argv0, argv)
   /* Constants and shortcuts. */
   FALSE = 0n;
   TRUE = 1n;
-  format = mira_format;
+  get_angle = _mira_get_angle;
+  get_length = _mira_get_length;
+  get_yesno = _mira_get_yesno;
+  nonnegative = _mira_is_nonnegative;
+  strictly_positive = _mira_is_strictly_positive;
 
   opt = opt_parse(_MIRA_OPTIONS, argv);
   if (is_void(opt)) {
@@ -278,22 +300,22 @@ func mira_main(argv0, argv)
 
   /* Data fidelity functions and data selection. */
   flags = 0;
-  if (mira_yesno(opt.visamp)) {
+  if (get_yesno(opt, "visamp")) {
     flags |= MIRA_FIT_VISAMP;
   }
-  if (mira_yesno(opt.visphi)) {
+  if (get_yesno(opt, "visphi")) {
     flags |= MIRA_FIT_VISPHI;
   }
-  if (mira_yesno(opt.vis2)) {
+  if (get_yesno(opt, "vis2")) {
     flags |= MIRA_FIT_VIS2;
   }
-  if (mira_yesno(opt.t3amp)) {
+  if (get_yesno(opt, "t3amp")) {
     flags |= MIRA_FIT_T3AMP;
   }
-  if (mira_yesno(opt.t3phi)) {
+  if (get_yesno(opt, "t3phi")) {
     flags |= MIRA_FIT_T3PHI;
   }
-  if (mira_yesno(opt.convexcost)) {
+  if (get_yesno(opt, "convexcost")) {
     flags |= MIRA_CONVEX_APPROX;
   }
   if (opt.phasecost == "vonmises") {
@@ -353,7 +375,7 @@ func mira_main(argv0, argv)
         rgl_config, regul, tau=opt.tau, eta=opt.eta, loss=regul_loss;
         grow, comment,
           swrite(format="Regularization: \"%s\" with MU=%s, TAU=%g, ETA=%s",
-                 regul_name, format(opt.mu), opt.tau, format(opt.eta));
+                 regul_name, printf(opt.mu), opt.tau, printf(opt.eta));
       }
     } else {
       ...;
@@ -372,20 +394,17 @@ func mira_main(argv0, argv)
       rgl_config, regul, tau=opt.tau, eta=opt.eta; //, loss=regul_loss;
       grow, comment,
         swrite(format="Regularization: \"%s\" with MU=%s, TAU=%g, ETA=%s",
-               regul_name, format(opt.mu), opt.tau, format(opt.eta));
+               regul_name, printf(opt.mu), opt.tau, printf(opt.eta));
     } else if (regul_name == "compactness") {
       /* Compactness prior. */
       if (is_void(opt.gamma)) {
         opt_error, "Option `-gamma=...` must be specified with \"compactness\" regularization";
       }
-      value = _mira_cli_parse_angle(opt.gamma, "`-gamma=...`");
-      if (value <= 0) {
-        opt_error, "Invalid value for `-gamma=...`";
-      }
-      h_set, opt, gamma=value;
+      value = get_angle(opt, "gamma", strictly_positive);
       grow, comment,
         swrite(format="Regularization: \"%s\" with MU=%s and GAMMA=%g",
-               regul_name, format(opt.mu), opt.gamma);
+               regul_name, printf(opt.mu), opt.gamma);
+      h_set, opt, gamma=value;
       regul_post = TRUE;
 
 #if 0
@@ -442,29 +461,23 @@ func mira_main(argv0, argv)
   }
 
   /* Get image dimensions and pixel size, if specified. */
-  local dim1, dim2, dims, pixelsize, fov;
-  choice = ((is_void(opt.fov)       ? 0 : 1) |
-            (is_void(opt.pixelsize) ? 0 : 2) |
-            (is_void(opt.imagesize) ? 0 : 4));
-  if ((choice & 1) != 0) {
-    fov = _mira_cli_parse_angle(opt.fov, "`-fov=...`");
-    if (fov <= 0) {
-      opt_error, "Invalid value for `-fov=...`";
-    }
-  }
-  if ((choice & 2) != 0) {
-    pixelsize = _mira_cli_parse_angle(opt.pixelsize, "`-pixelsize=...`");
-    if (pixelsize <= 0) {
-      opt_error, "Invalid value for `-pixelsize=...`";
-    }
-  }
+  local dim1, dim2, dims, pixelsize, imagesize, fov;
+  pixelsize = get_angle(opt, "pixelsize", strictly_positive);
+  fov = get_angle(opt, "fov", strictly_positive);
+  eq_nocopy, imagesize, opt.imagesize;
+  choice = ((is_void(fov)       ? 0 : 1) |
+            (is_void(pixelsize) ? 0 : 2) |
+            (is_void(imagesize) ? 0 : 4));
   if ((choice & 4) != 0) {
     dim1 = 0;
     dim2 = 0;
     dummy = "";
-    n = sread(format="%d x %d %s", dim1, dim2, dummy);
-    if (n == 1) {
-      if (sread(format="%d %s", dim1, dummy) == 1) {
+    if (strmatch(imagesize, "x")) {
+      n = sread(imagesize, format="%d x %d %s", dim1, dim2, dummy);
+    } else if (strmatch(imagesize, "×")) {
+      n = sread(imagesize, format="%d × %d %s", dim1, dim2, dummy);
+    } else {
+      if (sread(imagesize, format="%d %s", dim1, dummy) == 1) {
         dim2 = dim1;
         n = 2;
       }
@@ -472,30 +485,20 @@ func mira_main(argv0, argv)
     if (n != 2 || dim1 <= 0 || dim2 <= 0) {
       opt_error, "Bad value for `-imagesize=...`";
     }
+    dims = [2, dim1, dim2]
   }
   if (choice == 3) {
     dim1 = dim2 = lround(fov/pixelsize);
+    dims = [2, dim1, dim2];
   } else if (choice == 5) {
-    pixelsize = fov/max(dim1,dim2);
-  } else {
-    opt_error, "Exactly two of `-fov=...`, `-pixelsize=...` or `-imagesize=...` must be be specified";
-  }
-  dims = [2,dim1,dim2];
-
-  if (choice == 1) {
-    fov = _mira_cli_parse_angle(opt.fov, "`-fov=...`");
-    if (fov <= 0) {
-      opt_error, "Invalid value for `-fov=...`";
-    }
-    if (! is_void(opt.pixelsize)) {
-      dim =
-    }
-  } else if (choice == 2) {
-  } else if (choice == 3) {
-    opt_error, "Only one of `-fov=...` or `-dim=...` can be specified";
+    pixelsize = fov/max(dim1, dim2);
+  } else if (choice == 7) {
+    opt_error, ("At most two of `-fov=...`, `-pixelsize=...` or " +
+                "`-imagesize=...` can be specified");
   } else if (! initial_filename) {
-    opt_error, ("Image dimensions must be specified with `-dim=...` "
-                + "or `-fov=..` when the initial image is not from a file");
+    opt_error, ("When the initial image is not from a file, image " +
+                "dimensions must be specified with exactly two of " +
+                "`-fov=...`, `-pixelsize=...` or `-imagesize=...`");
   }
 
   /* Check some options. */
@@ -506,31 +509,9 @@ func mira_main(argv0, argv)
   /* Initial image. */
   local initial;
   if (initial_filename) {
-    /* Read initial image and fix orientation. */
+    /* Read initial image. */
     img = mira_read_image(initial_filename);
     naxis = img.naxis;
-    for (i = 1; i <= naxis; ++i) {
-      cdelt_i = swrite(format="cdelt%d", i);
-      if (h_get(img, cdelt_i) < 0) {
-        /**/ if (i ==  1) h_set, img, arr = img.arr(::-1,..);
-        else if (i ==  2) h_set, img, arr = img.arr(,::-1,..);
-        else if (i ==  3) h_set, img, arr = img.arr(,,::-1,..);
-        else if (i ==  4) h_set, img, arr = img.arr(,,,::-1,..);
-        else if (i ==  5) h_set, img, arr = img.arr(,,,,::-1,..);
-        else if (i ==  6) h_set, img, arr = img.arr(,,,,,::-1,..);
-        else if (i ==  7) h_set, img, arr = img.arr(,,,,,,::-1,..);
-        else if (i ==  8) h_set, img, arr = img.arr(,,,,,,,::-1,..);
-        else if (i ==  9) h_set, img, arr = img.arr(,,,,,,,,::-1,..);
-        else if (i == 10) h_set, img, arr = img.arr(,,,,,,,,,::-1,..);
-        crpix_i = swrite(format="crpix%d", i);
-        naxis_i = swrite(format="naxis%d", i);
-        h_set, img,
-          cdelt_i, -h_get(img, cdelt_i),
-          crpix_i, h_get(img, naxis_i) + 1 - h_get(img, crpix_i);
-      }
-    }
-
-    /* Check number of axis. */
     if (naxis < 2 || naxis > 3) {
       opt_error, "Expecting a 2D/3D initial image";
     }
@@ -539,8 +520,7 @@ func mira_main(argv0, argv)
     naxis3 = (naxis >= 3 ? img.naxis3 : 1);
     if (naxis == 3) {
       if (naxis3 != 1) {
-        write, format="WARNING - %s\n",
-          "Converting 3D image into a 2D grayscaled image";
+        warn, "Converting 3D image into a 2D grayscaled image";
       }
       h_set, img, arr = img.arr(,,avg), naxis=2;
       h_pop, img, "naxis3";
@@ -554,29 +534,35 @@ func mira_main(argv0, argv)
 
     /* Maybe resample initial image. */
     siunit = "radian"; // pixelsize and FOV are in SI units
-    cdelt1 = mira_convert_units(siunit,img.cunit1)*img.cdelt1;
-    cdelt2 = mira_convert_units(siunit,img.cunit2)*img.cdelt2;
+    cdelt1 = mira_convert_units(img.cunit1, siunit)*img.cdelt1;
+    cdelt2 = mira_convert_units(img.cunit2, siunit)*img.cdelt2;
     if (is_void(pixelsize)) {
       pixelsize = min(cdelt1, cdelt2);
     }
-    if (is_void(dim)) {
+    if (is_void(dims)) {
       if (is_void(fov)) {
-        fov1 = mira_convert_units(img.cunit1, siunit)*img.cdelt1*img.naxis1;
-        fov2 = mira_convert_units(img.cunit2, siunit)*img.cdelt2*img.naxis2;
+        fov1 = cdelt1*naxis1;
+        fov2 = cdelt2*naxis2;
         fov = max(fov1, fov2);
+        dim1 = lround(fov1/pixelsize);
+        dim2 = lround(fov2/pixelsize);
+      } else {
+        dim1 = lround(fov/pixelsize);
+        dim2 = dim1;
       }
-      dim = lround(fov/pixelsize);
+      dims = [2, dim1, dim2];
     }
     cunit = "mas";
     cdelt = mira_convert_units(siunit, cunit)*pixelsize;
-    crpix = (dim/2) + 1;
+    crpix1 = (dim1/2) + 1;
+    crpix2 = (dim2/2) + 1;
     crval = 0.0;
     img = mira_resample_image(img, pad=0, norm=1n,
-                              naxis1=dim,   naxis2=dim,
-                              crpix1=crpix, crpix2=crpix,
-                              crval1=crval, crval2=crval,
-                              cdelt1=cdelt, cdelt2=cdelt,
-                              cunit1=cunit, cunit2=cunit);
+                              naxis1=dim1,   naxis2=dim2,
+                              crpix1=crpix1, crpix2=crpix2,
+                              crval1=crval,  crval2=crval,
+                              cdelt1=cdelt,  cdelt2=cdelt,
+                              cunit1=cunit,  cunit2=cunit);
     eq_nocopy, initial, img.arr;
 
   } else if (initial_random) {
@@ -586,53 +572,31 @@ func mira_main(argv0, argv)
       }
       random_seed, opt.seed;
     }
-    initial = random(dim, dim);
+    initial = random(dims);
   } else if (initial_dirac) {
-    initial = array(double, dim, dim);
-    initial((dim/2) + 1, (dim/2) + 1) = 1.0;
+    initial = array(double, dim1, dim2);
+    initial((dim1/2) + 1, (dim2/2) + 1) = 1.0;
   } else {
     opt_error, "Option -initial=\""+initial_name+"\" not yet implemented";
   }
 
   /* Parse wavelenght settings. */
-  local wavemin, wavemax;
-  keys = ["effband", "effwave", "wavemin", "wavemax"];
-  for (k = 1; k <= numberof(keys); ++k) {
-    local str;
-    key = keys(k);
-    eq_nocopy, str, h_get(opt, key);
-    if (! is_void(str)) {
-      value = _mira_cli_parse_length(str, "`-"+key+"=...`");
-      if (value <= 0) {
-        opt_error, "Invalid value for `-"+key+"=...`";
-      }
-      h_set, opt, key, value;
-    }
-  }
-  choice = ((is_void(opt.effwave) ? 0 : 1) |
-            (is_void(opt.effband) ? 0 : 2) |
-            (is_void(opt.wavemin) ? 0 : 4) |
-            (is_void(opt.wavemax) ? 0 : 8));
+  wavemin = get_length(opt, "wavemin", strictly_positive);
+  wavemax = get_length(opt, "wavemax", strictly_positive);
+  effwave = get_length(opt, "effwave", strictly_positive);
+  effband = get_length(opt, "effband", nonnegative);
+  choice = ((is_void(effwave) ? 0 : 1) |
+            (is_void(effband) ? 0 : 2) |
+            (is_void(wavemin) ? 0 : 4) |
+            (is_void(wavemax) ? 0 : 8));
   if (choice == 3) {
-    if (opt.effwave <= 0) {
-      opt_error, "Invalid value for `-effwave=...`";
-    }
-    if (opt.effband < 0) {
-      opt_error, "Invalid value for `-effband=...`";
-    }
-    if (2*opt.effband > opt.effwave) {
+    if (2*effband > effwave) {
       opt_error, "Too large value for `-effband=...`";
     }
-    wavemin = opt.effwave - 0.5*opt.effband;
-    wavemax = opt.effwave + 0.5*opt.effband;
+    wavemin = effwave - 0.5*effband;
+    wavemax = effwave + 0.5*effband;
   } else if (choice == 4 || choice == 8 || choice == 12) {
-    if ((choice & 4) != 0) {
-      wavemin = opt.wavemin;
-    }
-    if ((choice & 8) != 0) {
-      wavemax = opt.wavemax;
-    }
-    if ((choice & 12) == 12 && wavemin > wavemax) {
+    if (choice == 12 && wavemin > wavemax) {
       opt_error, "Incompatible values for `-wavemin=...` and `-wavemax=...` ";
     }
   } else {
