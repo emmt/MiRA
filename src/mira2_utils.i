@@ -379,6 +379,13 @@ wrap_args, mira_define_table;
 /*--------------------------------------------------------------------------*/
 /* GENERAL PURPOSE */
 
+func mira_format(val) { return sum(print(val)); }
+/* DOCUMENT mira_format(arg);
+     yields a string representation of ARG.
+
+     SEE ALSO print.
+*/
+
 func mira_vector_double(&var, def)
 /* DOCUMENT bool = mira_vector_double(var [, def]);
          or mira_vector_double, var [, def];
