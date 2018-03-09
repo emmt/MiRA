@@ -357,9 +357,9 @@ func mira_image_size(master, i)
   return is_void(i) ? master.dims : master.dims(i+1);
 }
 
-local mira_smearingfactor, mira_smearingfunction;
-/* DOCUMENT mira_smearingfactor(master, 0/1);
-         or mira_smearingfunction(master, 0/1);
+local mira_smearing_factor, mira_smearing_function;
+/* DOCUMENT mira_smearing_factor(master, 0/1);
+         or mira_smearing_function(master, 0/1);
 
      yield the value of the smearing factor or the name of the smearing
      function in MiRA instance MASTER.  If 2nd argument is true, the returned
@@ -368,7 +368,7 @@ local mira_smearingfactor, mira_smearingfunction;
    SEE ALSO: mira_update, mira_config.
  */
 
-func mira_smearingfactor(master, xform) /* DOCUMENTED */
+func mira_smearing_factor(master, xform) /* DOCUMENTED */
 {
   if (xform) {
     mira_update, master;
@@ -378,7 +378,7 @@ func mira_smearingfactor(master, xform) /* DOCUMENTED */
   }
 }
 
-func mira_smearingfunction(master, xform) /* DOCUMENTED */
+func mira_smearing_function(master, xform) /* DOCUMENTED */
 {
   if (xform) {
     mira_update, master;
