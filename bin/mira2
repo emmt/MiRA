@@ -1,0 +1,34 @@
+#! /bin/sh
+#
+# This script executes MiRA via the parser in file "mira2_batch.i".
+#
+#------------------------------------------------------------------------------
+#
+# This file is part of MiRA: a Multi-aperture Image Reconstruction
+# Algorithm <https://github.com/emmt/MiRA>.
+#
+# Copyright (C) 2016, Éric Thiébaut.
+#
+# MiRA is free software; you can redistribute it and/or modify it under the
+# terms of the GNU General Public License version 2 as published by the Free
+# Software Foundation.
+#
+# MiRA is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+# details.
+#
+#------------------------------------------------------------------------------
+
+# The following variables may be customized, INCDIR is the directory with
+# MiRA code source and YORICK is the path for Yorick interpreter.
+INCDIR=
+YORICK=yorick
+
+# If INCDIR is not specified, use the directory of this script.
+if test "x$INCDIR" = "x"; then
+    INCDIR=$(dirname "$0")/../src
+fi
+
+# Run the MiRA batch script.
+exec "$YORICK" -batch "${INCDIR}/mira2_batch.i" "$@"

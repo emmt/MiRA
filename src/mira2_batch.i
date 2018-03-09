@@ -20,6 +20,13 @@
  * details.
  */
 
+//write, format="Y_SITE = %s\n", Y_SITE;
+//write, format="Y_HOME = %s\n", Y_HOME;
+//write, format="is_func(h_new) = %d\n", is_func(h_new);
+require, "yeti.i";    // FIXME: should be automatic
+require, "utils.i";   // FIXME: should be automatic
+require, "options.i"; // FIXME: should be automatic
+
 /* The following initialization function is executed once. */
 local MIRA_BATCH_HOME;
 func _mira_batch_init(path)
@@ -40,6 +47,7 @@ func _mira_batch_init(path)
 MIRA_BATCH_HOME = _mira_batch_init(current_include());
 _mira_batch_init = [];
 
+// FIXME:
 mira_require, "opt_init", MIRA_HOME + ["", "../lib/ylib/"] + "options.i";
 
 if (! is_func(nfft_new)) {
@@ -95,7 +103,7 @@ _mira_batch_xform = (is_func(nfft_new) ? "nfft" : "separable");
 
 NULL = []; /* FIXME: make a private function to hide local variables */
 _MIRA_OPTIONS = opt_init\
-  ("Usage: ymira [OPTIONS] INPUT [...] OUTPUT",
+  ("Usage: mira2 [OPTIONS] INPUT [...] OUTPUT",
    "Image reconstruction.  INPUT and [...] are the OI-FITS data file and OUTPUT " +
    "is the result saved into a FITS file.",
    _lst\
@@ -106,6 +114,7 @@ _MIRA_OPTIONS = opt_init\
     _lst("effband", NULL, "LENGTH", OPT_STRING, "Effective bandwidth, e.g. 200nm"),
     _lst("wavemin", NULL, "LENGTH", OPT_STRING, "Minimum wavelength, e.g. 1.5µm"),
     _lst("wavemax", NULL, "LENGTH", OPT_STRING, "Maximum wavelength, e.g. 1.7µm"),
+    "\nWhich data to fit and how:",
     _lst("visamp", "yes", "yes|no", OPT_STRING, "Fit complex visibility amplitudes?"),
     _lst("visphi", "yes", "yes|no", OPT_STRING, "Fit complex visibility phases?"),
     _lst("vis2", "yes", "yes|no", OPT_STRING, "Fit powerspectrum data?"),
@@ -120,8 +129,8 @@ _MIRA_OPTIONS = opt_init\
     _lst("normalization", NULL, "VALUE", OPT_REAL, "Flux normalization (sum of pixels = VALUE)"),
     _lst("min", NULL, "LOWER", OPT_REAL, "Lower bound for the pixel values"),
     _lst("max", NULL, "UPPER", OPT_REAL, "Upper bound for the pixel values"),
-    _lst("xform", _mira_batch_xform, "NAME", OPT_STRING, "Method to compute the Fourier transform"),
-    _lst("smearingfunction", "none", "NAME", OPT_STRING, "Method to model the effects of the spectral bandwidth smearing"),
+    _lst("xform", _mira_batch_xform, "nfft|separable|nonseparable", OPT_STRING, "Method to compute the Fourier transform"),
+    _lst("smearingfunction", "none", "none|sinc|gauss", OPT_STRING, "Method to model the effects of the spectral bandwidth smearing"),
     _lst("smearingfactor", 1.0, "VALUE", OPT_REAL, "Factor to scale the effects of the spectral bandwidth smearing"),
     "\nRegularization settings:",
     _lst("regul", NULL, "NAME", OPT_STRING, "Name of regularization method (use -regul=help for more information)"),
