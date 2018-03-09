@@ -452,7 +452,7 @@ func mira_read_image(inp, hdu)
      orientation of axes. */
   naxis = fits_get(fh, "NAXIS");
   img = h_new(naxis=naxis, arr=fits_read_array(fh));
-  for (i = 1; i <= n; ++i) {
+  for (i = 1; i <= naxis; ++i) {
     _mira_get_fits_axis, img, fh, i;
   }
 
