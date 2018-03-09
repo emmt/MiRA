@@ -462,15 +462,15 @@ func mira_main(argv0, argv)
 
     /* Maybe resample initial image. */
     siunit = "radian"; // pixelsize and FOV are in SI units
-    cdelt1 = mira_convert_units(siunit,img.cunit1)*img.cdelt1;
-    cdelt2 = mira_convert_units(siunit,img.cunit2)*img.cdelt2;
+    cdelt1 = mira_convert_units(img.cunit1, siunit)*img.cdelt1;
+    cdelt2 = mira_convert_units(img.cunit2, siunit)*img.cdelt2;
     if (is_void(pixelsize)) {
       pixelsize = min(cdelt1, cdelt2);
     }
     if (is_void(dim)) {
       if (is_void(fov)) {
-        fov1 = mira_convert_units(img.cunit1, siunit)*img.cdelt1*img.naxis1;
-        fov2 = mira_convert_units(img.cunit2, siunit)*img.cdelt2*img.naxis2;
+        fov1 = cdelt1*naxis1;
+        fov2 = cdelt2*naxis2;
         fov = max(fov1, fov2);
       }
       dim = lround(fov/pixelsize);
