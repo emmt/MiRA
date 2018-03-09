@@ -39,6 +39,8 @@ include, MIRA_HOME+"mira2_config.i";
 include, MIRA_HOME+"mira2_data.i";
 include, MIRA_HOME+"mira2_xform.i";
 include, MIRA_HOME+"mira2_cost.i";
+include, MIRA_HOME+"mira2_image.i";
+include, MIRA_HOME+"mira2_solver.i";
 
 local MIRA_DEBUG, MIRA_QUIET;
 /* DOCUMENT MIRA_DEBUG - perform debug checks?
