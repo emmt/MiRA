@@ -23,9 +23,10 @@
 //write, format="Y_SITE = %s\n", Y_SITE;
 //write, format="Y_HOME = %s\n", Y_HOME;
 //write, format="is_func(h_new) = %d\n", is_func(h_new);
-require, "yeti.i";    // FIXME: should be automatic
-require, "utils.i";   // FIXME: should be automatic
-require, "options.i"; // FIXME: should be automatic
+require, "yeti.i";            // FIXME: should be automatic
+require, "utils.i";           // FIXME: should be automatic
+require, "options.i";         // FIXME: should be automatic
+require, "optimpacklegacy.i"; // FIXME: should be automatic
 
 /* The following initialization function is executed once. */
 local MIRA_BATCH_HOME;
@@ -47,8 +48,10 @@ func _mira_batch_init(path)
 MIRA_BATCH_HOME = _mira_batch_init(current_include());
 _mira_batch_init = [];
 
-// FIXME:
+// FIXME:should be automatic
 mira_require, "opt_init", MIRA_HOME + ["", "../lib/ylib/"] + "options.i";
+mira_require, "rgl_new", MIRA_HOME + ["", "../lib/ipy/"] + "rgl.i";
+mira_require, "linop_new", MIRA_HOME + ["", "../lib/ipy/"] + "linop.i";
 
 if (! is_func(nfft_new)) {
   /* Attempt to pre-load YNFFT. */
@@ -183,46 +186,32 @@ func _mira_is_strictly_positive(x) { return x > 0; }
 
 func _mira_get_angle(opt, key, check)
 {
-  local str;
-  eq_nocopy, str, h_get(opt, key);
-  if (! is_void(str)) {
-    dummy = units = string();
-    value = 0.0;
-    if (sread(str, value, units, dummy) != 2) {
-      opt_error, "Expecting value and units for `-"+key+"=...`";
+  local val;
+  eq_nocopy, val, h_get(opt, key);
+  if (! is_void(val)) {
+    if (! mira_angle(val)) {
+      opt_error, "Expecting value and angular units for `-"+key+"=...`";
     }
-    fact = mira_parse_angular_units(units, 0);
-    if (fact == 0) {
-      opt_error, "Invalid units for `-"+key+"=...`";
-    }
-    value *= fact;
-    if (is_func(check) && ! check(value)) {
+    if (is_func(check) && ! check(val)) {
       opt_error, "Invalid value for `-"+key+"=...`";
     }
-    return value;
+    return val;
   }
 }
 errs2caller, _mira_get_angle;
 
 func _mira_get_length(opt, key, check)
 {
-  local str;
-  eq_nocopy, str, h_get(opt, key);
-  if (! is_void(str)) {
-    dummy = units = string();
-    value = 0.0;
-    if (sread(str, value, units, dummy) != 2) {
-      opt_error, "Expecting value and units for `-"+key+"=...`";
+  local val;
+  eq_nocopy, val, h_get(opt, key);
+  if (! is_void(val)) {
+    if (! mira_length(val)) {
+      opt_error, "Expecting value and length units for `-"+key+"=...`";
     }
-    fact = mira_parse_length_units(units, 0);
-    if (fact == 0) {
-      opt_error, "Invalid units for `-"+key+"=...`";
-    }
-    value *= fact;
-    if (is_func(check) && ! check(value)) {
+    if (is_func(check) && ! check(val)) {
       opt_error, "Invalid value for `-"+key+"=...`";
     }
-    return value;
+    return val;
   }
 }
 errs2caller, _mira_get_length;
@@ -249,13 +238,6 @@ func _mira_get_yesno(opt, key)
   opt_error, "Invalid value for `-"+key+"=...`, expecting `yes` or `no`";
 }
 errs2caller, _mira_get_yesno;
-
-func mira_format(val) { return sum(print(val)); }
-/* DOCUMENT mira_format(arg);
-     Yield a string representation of ARG.
-
-     SEE ALSO; print.
-*/
 
 func mira_main(argv0, argv)
 {
@@ -286,14 +268,14 @@ func mira_main(argv0, argv)
       "quadratic_smoothness",
       "Quadratic smoothness.";
     write, format="\n  -regul=%s -gamma=...\n  %s\n",
-      "quadratic_compactness",
+      "compactness",
       "Quadratic compactness with full-width at half maximum GAMMA.";
-    write, format="\n  -regul=%s -gamma=...\n  %s\n",
-      "Huber_compactness",
-      "L1-L2 compactness with Huber norm and full-width at half maximum GAMMA.";
-    write, format="\n  -regul=%s -gamma=...\n  %s\n",
-      "hyperbolic_compactness",
-      "L1-L2 compactness with Huber norm and full-width at half maximum GAMMA.";
+    //write, format="\n  -regul=%s -gamma=...\n  %s\n",
+    //  "Huber_compactness",
+    //  "L1-L2 compactness with Huber norm and full-width at half maximum GAMMA.";
+    //write, format="\n  -regul=%s -gamma=...\n  %s\n",
+    //  "hyperbolic_compactness",
+    //  "L1-L2 compactness with Huber norm and full-width at half maximum GAMMA.";
     write, format="%s\n", "";
     quit;
   }
@@ -305,6 +287,9 @@ func mira_main(argv0, argv)
   final_filename = argv(0);
   if (! opt.debug) {
     error = opt_error;
+  }
+  if (! opt.overwrite && open(final_filename, "r", 0)) {
+    opt_error, ("output file \""+final_filename+"\" already exists");
   }
 
   /* Data fidelity functions and data selection. */
@@ -384,7 +369,8 @@ func mira_main(argv0, argv)
         rgl_config, regul, tau=opt.tau, eta=opt.eta, loss=regul_loss;
         grow, comment,
           swrite(format="Regularization: \"%s\" with MU=%s, TAU=%g, ETA=%s",
-                 regul_name, printf(opt.mu), opt.tau, printf(opt.eta));
+                 regul_name, mira_format(opt.mu), opt.tau,
+                 mira_format(opt.eta));
       }
     } else {
       ...;
@@ -403,7 +389,7 @@ func mira_main(argv0, argv)
       rgl_config, regul, tau=opt.tau, eta=opt.eta; //, loss=regul_loss;
       grow, comment,
         swrite(format="Regularization: \"%s\" with MU=%s, TAU=%g, ETA=%s",
-               regul_name, printf(opt.mu), opt.tau, printf(opt.eta));
+               regul_name, mira_format(opt.mu), opt.tau, mira_format(opt.eta));
     } else if (regul_name == "compactness") {
       /* Compactness prior. */
       if (is_void(opt.gamma)) {
@@ -411,8 +397,8 @@ func mira_main(argv0, argv)
       }
       value = get_angle(opt, "gamma", strictly_positive);
       grow, comment,
-        swrite(format="Regularization: \"%s\" with MU=%s and GAMMA=%g",
-               regul_name, printf(opt.mu), opt.gamma);
+        swrite(format="Regularization: \"%s\" with MU=%s and GAMMA=%s",
+               regul_name, mira_format(opt.mu), opt.gamma);
       h_set, opt, gamma=value;
       regul_post = TRUE;
 
@@ -604,11 +590,11 @@ func mira_main(argv0, argv)
     }
     wavemin = effwave - 0.5*effband;
     wavemax = effwave + 0.5*effband;
-  } else if (choice == 4 || choice == 8 || choice == 12) {
-    if (choice == 12 && wavemin > wavemax) {
+  } else if (choice == 12) {
+    if (wavemin > wavemax) {
       opt_error, "Incompatible values for `-wavemin=...` and `-wavemax=...` ";
     }
-  } else {
+  } else if (choice != 0 && choice != 4 && choice != 8) {
     opt_error, "Specify `-effwave` and `-effband`, or `-wavemin` anr/or `-wavemax`";
   }
 
@@ -621,7 +607,7 @@ func mira_main(argv0, argv)
                     pixelsize = pixelsize,
                     dims = dims,
                     flags = flags,
-                    xform = xform,
+                    xform = opt.xform,
                     smearingfunction = opt.smearingfunction,
                     smearingfactor = opt.smearingfactor);
 
@@ -674,7 +660,6 @@ func mira_main(argv0, argv)
                      maxeval = opt.maxeval,
                      maxiter = opt.maxiter,
                      verb = opt.verb,
-                     view = opt.view,
                      xmin = opt("min"),
                      xmax = opt("max"),
                      normalization = opt.normalization,
