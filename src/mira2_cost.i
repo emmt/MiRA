@@ -381,7 +381,7 @@ func _mira_t3phi_cost(master, db, grd)
   _mira_t3_pre_cost, master, db;
 
   /* Compute the model of the phase closures. */
-  t3phi = sgn(+,)*mira_model_phi(master, idx)(+,);
+  t3phi = (sgn*mira_model_phi(master, idx))(sum,);
 
   /* Compute the cost (and its gradient) with respect to the bispectrum. */
   cost = _mira_phase_cost(master.flags, t3re, t3im,
@@ -615,7 +615,7 @@ func _mira_amplitude_cost(flags, re, im, mdl, wgt, dat, idx, grd)
 
   /* Penalty (and gradient) for non-zero model visibilities. */
   err = mdl - dat;
-  wgt_err = wgt*res;
+  wgt_err = wgt*err;
   cost += sum(wgt_err*err);
   if (! is_void(grd)) {
     fct = (wgt_err + wgt_err)/mdl;
@@ -641,8 +641,7 @@ func _mira_phase_cost(flags, re, im, vis2, mdl, wgt, dat, idx, grd)
  */
 {
   /* Keep only bits corresponding to the phase cost approximation. */
-  bits = (flags & (MIRA_HANIFF_APPROX | MIRA_CONVEX_LIMIT |
-                   MIRA_VON_MISES_APPROX));
+  bits = (flags & _MIRA_PHASE_ONLY_BITS);
 
   /* Deal with model visibilities equal to zero (where model phases are
      unknown). */
