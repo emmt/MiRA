@@ -1,7 +1,7 @@
 /*
  * mira2_cost.i -
  *
- * Objectve functions in MiRA.
+ * Objective functions in MiRA.
  *
  *-----------------------------------------------------------------------------
  *
@@ -31,12 +31,14 @@ func mira_ndata(master)
    SEE ALSO: mira_new.
  */
 {
- // FIXME: check stage?
-  n = 0;
-  for (db = _mira_first(master); db; db = _mira_next(master, db)) {
-    n += db.ops.ndata(master, db);
+  if (master.stage < 1) {
+    _mira_select_data, master;
   }
-  return n;
+  ndata = 0;
+  for (db = _mira_first(master); db; db = _mira_next(master, db)) {
+    ndata += db.ops.ndata(master, db);
+  }
+  return ndata;
 }
 
 func mira_cost(master, x)
