@@ -192,21 +192,10 @@ func mira_config(master, wavemin=, wavemax=, dims=, pixelsize=, xform=,
   if (bad_dims) {
     throw, "invalid image dimension(s)";
   }
-  master_flags = master.flags;
-  if (! is_scalar(master_flags) || structof(master_flags) != int) {
-    if (! is_scalar(master_flags) || int(master_flags) != master_flags) {
-      throw, "invalid current flags";
-    }
-    master_flags = int(master.flags);
-    h_set, master, flags = master_flags;
-  }
   if (is_void(flags)) {
-    flags = master_flags;
+    flags = master.flags;
   }
-  if (! is_scalar(flags) || ! is_integer(flags) || int(flags) != flags) {
-    throw("invalid flags");
-  }
-  flags = int(flags);
+  flags = mira_fix_flags(flags);
 
   /* Apply changes if any. */
   changes = 0;
@@ -215,7 +204,7 @@ func mira_config(master, wavemin=, wavemax=, dims=, pixelsize=, xform=,
       wavemin = wavemin, wavemax = wavemax;
     changes |= 2;
   }
-  if (master_flags != flags) {
+  if (master.flags != flags) {
     h_set, master, model = h_new(), stage = min(master.stage, 0),
       flags = flags;
   }
@@ -405,12 +394,14 @@ local MIRA_FIT_VISAMP, MIRA_FIT_VISPHI, MIRA_FIT_VIS2;
 local MIRA_FIT_T3AMP, MIRA_FIT_T3PHI;
 local MIRA_CONVEX_APPROX;
 local MIRA_HANIFF_APPROX, MIRA_CONVEX_LIMIT, MIRA_VON_MISES_APPROX;
+local mira_fix_flags;
 func mira_flags(master)
 /* DOCUMENT mira_flags(master);
+         or mira_fix_flags(flags);
 
-     yields the current flags used by MiRA instance `master`.  The flags may be
-     changed with `mira_config` and the following bits can be combined into the
-     flags:
+     The first function yields the current flags used by MiRA instance
+     `master`.  The flags may be changed with `mira_config` and the following
+     bits can be combined into the flags:
 
          MIRA_FIT_VISAMP ......... fit amplitude of complex visibilities;
          MIRA_FIT_VISPHI ......... fit phase of complex visibilities;
@@ -423,6 +414,9 @@ func mira_flags(master)
          MIRA_CONVEX_LIMIT ....... use limit of the convex approximation for
                                    fitting phase data;
          MIRA_VON_MISES_APPROX ... use von Mises approximation for phase data;
+
+      The second function returns FLAGS after checking its type, bits and
+      setting defaults.
 
 
    SEE ALSO: mira_config.
@@ -437,12 +431,47 @@ MIRA_FIT_VIS2         = (1n << 2);
 MIRA_FIT_T3AMP        = (1n << 3);
 MIRA_FIT_T3PHI        = (1n << 4);
 MIRA_CONVEX_APPROX    = (1n << 5);
+
+/* bits for phase-only approximation of the objective function */
 MIRA_HANIFF_APPROX    = (1n << 6);
 MIRA_CONVEX_LIMIT     = (2n << 6);
 MIRA_VON_MISES_APPROX = (3n << 6);
 
 MIRA_FIT_VIS = (MIRA_FIT_VISAMP | MIRA_FIT_VISPHI);
 MIRA_FIT_T3  = (MIRA_FIT_T3AMP | MIRA_FIT_T3PHI);
+
+_MIRA_PHASE_ONLY_BITS = (MIRA_HANIFF_APPROX |
+                         MIRA_CONVEX_LIMIT |
+                         MIRA_VON_MISES_APPROX);
+
+func mira_fix_flags(flags) /* DOCUMENTED */
+{
+  if (is_void(flags)) {
+    flags = 0n;
+  }
+  if (! is_scalar(flags) || ! is_integer(flags) || int(flags) != flags) {
+    throw, "invalid flags";
+  }
+
+  /* Clear unused bits. */
+  flags &= (MIRA_FIT_VISAMP | MIRA_FIT_VISPHI | MIRA_FIT_VIS2 |
+            MIRA_FIT_T3AMP | MIRA_FIT_T3PHI | MIRA_CONVEX_APPROX |
+            _MIRA_PHASE_ONLY_BITS);
+
+  /* Check phase-only data bits. */
+  bits = (flags & _MIRA_PHASE_ONLY_BITS);
+  if (bits == 0) {
+    /* Von Mises is the default approximation for phase-only data. */
+    flags |= MIRA_VON_MISES_APPROX;
+  } else if (bits != MIRA_HANIFF_APPROX &&
+             bits != MIRA_CONVEX_LIMIT &&
+             bits != MIRA_VON_MISES_APPROX) {
+    throw, "only a single approximation can be used for phase-only data";
+  }
+
+  return int(flags);
+}
+errs2caller, mira_fix_flags;
 
 /*---------------------------------------------------------------------------*/
 /* UPDATING RESSOURCES AND MODEL */
