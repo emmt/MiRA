@@ -244,6 +244,18 @@ report, err4 < 1e-10, "direct/adjoint inner product test for nonseparable + gaus
 /* Checking gradients. */
 x = random(mira_image_size(main));
 x /= sum(x);
+
+inform, "\nChecking gradients with flags=MIRA_FIT_VIS2";
+mira_config, main, flags=MIRA_FIT_VIS2;
 mira_cost_and_gradient, main, x, grd;
-myfunc=closure("mira_cost", main);
-checkgradient, myfunc, grd, x, number=1000;
+checkgradient, closure("mira_cost", main), grd, x, number=1000;
+
+inform, "\nChecking gradients with flags=MIRA_FIT_T3PHI|MIRA_VON_MISES_APPROX";
+mira_config, main, flags=MIRA_FIT_T3PHI|MIRA_VON_MISES_APPROX;
+mira_cost_and_gradient, main, x, grd;
+checkgradient, closure("mira_cost", main), grd, x, number=1000;
+
+inform, "\nChecking gradients with flags=MIRA_FIT_T3PHI|MIRA_FIT_T3PHI|MIRA_CONVEX_APPROX";
+mira_config, main, flags=MIRA_FIT_T3PHI|MIRA_FIT_T3PHI|MIRA_CONVEX_APPROX;
+mira_cost_and_gradient, main, x, grd;
+checkgradient, closure("mira_cost", main), grd, x, number=1000;
