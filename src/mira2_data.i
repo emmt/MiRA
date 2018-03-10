@@ -268,9 +268,11 @@ func _mira_select_data(master)
   }
 
   /* Estimate the wavelength, set stage and return. */
-  return h_set(master, stage = 1,
-               img_wave = (min(master.coords.wave) +
-                           max(master.coords.wave))/2.0);
+  if (numberof(master.coords.wave) > 0) {
+    h_set, master, img_wave = (min(master.coords.wave) +
+                               max(master.coords.wave))/2.0;
+  }
+  return h_set(master, stage = 1);
 }
 
 func _mira_grow_coordinates(master, u, v, wave, band)
