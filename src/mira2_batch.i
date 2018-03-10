@@ -184,7 +184,16 @@ _MIRA_OPTIONS = opt_init\
 func _mira_is_nonnegative(x) { return x >= 0; }
 func _mira_is_strictly_positive(x) { return x > 0; }
 
-func _mira_get_angle(opt, key, check)
+func mira_get_angle(opt, key, check)
+/* DOCUMENT val = mira_get_angle(opt, key);
+         or val = mira_get_angle(opt, key, check);
+
+     yields the value of an angular parameter from the field KEY in option
+     table OPT.  If the value is not a valid angle, or if CHECK is provided
+     and CHECK(VAL) is not true, an error is thrown.
+
+   SEE ALSO: opt_error, mira_get_length, mira_get_yesno.
+ */
 {
   local val;
   eq_nocopy, val, h_get(opt, key);
@@ -198,9 +207,18 @@ func _mira_get_angle(opt, key, check)
     return val;
   }
 }
-errs2caller, _mira_get_angle;
+errs2caller, mira_get_angle;
 
-func _mira_get_length(opt, key, check)
+func mira_get_length(opt, key, check)
+/* DOCUMENT val = mira_get_length(opt, key);
+         or val = mira_get_length(opt, key, check);
+
+     yields the value of a length parameter from the field KEY in option table
+     OPT.  If the value is not a valid length, or if CHECK is provided and
+     CHECK(VAL) is not true, an error is thrown.
+
+   SEE ALSO: opt_error, mira_get_angle, mira_get_yesno.
+ */
 {
   local val;
   eq_nocopy, val, h_get(opt, key);
@@ -214,14 +232,14 @@ func _mira_get_length(opt, key, check)
     return val;
   }
 }
-errs2caller, _mira_get_length;
+errs2caller, mira_get_length;
 
-func _mira_get_yesno(opt, key)
-/* DOCUMENT bool = _mira_get_yesno(opt, key);
+func mira_get_yesno(opt, key)
+/* DOCUMENT bool = mira_get_yesno(opt, key);
      yields true/false depending whether field KEY is "yes" or "no" (or not
      set) in option table OPT; otherwise, throw an error.
 
-   SEE ALSO: opt_error.
+   SEE ALSO: opt_error, mira_get_angle, mira_get_length.
  */
 {
   local str;
@@ -237,16 +255,16 @@ func _mira_get_yesno(opt, key)
   }
   opt_error, "Invalid value for `-"+key+"=...`, expecting `yes` or `no`";
 }
-errs2caller, _mira_get_yesno;
+errs2caller, mira_get_yesno;
 
 func mira_main(argv0, argv)
 {
   /* Constants and shortcuts. */
   FALSE = 0n;
   TRUE = 1n;
-  get_angle = _mira_get_angle;
-  get_length = _mira_get_length;
-  get_yesno = _mira_get_yesno;
+  get_angle = mira_get_angle;
+  get_length = mira_get_length;
+  get_yesno = mira_get_yesno;
   nonnegative = _mira_is_nonnegative;
   strictly_positive = _mira_is_strictly_positive;
 
