@@ -480,27 +480,38 @@ errs2caller, mira_fix_flags;
 func mira_format_flags(flags) /* DOCUMENTED */
 {
   str = [];
-  _mira_format_flags_worker, MIRA_FIT_VISAMP,       "MIRA_FIT_VISAMP";
-  _mira_format_flags_worker, MIRA_FIT_VISPHI,       "MIRA_FIT_VISPHI";
-  _mira_format_flags_worker, MIRA_FIT_VIS2,         "MIRA_FIT_VIS2";
-  _mira_format_flags_worker, MIRA_FIT_T3AMP,        "MIRA_FIT_T3AMP";
-  _mira_format_flags_worker, MIRA_FIT_T3PHI,        "MIRA_FIT_T3PHI";
-  _mira_format_flags_worker, MIRA_CONVEX_APPROX,    "MIRA_CONVEX_APPROX";
-  _mira_format_flags_worker, MIRA_VON_MISES_APPROX, "MIRA_VON_MISES_APPROX";
-  _mira_format_flags_worker, MIRA_HANIFF_APPROX,    "MIRA_HANIFF_APPROX";
-  _mira_format_flags_worker, MIRA_CONVEX_LIMIT,     "MIRA_CONVEX_LIMIT";
+  _mira_format_flags_helper1, MIRA_FIT_VISAMP,    "MIRA_FIT_VISAMP";
+  _mira_format_flags_helper1, MIRA_FIT_VISPHI,    "MIRA_FIT_VISPHI";
+  _mira_format_flags_helper1, MIRA_FIT_VIS2,      "MIRA_FIT_VIS2";
+  _mira_format_flags_helper1, MIRA_FIT_T3AMP,     "MIRA_FIT_T3AMP";
+  _mira_format_flags_helper1, MIRA_FIT_T3PHI,     "MIRA_FIT_T3PHI";
+  _mira_format_flags_helper1, MIRA_CONVEX_APPROX, "MIRA_CONVEX_APPROX";
+  bits = (flags & _MIRA_PHASE_ONLY_BITS);
+  if (bits == MIRA_VON_MISES_APPROX) {
+    _mira_format_flags_helper2, "MIRA_VON_MISES_APPROX";
+  } else if (bits == MIRA_HANIFF_APPROX) {
+    _mira_format_flags_helper2, "MIRA_HANIFF_APPROX";
+  } else if (bits == MIRA_CONVEX_LIMIT) {
+    _mira_format_flags_helper2, "MIRA_CONVEX_LIMIT";
+  }
   return is_void(str) ? "0" : str;
 }
 
-func _mira_format_flags_worker(bits, literal)
+func _mira_format_flags_helper1(bits, literal)
 {
-  extern str, flags;
+  extern flags;
   if ((flags & bits) == bits) {
-    if (is_void(str)) {
-      str = literal;
-    } else {
-      str += "|" + literal;
-    }
+    _mira_format_flags_helper2, literal;
+  }
+}
+
+func _mira_format_flags_helper2(literal)
+{
+  extern str;
+  if (is_void(str)) {
+    str = literal;
+  } else {
+    str += "|" + literal;
   }
 }
 
