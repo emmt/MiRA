@@ -549,7 +549,7 @@ func mira_update(master, img, force=)
        demand). */
     vis = master.xform(img);
     h_set, master.model, img=img, vis=vis, re=[], im=[],
-      vis2=[], amp=[], phi=[];
+      vis2=[], amp=[], phi=[], reciprocal_amp=[], reciprocal_vis2=[];
   }
   return master;
 }
@@ -628,6 +628,24 @@ func mira_model_phi(master, idx)
                                   mira_model_re(master));
   }
   return model.phi(idx);
+}
+
+func mira_model_reciprocal_amp(master, idx)
+{
+  model = master.model;
+  if (is_void(model.reciprocal_amp)) {
+    h_set, model, reciprocal_amp = mira_reciprocal(mira_model_amp(master));
+  }
+  return model.reciprocal_amp(idx);
+}
+
+func mira_model_reciprocal_vis2(master, idx)
+{
+  model = master.model;
+  if (is_void(model.reciprocal_vis2)) {
+    h_set, model, reciprocal_vis2 = mira_reciprocal(mira_model_vis2(master));
+  }
+  return model.reciprocal_vis2(idx);
 }
 
 /*---------------------------------------------------------------------------*/
