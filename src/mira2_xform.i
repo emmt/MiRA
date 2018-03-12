@@ -112,7 +112,6 @@ func _mira_define_xform(master)
 
   /* Get the coordinates (and check them). */
   local u, v, wave, band, ufreq, vfreq, x, y;
-  vector_double = mira_vector_double;
   eq_nocopy, x, mira_image_x(master);
   eq_nocopy, y, mira_image_y(master);
   nx = numberof(x);

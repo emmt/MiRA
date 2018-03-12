@@ -240,10 +240,10 @@ func _mira_select_data(master)
     }
     nrows = dims(2);
     ncols = dims(3);
-    if (! mira_vector_double(wave) || numberof(wave) != ncols) {
+    if (! vector_double(wave) || numberof(wave) != ncols) {
       error, "bug: WAVE and SELECT have incompatible dimensions";
     }
-    if (! mira_vector_double(band) || numberof(band) != ncols) {
+    if (! vector_double(band) || numberof(band) != ncols) {
     error, "bug: BAND and SELECT have incompatible dimensions";
     }
     if (wavemin > 0.0) {
@@ -357,10 +357,10 @@ func _mira_grow_coordinates(master, u, v, wave, band)
 
 func _mira_check_baselines(&u, &v, nrows)
 {
-  if (! mira_vector_double(u) || numberof(u) != nrows) {
+  if (! vector_double(u) || numberof(u) != nrows) {
     error, swrite(format="U should be a vector of %d real value(s)", nrows);
   }
-  if (! mira_vector_double(v) || numberof(v) != nrows) {
+  if (! vector_double(v) || numberof(v) != nrows) {
     error, swrite(format="V should be a vector of %d real value(s)", nrows);
   }
 }

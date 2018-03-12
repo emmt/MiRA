@@ -386,43 +386,6 @@ func mira_format(val) { return sum(print(val)); }
      SEE ALSO print.
 */
 
-func mira_vector_double(&var, def)
-/* DOCUMENT bool = mira_vector_double(var [, def]);
-         or mira_vector_double, var [, def];
-
-     Make sure that variable `var` stores a vector of type `double`.  `var`
-     should be a variable, not an expression because its contents may be
-     redefined by this routine.  On entry, if `var` is undefined, it is set
-     with the default value `def`.  On successful return, it is guaranteed that
-     `var` stores a vector of type `double`.  When called as a function, a
-     boolean result is returned: true in case of success and false in case of
-     failure.  When called as a subroutine, an error is thrown in case of
-     failure.  See the documentation of `scalar_double` for more details and
-     typical usage.
-
-   SEE ALSO: scalar_double.
- */
-{
-  if (is_void(var)) {
-    var = def;
-  }
-  if ((id = identof(var)) <= Y_DOUBLE) {
-    if (is_scalar(var)) {
-      var = [double(var)];
-      return 1n;
-    }
-    if (is_vector(var)) {
-      if (id != Y_DOUBLE) {
-        var = double(var);
-      }
-      return 1n;
-    }
-  }
-  if (am_subroutine()) error, "expecting an integer";
-  return 0n;
-}
-errs2caller, mira_vector_double;
-
 func mira_same_strings(str1, str2)
 /* DOCUMENT mira_same_strings(str1, str2);
      returns whether `str1` and `str2` are identical strings, disregarding the
