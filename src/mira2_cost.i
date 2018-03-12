@@ -57,17 +57,71 @@ func mira_cost_and_gradient(master, x, &grd)
   /* Update model and integrate cost and gradient with respect to the complex
      visibilities. */
   mira_update, master, x;
+  dims = dimsof(mira_model_vis(master));
+  if (numberof(dims) != 3 || dims(2) != 2) {
+    throw, "unexpected dimensions for model complex visibilities";
+  }
+  tbl = h_new(nfreqs = dims(3));
   cost = 0.0;
-  grd = array(double, dimsof(mira_model_vis(master)));
   for (db = _mira_first(master); db; db = _mira_next(master, db)) {
-    cost += db.ops.cost(master, db, grd);
+    cost += db.ops.cost(master, db, tbl);
   }
 
   /* Convert gradient with respect to the complex visibilities into gradient
      with respect to pixel values. */
+  increment = _mira_increment_variable;
+  grd_re = h_pop(tbl, "re");
+  grd_im = h_pop(tbl, "im");
+  grd_amp = h_pop(tbl, "amp");
+  if (! is_void(grd_amp)) {
+    fct = mira_model_reciprocal_amp(master)*grd_amp;
+    increment, grd_re, fct*mira_model_re(master);
+    increment, grd_im, fct*mira_model_im(master);
+  }
+  grd_vis2 = h_pop(tbl, "vis2");
+  if (! is_void(grd_vis2)) {
+    fct = grd_vis2 + grd_vis2;
+    increment, grd_re, fct*mira_model_re(master);
+    increment, grd_im, fct*mira_model_im(master);
+  }
+  grd_phi = h_pop(tbl, "phi");
+  if (! is_void(grd_phi)) {
+    fct = mira_model_reciprocal_vis2(master)*grd_phi;
+    increment, grd_re, -fct*mira_model_im(master);
+    increment, grd_im, +fct*mira_model_re(master);
+  }
+  grd = array(double, dims);
+  if (! is_void(grd_re)) {
+    grd(1,) = grd_re;
+  }
+  if (! is_void(grd_im)) {
+    grd(2,) = grd_im;
+  }
   grd = master.xform(grd, 1);
   return cost;
 }
+
+func _mira_update_gradient(tbl, key, idx, val)
+{
+  if (!is_void(idx)) {
+    val = histogram(idx, val, top=tbl.nfreqs);
+  }
+  if (h_has(tbl, key)) {
+    h_set, tbl, key, h_get(tbl, key) + val;
+  } else {
+    h_set, tbl, key, val;
+  }
+}
+
+func _mira_increment_variable(&var, inc)
+{
+  if (is_void(var)) {
+    eq_nocopy, var, inc;
+  } else {
+    var = unref(var) + inc;
+  }
+}
+
 
 func mira_polar_to_cartesian(amp, amperr, phi, phierr, what,
                              goodman=, use_covar=)
@@ -226,7 +280,7 @@ func _mira_vis2_ndata(master, db)
   return numberof(db.idx);
 }
 
-func _mira_vis2_cost(master, db, grd)
+func _mira_vis2_cost(master, db, tbl)
 {
   /* Error and gradient w.r.t. powerspectrum data:
    *           COST = sum(WGT*ERR^2)
@@ -245,9 +299,8 @@ func _mira_vis2_cost(master, db, grd)
   err = (re*re + im*im) - db.dat;
   wgt_err = db.wgt*err;
   cost = sum(wgt_err*err);
-  if (! is_void(grd)) {
-    fct = 4.0*unref(wgt_err);
-    _mira_update_gradient, grd, idx, fct*re, fct*im;
+  if (is_hash(tbl)) {
+    _mira_update_gradient, tbl, "vis2", idx, wgt_err + wgt_err;
   }
   return cost;
 }
@@ -270,36 +323,49 @@ func _mira_visphi_ndata(master, db)
   return numberof(db.idx);
 }
 
-func _mira_vis_cost(master, db, grd)
+func _mira_vis_cost(master, db, tbl)
 {
-  local idx; eq_nocopy, idx, db.idx;
-  return _mira_visibility_cost(master.flags,
+  local idx;
+  eq_nocopy, idx, db.idx;
+  grd_re = grd_im = compute_gradient = is_hash(tbl);
+  cost = _mira_visibility_cost(master.flags,
                                mira_model_re(master, idx),
                                mira_model_im(master, idx),
                                db.wrr, db.wri, db.wii,
-                               db.re, db.im,
-                               idx, grd);
+                               db.re, db.im, grd_re, grd_im);
+  if (compute_gradient) {
+    _mira_update_gradient, tbl, "re", idx, grd_re;
+    _mira_update_gradient, tbl, "im", idx, grd_im;
+  }
+  return cost;
 }
 
-func _mira_visamp_cost(master, db, grd)
+func _mira_visamp_cost(master, db, tbl)
 {
-  local idx; eq_nocopy, idx, db.idx;
-  return _mira_amplitude_cost(master.flags,
-                              mira_model_re(master, idx),
-                              mira_model_im(master, idx),
+  local idx;
+  eq_nocopy, idx, db.idx;
+  grd = compute_gradient = is_hash(tbl);
+  cost = _mira_amplitude_cost(master.flags,
                               mira_model_amp(master, idx),
-                              db.wgt, db.dat, idx, grd);
+                              db.wgt, db.dat, grd);
+  if (compute_gradient) {
+    _mira_update_gradient, tbl, "amp", idx, grd;
+  }
+  return cost;
 }
 
-func _mira_visphi_cost(master, db, grd)
+func _mira_visphi_cost(master, db, tbl)
 {
-  local idx; eq_nocopy, idx, db.idx;
-  return _mira_phase_cost(master.flags,
-                          mira_model_re(master, idx),
-                          mira_model_im(master, idx),
-                          mira_model_vis2(master, idx),
+  local idx;
+  eq_nocopy, idx, db.idx;
+  grd = compute_gradient = is_hash(tbl);
+  cost = _mira_phase_cost(master.flags,
                           mira_model_phi(master, idx),
-                          db.wgt, db.dat, idx, grd);
+                          db.wgt, db.dat, grd);
+  if (compute_gradient) {
+    _mira_update_gradient, tbl, "phi", idx, grd;
+  }
+  return cost;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -320,144 +386,47 @@ func _mira_t3phi_ndata(master, db)
   return numberof(db.idx)/3;
 }
 
-func _mira_t3_cost(master, db, grd)
+func _mira_t3_cost(master, db, tbl)
 {
-  /* Declare variables shared by pre/post helper subroutines. */
-  local idx, sgn, re, im;
-  local t3re, t3im, t3idx, t3grd;
-  local re1, im1, re2, im2, re3, im3;
-  local re12, im12;
-
-  /* Initialize shared variables. */
-  _mira_t3_pre_cost, master, db;
-
-  /* Compute the cost (and its gradient) with respect to the bispectrum. */
-  cost = _mira_visibility_cost(master.flags, t3re, t3im,
-                               db.wrr, db.wri, db.wii,
-                               db.re, db.im,
-                               t3idx, t3grd);
-
-  /* If needed, update gradient w.r.t. the model complex visibilities. */
-  if (! is_void(grd)) {
-    _mira_t3_post_cost, grd;
-  }
-  return cost;
-}
-
-func _mira_t3amp_cost(master, db, grd)
-{
-  /* Declare variables shared by pre/post helper subroutines. */
-  local idx, sgn, re, im;
-  local t3re, t3im, t3idx, t3grd;
-  local re1, im1, re2, im2, re3, im3;
-  local re12, im12;
-
-  /* Initialize shared variables. */
-  _mira_t3_pre_cost, master, db;
-
-  /* Compute the model of the bispectrum amplitude. */
-  t3amp = abs(t3re, t3im);
-
-  /* Compute the cost (and its gradient) with respect to the bispectrum. */
-  cost = _mira_amplitude_cost(master.flags, t3re, t3im, t3amp,
-                              db.wgt, db.dat, t3idx, t3grd);
-
-  /* If needed, update gradient w.r.t. the model complex visibilities. */
-  if (! is_void(grd)) {
-    _mira_t3_post_cost, grd;
-  }
-  return cost;
-}
-
-func _mira_t3phi_cost(master, db, grd)
-{
-  /* Declare variables shared by pre/post helper subroutines. */
-  local idx, sgn, re, im;
-  local t3re, t3im, t3idx, t3grd;
-  local re1, im1, re2, im2, re3, im3;
-  local re12, im12;
-
-  /* Initialize shared variables. */
-  _mira_t3_pre_cost, master, db;
-
-  /* Compute the model of the phase closures. */
-  t3phi = (sgn*mira_model_phi(master, idx))(sum,);
-
-  /* Compute the cost (and its gradient) with respect to the bispectrum. */
-  cost = _mira_phase_cost(master.flags, t3re, t3im,
-                          t3re*t3re + t3im*t3im, t3phi,
-                          db.wgt, db.dat, t3idx, t3grd);
-
-  /* If needed, update gradient w.r.t. the model complex visibilities. */
-  if (! is_void(grd)) {
-    _mira_t3_post_cost, grd;
-  }
-  return cost;
-}
-
-func _mira_t3_pre_cost(master, db)
-{
-  extern idx, sgn, re, im;
-  extern t3re, t3im, t3idx, t3grd;
-  extern re1, im1, re2, im2, re3, im3;
-  extern re12, im12;
+  /* Retrieve indices and respective imaginary signs of real and imaginary
+     parts of the complex visibilities involved in the measured complex
+     bispectrum. */
+  local idx, sgn;
   eq_nocopy, idx, db.idx;
   eq_nocopy, sgn, db.sgn;
+
+  /* Retrieve real and imaginary parts of the complex visibilities involved in
+     the measured complex bispectrum and compute the model bispectrum. */
   re = mira_model_re(master, idx);
   im = mira_model_im(master, idx)*sgn;
   re1 = re(1,);
   im1 = im(1,);
   re2 = re(2,);
   im2 = im(2,);
-  re3 = re(3,);
-  im3 = im(3,);
+  re3 = re(3,); re = [];
+  im3 = im(3,); im = [];
   re12 = mira_cmult_re(re1,im1, re2,im2);
   im12 = mira_cmult_im(re1,im1, re2,im2);
-  t3re = mira_cmult_re(re12,im12, re3,im3);
-  t3im = mira_cmult_im(re12,im12, re3,im3);
-  if (is_void(grd)) {
-    t3idx = [];
-    t3grd = [];
-  } else {
-    n = numberof(t3re);
-    t3idx = indgen(n);
-    t3grd = array(double, 2, n);
+  t3mdl_re = mira_cmult_re(re12,im12, re3,im3);
+  t3mdl_im = mira_cmult_im(re12,im12, re3,im3);
+
+  /* Compute the cost (and its gradient) with respect to the bispectrum. */
+  t3grd_re = t3grd_im = compute_gradient = is_hash(tbl);
+  cost = _mira_visibility_cost(master.flags, t3mdl_re, t3mdl_im,
+                               db.wrr, db.wri, db.wii,
+                               db.re, db.im, t3grd_re, t3grd_im);
+
+  /* If needed, update gradient w.r.t. the model complex visibilities. */
+  if (compute_gradient) {
+    _mira_t3_post_cost_helper, idx(1,), sgn(1,),
+      mira_cmult_re(re2,im2, re3,im3),
+      mira_cmult_im(re2,im2, re3,im3);
+    _mira_t3_post_cost_helper, idx(2,), sgn(2,),
+      mira_cmult_re(re1,im1, re3,im3),
+      mira_cmult_im(re1,im1, re3,im3);
+    _mira_t3_post_cost_helper, idx(3,), sgn(3,), re12, im12;
   }
-}
-
-func  _mira_t3_post_cost(grd)
-/* DOCUMENT _mira_t3_post_cost, grd;
-
-     Private subroutine to update the gradient w.r.t. the model complex
-     visibilities, stored in GRD, given G the gradient w.r.t. the complex
-     bispectrum.  RE and IM are the real and imaginary parts of the model
-     complex visibilities involved in the bispectrum.  SGN is sign of the
-     phase (or of the imaginary part) of the involved model complex
-     visibilities relative to the global model visibilities (IM is already
-     multiplied by SGN).  IDX gives the indices of the involved model complex
-     visibilities in the global model visibilities.
-
-     All arguments must be 2D arrays, GRD and G have a leading dimension of 2
-     (for the real and imaginary parts respectively), all the others have a
-     leading dimension of 3 (for the 3 involved complex visibilities in each
-     bispectrum).
-
-   SEE ALSO: _mira_t3_cost, _mira_t3amp_cost, _mira_t3phi_cost.
- */
-{
-  extern idx, sgn, re, im;
-  extern t3re, t3im, t3idx, t3grd;
-  extern re1, im1, re2, im2, re3, im3;
-  extern re12, im12;
-  t3grd_re = t3grd(1,);
-  t3grd_im = t3grd(2,);
-  _mira_t3_post_cost_helper, idx(1,), sgn(1,),
-    mira_cmult_re(re2,im2, re3,im3),
-    mira_cmult_im(re2,im2, re3,im3);
-  _mira_t3_post_cost_helper, idx(2,), sgn(2,),
-    mira_cmult_re(re1,im1, re3,im3),
-    mira_cmult_im(re1,im1, re3,im3);
-  _mira_t3_post_cost_helper, idx(3,), sgn(3,), re12, im12;
+  return cost;
 }
 
 func _mira_t3_post_cost_helper(idx, sgn, re, im)
@@ -476,20 +445,72 @@ func _mira_t3_post_cost_helper(idx, sgn, re, im)
    *     f'(w⋅z) = t3grd_re + i⋅t3grd_im
    *     w = re + i⋅im
    */
-  extern grd, t3grd_re, t3grd_im;
-  _mira_update_gradient, grd, idx,
-    (re*t3grd_re + im*t3grd_im),
-    (re*t3grd_im - im*t3grd_re)*sgn;
+  extern tbl, t3grd_re, t3grd_im;
+  _mira_update_gradient, tbl, "re", idx, (re*t3grd_re + im*t3grd_im);
+  _mira_update_gradient, tbl, "im", idx, (re*t3grd_im - im*t3grd_re)*sgn;
+}
+
+func _mira_t3amp_cost(master, db, tbl)
+{
+  /* Retrieve indices of amplitudes involved in the measured bispectrum
+     amplitudes. */
+  local idx;
+  eq_nocopy, idx, db.idx;
+
+  /* Compute the model of the bispectrum amplitude. */
+  amp = mira_model_amp(master, idx);
+  mdl = amp(1,)*amp(2,)*amp(3,);
+  amp = [];
+
+  /* Compute the cost (and its gradient) with respect to the bispectrum. */
+  grd = compute_gradient = is_hash(tbl);
+  cost = _mira_amplitude_cost(master.flags, mdl, db.wgt, db.dat, grd);
+
+  /* If needed, update gradient. */
+  if (compute_gradient) {
+    local reciprocal_vis2;
+    eq_nocopy, reciprocal_vis2, mira_model_reciprocal_vis2(master);
+    n = numberof(reciprocal_vis2);
+    fct = reciprocal_vis2*histogram(idx, (mdl*grd)(-:1:3,), top=n);
+    _mira_update_gradient, tbl, "re", [], fct*mira_model_re(master);
+    _mira_update_gradient, tbl, "im", [], fct*mira_model_im(master);
+  }
+  return cost;
+}
+
+func _mira_t3phi_cost(master, db, tbl)
+{
+  /* Retrieve indices and respective signs of phases involved in the measured
+     phase closures. */
+  local idx, sgn;
+  eq_nocopy, idx, db.idx;
+  eq_nocopy, sgn, db.sgn;
+
+  /* Compute the cost (and its gradient) with respect to the phase closures
+     given the model of the phase closures. */
+  grd = compute_gradient = is_hash(tbl);
+  cost = _mira_phase_cost(master.flags,
+                          (sgn*mira_model_phi(master, idx))(sum,),
+                          db.wgt, db.dat, grd);
+
+  /* If needed, update gradient.  */
+  if (compute_gradient) {
+    _mira_update_gradient, tbl, "phi", idx, sgn*grd(-,);
+  }
+  return cost;
 }
 
 /*--------------------------------------------------------------------------*/
 /* COST FUNCTIONS */
 
 func _mira_visibility_cost(flags, mdl_re, mdl_im, wgt_rr, wgt_ri, wgt_ii,
-                           dat_re, dat_im, idx, grd)
-/* DOCUMENT _mira_visibility_cost(flags, mdl_re, mdl_im,
-                                  wgt_rr, wgt_ri, wgt_ii,
-                                  dat_re, dat_im, idx, grd);
+                           dat_re, dat_im, &grd_re, &grd_im)
+/* DOCUMENT fdata = _mira_visibility_cost(flags, mdl_re, mdl_im,
+                                          wgt_rr, wgt_ri, wgt_ii,
+                                          dat_re, dat_im);
+         or fdata = _mira_visibility_cost(flags, mdl_re, mdl_im,
+                                          wgt_rr, wgt_ri, wgt_ii,
+                                          dat_re, dat_im, grd_re, grd_im);
 
      yields the misfit error of complex visibility data.  Arguments MDL_RE, and
      MDL_IM are the real and imaginary parts of the model complex visibilities
@@ -545,134 +566,80 @@ func _mira_visibility_cost(flags, mdl_re, mdl_im, wgt_rr, wgt_ri, wgt_ii,
   tmp_re = wgt_rr*err_re + wgt_ri*err_im;
   tmp_im = wgt_ri*err_re + wgt_ii*err_im;
   cost = sum(tmp_re*err_re) + sum(tmp_im*err_im);
-  if (! is_void(grd)) {
-    _mira_update_gradient, grd, idx, tmp_re + tmp_re, tmp_im + tmp_im;
+  if (grd_re) {
+    grd_re = tmp_re + tmp_re;
+  }
+  if (grd_im) {
+    grd_im = tmp_im + tmp_im;
   }
   return cost;
 }
 
-func _mira_amplitude_cost(flags, re, im, mdl, wgt, dat, idx, grd)
-/* DOCUMENT _mira_amplitude_cost(flags, re, im, mdl, wgt, dat);
-         or _mira_amplitude_cost(flags, re, im, mdl, wgt, dat, idx, grd);
+func _mira_amplitude_cost(flags, mdl, wgt, dat, &grd)
+/* DOCUMENT fdata = _mira_amplitude_cost(flags, mdl, wgt, dat);
+         or fdata = _mira_amplitude_cost(flags, mdl, wgt, dat, grd);
 
-     yields the misfit error of amplitude-only data DAT.  Arguments RE, IM and
-     MDL are the real part, imaginary part and amplitude of the model complex
-     visibilities corresponding to the data.  WGT gives the weights of the
-     data.  Optional arguments IDX and GRD gives the indices of the model
-     complex visibilities corresponding to the data and the array to integrate
-     the gradient of the misfit error with respect to the model complex
-     amplitudes.  It is assumed that MDL=abs(RE,IM).
+     yields the data fidelity cost for amplitude-only data.  FLAGS is a bitwise
+     combination of options to choose the expression of the data fidelity (for
+     now only Gaussian approximation is supported).  MDL is the model value(s)
+     of the amplitude(s), DAT specifies the amplitude data and WGT their
+     respective weights.  If GRD is given, it must be a caller's variable set
+     to true on entry and is replaced by the gradient of the fidelity function
+     with respect to the amplitude model:
 
-     For amplitude-only data, the misfit error writes:
+         GRD = ∂COST/∂MDL
 
-         COST = sum(WGT⋅ERR²)
+     Then, if MDL = sqrt(RE² + IM²), the gradients with respect to RE and IM
+     write:
 
-     with:
+         ∂COST/∂RE = GRD⋅RE/MDL = cos(PHI)⋅GRD
+         ∂COST/∂IM = GRD⋅IM/MDL = sin(PHI)⋅GRD
 
-         MDL = sqrt(RE² + IM²)
-         ERR = MDL - DAT
+     with PHI = atan(IM, RE).
 
-     hence the gradient is given by:
 
-         ∂COST/∂RE = FCT⋅RE
-         ∂COST/∂IM = FCT⋅IM
-
-     with:
-
-         FCT = 2⋅WGT⋅(sqrt(RE² + IM²) - MDL)/sqrt(RE² + IM²)
-             = 2⋅WGT⋅ERR/MDL
-
-     Beware that the case MDL = 0 has to be dealt specifically (only the error
-     can be computed, not the gradient).
-
-   SEE ALSO: _mira_phase_cost.
+   SEE ALSO: mira_cost, _mira_phase_cost, _mira_visibility_cost.
  */
 {
-  if (min(mdl) > 0) {
-    /* All model complex visibilities are nonzero. */
-    cost = 0.0;
-  } else {
-    /* Deal with model visibilities equal to zero (where only the error can be
-       computed, not the gradient) and only keep the values where the
-       model complex visibilities are nonzero. */
-    k = where(! mdl);
-    tmp = dat(k);
-    cost = sum(wgt(k)*tmp*tmp);
-    k = where(mdl);
-    if (! is_array(k)) {
-      /* There are no nonzero complex visibilities. */
-      return cost;
-    }
-    mdl = mdl(k);
-    wgt = wgt(k);
-    dat = dat(k);
-    if (! is_void(grd)) {
-      re = re(k);
-      im = im(k);
-      idx = idx(k);
-    }
-  }
-
-  /* Penalty (and gradient) for non-zero model visibilities. */
   err = mdl - dat;
   wgt_err = wgt*err;
-  cost += sum(wgt_err*err);
-  if (! is_void(grd)) {
-    fct = (wgt_err + wgt_err)/mdl;
-    _mira_update_gradient, grd, idx, fct*re, fct*im;
+  cost = sum(wgt_err*err);
+  if (grd) {
+    grd = wgt_err + wgt_err;
   }
   return cost;
 }
 
-func _mira_phase_cost(flags, re, im, vis2, mdl, wgt, dat, idx, grd)
-/* DOCUMENT _mira_phase_cost(flags, re, im, vis2, mdl, wgt, dat);
-         or _mira_phase_cost(flags, re, im, vis2, mdl, wgt, dat, idx, grd);
+func _mira_phase_cost(flags, mdl, wgt, dat, &grd)
+/* DOCUMENT fdata = _mira_phase_cost(flags, mdl, wgt, dat);
+         or fdata = _mira_phase_cost(flags, mdl, wgt, dat, grd);
 
-     yields the misfit error of phase-only data DAT.  Arguments RE, IM, VIS2
-     and MDL are the real part, imaginary part, squared amplitude and phase of
-     the model complex visibilities corresponding to the data.  WGT gives the
-     weights of the data.  Optional arguments IDX and GRD gives the indices of
-     the model complex visibilities corresponding to the data and the array to
-     integrate the gradient of the misfit error with respect to the model
-     complex phases.  It is assumed that VIS2=(RE^2+IM^2) and that
-     MDL=atan(IM,RE).
+     yields the data fidelity cost for phase-only data.  FLAGS is a bitwise
+     combination of options to choose the expression of the data fidelity
+     (MIRA_VON_MISES_APPROX, MIRA_HANIFF_APPROX and MIRA_CONVEX_LIMIT are
+     supported).  MDL is the model value(s) of the phase(s), DAT specifies the
+     phase data and WGT their respective weights.  If GRD is given, it must be
+     a caller's variable set to true on entry and is replaced by the gradient
+     of the fidelity function with respect to the phase model:
 
-   SEE ALSO: _mira_amplitude_cost.
+         GRD = ∂COST/∂MDL
+
+     Then, if MDL = atan(IM, RE), the gradients with respect to RE and IM
+     write:
+
+         ∂COST/∂RE = -FCT⋅IM
+         ∂COST/∂IM = +FCT⋅RE
+
+     with:
+
+         FCT = (∂COST/∂MDL)/(RE² + IM²)
+
+
+   SEE ALSO: mira_cost, _mira_amplitude_cost, _mira_visibility_cost.
  */
 {
   /* Keep only bits corresponding to the phase cost approximation. */
   bits = (flags & _MIRA_PHASE_ONLY_BITS);
-
-  /* Deal with model visibilities equal to zero (where model phases are
-     unknown). */
-  if (min(vis2) > 0.0) {
-    /* All model complex visibilities are nonzero. */
-    cost = 0.0;
-  } else {
-    /* Set the cost to be maximal where model visibilities equal to zero and
-       only keep the values corresponding to the nonzero complex
-       visibilities. */
-    cost = sum(wgt(where(! vis2)));
-    if (bits == MIRA_VON_MISES_APPROX) {
-      cost *= 4.0;
-    } else if (bits == MIRA_HANIFF_APPROX) {
-      cost *= MIRA_PI^2;
-    }
-    k = where(vis2);
-    if (! is_array(k)) {
-      /* There are no nonzero complex visibilities. */
-      return cost;
-    }
-    mdl = mdl(k);
-    wgt = wgt(k);
-    dat = dat(k);
-    if (! is_void(grd)) {
-      re = re(k);
-      im = im(k);
-      vis2 = vis2(k);
-      idx = idx(k);
-    }
-  }
 
   /* Penalty (and gradient) for non-zero model visibilities. */
   if (bits == MIRA_VON_MISES_APPROX) {
@@ -692,22 +659,12 @@ func _mira_phase_cost(flags, re, im, vis2, mdl, wgt, dat, idx, grd)
      * weight.  Maybe 1 - cos(ERR) is more subject to rounding errors than
      * sin(ERR/2)^2 especially for small residual errors.  For that reason, we
      * use the equations marked with an asterisk.
-     *
-     * Finally:
-     *
-     *     ∂COST/∂RE = -FCT⋅IM
-     *     ∂COST/∂IM = +FCT⋅RE
-     *
-     * with:
-     *
-     *     FCT = (∂COST/∂MDL)/(RE² + IM²)
      */
     err = mdl - dat;
     tmp = sin(0.5*err);
-    cost += 4.0*sum(wgt*tmp*tmp);
-    if (! is_void(grd)) {
-      fct = (wgt + wgt)*sin(err)/vis2;
-      _mira_update_gradient, grd, idx, -fct*im, fct*re;
+    cost = 4.0*sum(wgt*tmp*tmp);
+    if (grd) {
+      grd = (wgt + wgt)*sin(err);
     }
   } else if (bits == MIRA_HANIFF_APPROX) {
     /*
@@ -721,10 +678,9 @@ func _mira_phase_cost(flags, re, im, vis2, mdl, wgt, dat, idx, grd)
      */
     arc_err = arc(mdl - dat);
     wgt_arc_err = wgt*arc_err;
-    cost += sum(arc_err*wgt_arc_err);
+    cost = sum(arc_err*wgt_arc_err);
     if (! is_void(grd)) {
-      fct = (wgt_arc_err + wgt_arc_err)/vis2;
-      _mira_update_gradient, grd, idx, -fct*im, fct*re;
+      grd = wgt_arc_err + wgt_arc_err;
     }
   } else if (bits == MIRA_CONVEX_LIMIT) {
     /*
@@ -743,27 +699,14 @@ func _mira_phase_cost(flags, re, im, vis2, mdl, wgt, dat, idx, grd)
      */
     err = mdl - dat;
     sin_err = sin(err);
-    cost += sum(wgt*sin_err*sin_err);
-    if (! is_void(grd)) {
-      fct = wgt*sin(err + err)/vis2;
-      _mira_update_gradient, grd, idx, -fct*im, fct*re;
+    cost = sum(wgt*sin_err*sin_err);
+    if (grd) {
+      grd = wgt*sin(err + err);
     }
   } else {
     error, "unknown choice for phase cost";
   }
   return cost;
-}
-
-func _mira_update_gradient(grd, idx, grd_re, grd_im, fast)
-{
-  if (fast) {
-    grd(1,idx) += grd_re;
-    grd(2,idx) += grd_im;
-  } else {
-    n = numberof(grd)/2;
-    grd(1,*) += histogram(idx, grd_re, top=n);
-    grd(2,*) += histogram(idx, grd_im, top=n);
-  }
 }
 
 /*---------------------------------------------------------------------------*/
