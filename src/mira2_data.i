@@ -145,7 +145,7 @@ func _mira_build_flags(oiflag, ..)
     eq_nocopy, bits, next_arg();
     eq_nocopy, dat,  next_arg();
     eq_nocopy, err,  next_arg();
-    flags = (is_void(oiflag) ? array(0n, dimsof(dat)) : !oiflag);
+    flags = (is_void(oiflag) ? array(1n, dimsof(dat)) : !oiflag);
     index = where(flags); // index of pre-selected data
     if (is_array(index)) {
       _mira_build_flags_worker, (ieee_test(dat(index)) != 0n);
@@ -428,15 +428,16 @@ func _mira_append_vis_data(master, oidata, oidb, wave, band,
      and imposes to process them together. */
   DEG = MIRA_DEGREE; // to convert degrees into radians
   flags = oidb.miraflags(select);
-  if ((master.flags & MIRA_CONVEX_APPROX) != 0) {
+  if ((master.flags & MIRA_CONVEX_APPROX) == MIRA_CONVEX_APPROX &&
+      (master.flags & MIRA_FIT_VIS) == MIRA_FIT_VIS) {
     j = where((flags & MIRA_FIT_VIS) == MIRA_FIT_VIS);
     if (is_array(j)) {
       flags(j) &= ~MIRA_FIT_VIS; // avoid accounting of these data twice
       j = select(j);
       idx = _mira_grow_coordinates(master, u(j), v(j), wave(j), band(j));
       ws = mira_polar_to_cartesian(oifits_get_visamp(oidata, oidb)(j),
-                                   oifits_get_visphi(oidata, oidb)(j)*DEG,
                                    oifits_get_visamperr(oidata, oidb)(j),
+                                   oifits_get_visphi(oidata, oidb)(j)*DEG,
                                    oifits_get_visphierr(oidata, oidb)(j)*DEG,
                                    "visibility", goodman = 0n);
       db = _mira_find_datablock(master, MIRA_FIT_VIS|MIRA_CONVEX_APPROX,
@@ -450,8 +451,8 @@ func _mira_append_vis_data(master, oidata, oidb, wave, band,
   }
 
   /* Select amplitude-only data if this option is chosen. */
-  if ((master.flags & MIRA_FIT_VISAMP) != 0n) {
-    j = where((flags & MIRA_FIT_VISAMP) != 0n);
+  if ((master.flags & MIRA_FIT_VISAMP) == MIRA_FIT_VISAMP) {
+    j = where((flags & MIRA_FIT_VISAMP) == MIRA_FIT_VISAMP);
     if (is_array(j)) {
       flags(j) &= ~MIRA_FIT_VISAMP; // avoid accounting of these data twice
       j = select(j);
@@ -467,8 +468,8 @@ func _mira_append_vis_data(master, oidata, oidb, wave, band,
   }
 
   /* Select phase-only data if this option is chosen. */
-  if ((master.flags & MIRA_FIT_VISPHI) != 0n) {
-    j = where((flags & MIRA_FIT_VISPHI) != 0n);
+  if ((master.flags & MIRA_FIT_VISPHI) == MIRA_FIT_VISPHI) {
+    j = where((flags & MIRA_FIT_VISPHI) == MIRA_FIT_VISPHI);
     if (is_array(j)) {
       flags(j) &= ~MIRA_FIT_VISPHI; // avoid accounting of these data twice
       j = select(j);
@@ -498,7 +499,7 @@ func _mira_append_t3_data(master, oidata, oidb, wave, band,
    SEE ALSO: _mira_select_data, _mira_append_vis2_data _mira_append_vis_data.
  */
 {
-  /* Get coordinates of the data and broadcast their dimensions. */
+  /* Get coordinates of the data. */
   local u1, v1, u2, v2;
   eq_nocopy, u1, oifits_get_u1coord(oidata, oidb);
   eq_nocopy, v1, oifits_get_v1coord(oidata, oidb);
@@ -506,12 +507,16 @@ func _mira_append_t3_data(master, oidata, oidb, wave, band,
   eq_nocopy, v2, oifits_get_v2coord(oidata, oidb);
   _mira_check_baselines, u1, v1, nrows;
   _mira_check_baselines, u2, v2, nrows;
+  u3 = -(u1 + u2);
+  v3 = -(v1 + v2);
+
+  /* Broadcast coordinates dimensions. */
   u1 = u1(,-:1:ncols);
   v1 = v1(,-:1:ncols);
   u2 = u2(,-:1:ncols);
   v2 = v2(,-:1:ncols);
-  u3 = -(u1 + u2);
-  v3 = -(v1 + v2);
+  u3 = u3(,-:1:ncols);
+  v3 = v3(,-:1:ncols);
   wave = wave(-:1:nrows,);
   band = band(-:1:nrows,);
 
@@ -519,7 +524,8 @@ func _mira_append_t3_data(master, oidata, oidb, wave, band,
      rationale is the same as in _mira_append_vis_data. */
   DEG = MIRA_DEGREE; // to convert degrees into radians
   flags = oidb.miraflags(select);
-  if ((master.flags & MIRA_CONVEX_APPROX) != 0) {
+  if ((master.flags & MIRA_CONVEX_APPROX) == MIRA_CONVEX_APPROX &&
+      (master.flags & MIRA_FIT_T3) == MIRA_FIT_T3) {
     j = where((flags & MIRA_FIT_T3) == MIRA_FIT_T3);
     if (is_array(j)) {
       flags(j) &= ~MIRA_FIT_T3; // avoid accounting of these data twice
@@ -530,8 +536,8 @@ func _mira_append_t3_data(master, oidata, oidb, wave, band,
       idx2 = _mira_grow_coordinates(master, u2(j), v2(j), wtmp, btmp);
       idx3 = _mira_grow_coordinates(master, u3(j), v3(j), wtmp, btmp);
       ws = mira_polar_to_cartesian(oifits_get_t3amp(oidata, oidb)(j),
-                                   oifits_get_t3phi(oidata, oidb)(j)*DEG,
                                    oifits_get_t3amperr(oidata, oidb)(j),
+                                   oifits_get_t3phi(oidata, oidb)(j)*DEG,
                                    oifits_get_t3phierr(oidata, oidb)(j)*DEG,
                                    "bispectrum", goodman = 0n);
       db = _mira_find_datablock(master, MIRA_FIT_T3|MIRA_CONVEX_APPROX,
@@ -546,8 +552,8 @@ func _mira_append_t3_data(master, oidata, oidb, wave, band,
   }
 
   /* Select amplitude-only data if this option is chosen. */
-  if ((master.flags & MIRA_FIT_T3AMP) != 0n) {
-    j = where((flags & MIRA_FIT_T3AMP) != 0n);
+  if ((master.flags & MIRA_FIT_T3AMP) == MIRA_FIT_T3AMP) {
+    j = where((flags & MIRA_FIT_T3AMP) == MIRA_FIT_T3AMP);
     if (is_array(j)) {
       flags(j) &= ~MIRA_FIT_T3AMP; // avoid accounting of these data twice
       j = select(j);
@@ -569,8 +575,8 @@ func _mira_append_t3_data(master, oidata, oidb, wave, band,
   }
 
   /* Select phase-only data if this option is chosen. */
-  if ((master.flags & MIRA_FIT_T3PHI) != 0n) {
-    j = where((flags & MIRA_FIT_T3PHI) != 0n);
+  if ((master.flags & MIRA_FIT_T3PHI) == MIRA_FIT_T3PHI) {
+    j = where((flags & MIRA_FIT_T3PHI) == MIRA_FIT_T3PHI);
     if (is_array(j)) {
       flags(j) &= ~MIRA_FIT_T3PHI; // avoid accounting of these data twice
       j = select(j);
