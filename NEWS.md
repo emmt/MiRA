@@ -1,5 +1,15 @@
 # History of MiRA
 
+## Version 2.0.0a (2018-02-12)
+* Accounting of bandwidth smearing (with customizable shape and importance
+  factor).
+* Improved accounting of missing/partial data.
+* Multiple possible choices for the objective function used for specific kind
+  of (partial) data.
+* Speedup building of non-separable linear model (with or without smearing).
+* Global setting of the debug and quiet modes.
+* Colored messages.
+
 ## Version 1.1.1 (2017-01-26)
 * Better algorithm to compute the dirty map and the dirty beam.
 * Improve command line help, provide a manual page.
