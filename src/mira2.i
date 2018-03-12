@@ -32,8 +32,6 @@ local MIRA_HOME, MIRA_VERSION;
  */
 MIRA_VERSION = "2.0.0a";
 MIRA_HOME = fulldirname(current_include());
-require, "TiPi.i";
-//include, MIRA_HOME+"TiPi.i";
 include, MIRA_HOME+"mira2_utils.i";
 include, MIRA_HOME+"mira2_config.i";
 include, MIRA_HOME+"mira2_data.i";

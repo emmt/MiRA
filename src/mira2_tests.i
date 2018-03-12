@@ -22,7 +22,7 @@
 
 TEST_DIR = fulldirname(current_include());
 include, TEST_DIR+"mira2.i";
-
+require, "TiPi.i"; // for checkgradient
 main = mira_new(TEST_DIR+"../Contest1_J.oifits");
 pixelsize = "0.3mas";
 //h = collect_coords(main);
