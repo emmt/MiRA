@@ -644,7 +644,12 @@ func mira_require(fname, src)
 }
 
 /*---------------------------------------------------------------------------*/
-/* SAFE ATAN(Y,X) */
+/* SAFE  1/X AND ATAN(Y,X) */
+
+func mira_reciprocal(x) { z = !x; return double(!z)/(x + z); }
+/* DOCUMENT mira_reciprocal(x);
+     yields 1/x where x != 0 and 0 elsewhere.
+ */
 
 local mira_atan, _mira_init_atan;
 func mira_safe_atan(y, x)
