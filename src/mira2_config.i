@@ -394,10 +394,11 @@ local MIRA_FIT_VISAMP, MIRA_FIT_VISPHI, MIRA_FIT_VIS2;
 local MIRA_FIT_T3AMP, MIRA_FIT_T3PHI;
 local MIRA_CONVEX_APPROX;
 local MIRA_HANIFF_APPROX, MIRA_CONVEX_LIMIT, MIRA_VON_MISES_APPROX;
-local mira_fix_flags;
+local mira_fix_flags, mira_format_flags;
 func mira_flags(master)
 /* DOCUMENT mira_flags(master);
          or mira_fix_flags(flags);
+         or mira_format_flags(flags);
 
      The first function yields the current flags used by MiRA instance
      `master`.  The flags may be changed with `mira_config` and the following
@@ -417,6 +418,9 @@ func mira_flags(master)
 
       The second function returns FLAGS after checking its type, bits and
       setting defaults.
+
+      The third function yields a textual representation of FLAGS which is
+      assumed to be a bitwise combination of options in MiRA.
 
 
    SEE ALSO: mira_config.
@@ -472,6 +476,33 @@ func mira_fix_flags(flags) /* DOCUMENTED */
   return int(flags);
 }
 errs2caller, mira_fix_flags;
+
+func mira_format_flags(flags) /* DOCUMENTED */
+{
+  str = [];
+  _mira_format_flags_worker, MIRA_FIT_VISAMP,       "MIRA_FIT_VISAMP";
+  _mira_format_flags_worker, MIRA_FIT_VISPHI,       "MIRA_FIT_VISPHI";
+  _mira_format_flags_worker, MIRA_FIT_VIS2,         "MIRA_FIT_VIS2";
+  _mira_format_flags_worker, MIRA_FIT_T3AMP,        "MIRA_FIT_T3AMP";
+  _mira_format_flags_worker, MIRA_FIT_T3PHI,        "MIRA_FIT_T3PHI";
+  _mira_format_flags_worker, MIRA_CONVEX_APPROX,    "MIRA_CONVEX_APPROX";
+  _mira_format_flags_worker, MIRA_VON_MISES_APPROX, "MIRA_VON_MISES_APPROX";
+  _mira_format_flags_worker, MIRA_HANIFF_APPROX,    "MIRA_HANIFF_APPROX";
+  _mira_format_flags_worker, MIRA_CONVEX_LIMIT,     "MIRA_CONVEX_LIMIT";
+  return is_void(str) ? "0" : str;
+}
+
+func _mira_format_flags_worker(bits, literal)
+{
+  extern str, flags;
+  if ((flags & bits) == bits) {
+    if (is_void(str)) {
+      str = literal;
+    } else {
+      str += "|" + literal;
+    }
+  }
+}
 
 /*---------------------------------------------------------------------------*/
 /* UPDATING RESSOURCES AND MODEL */
