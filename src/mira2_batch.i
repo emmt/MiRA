@@ -59,50 +59,6 @@ if (! is_func(nfft_new)) {
 }
 _mira_batch_xform = (is_func(nfft_new) ? "nfft" : "separable");
 
-/* regularization
- * clique (mu, region)
- * entropy (mu, type, normalized, prior, epsilon)
- * l2l1_smoothness (mu, threshold)
- * lpnorm (mu, power, epsilon)
- * qsmooth (mu, prior)
- * quadratic (mu, A, b, W)
- * roughness (mu, threshold, cost, periodic)
- * simple (mu, threshold, cost)
- * smoothness (mu)
- * totvar (mu, epsilon, isotropic)
- * xsmooth (mu, threshold, cost, dimlist, isotropic)
- */
-/*
- *
- *    regul
- *
- *    "hyperbolic" "mu"   real >= 0.0      -mu
- *                 "tau"  real > 0.0       -tau
- *                 "eta"  values           -eta // FIXME:
- *                 "mask" image
- *
- *    "totvar"     "mu"         real >= 0.0      regul_mu
- *                 "epsilon"    real > 0.0       regul_epsilon
- *                 "isotropic"  true/false       regul_isotropic
- *
- *    "lpnorm"     "mu"         real >= 0.0      regul_mu
- *                 "power"      real > 0.0       regul_power
- *                 "epsilon"    real > 0.0       regul_epsilon
- *
- *    "roughness"  "mu"         real >= 0.0      regul_mu
- *                 "threshold"  real > 0.0       regul_threshold
- *                 "cost"       name             regul_cost
- *                 "periodic"   true/false       regul_periodic
- *
- *    "entropy"    "mu"         real >= 0.0      regul_mu
- *                 "type"       "sqrt" or "log"  regul_type
- *                 "prior"      "none"           regul_cost
- *                 "normalized" true/false       regul_normalized
- *                 "epsilon"    real > 0.0       regul_epsilon
- *
- *    possible costs are:  "l1", "l2", "l2l1", "l2l0", or "cauchy";
- *                          default is "l2" (i.e. quadratic)
- */
 
 NULL = []; /* FIXME: make a private function to hide local variables */
 _MIRA_OPTIONS = opt_init\
@@ -141,16 +97,6 @@ _MIRA_OPTIONS = opt_init\
     _lst("tau", 1E-6, "VALUE", OPT_REAL, "Edge preserving threshold"),
     _lst("eta", 1.0, "VALUE(S)", OPT_REAL_LIST, "Gradient scales along dimensions"),
     _lst("gamma", NULL, "FWHM", OPT_STRING, "A priori full half width at half maximum, e.g. 15mas"),
-    /*
-    _lst("regul_epsilon", 1E-6, "VALUE", OPT_REAL, "Edge preserving threshold"),
-    _lst("regul_threshold", 1E-3, "VALUE", OPT_REAL, "Threshold for the cost function"),
-    _lst("regul_power", 2.0, "VALUE", OPT_REAL, "Power for the Lp-norm"),
-    _lst("regul_normalized", NULL, NULL, OPT_FLAG, "Image is normalized"),
-    _lst("regul_cost", "l2", "NAME", OPT_STRING, "Cost function for the regularization"),
-    _lst("regul_type", "log", "NAME", OPT_STRING, "Subtype for the regularization"),
-    _lst("regul_periodic", NULL, NULL, OPT_FLAG, "Use periodic conditions for the regularization"),
-    _lst("regul_isotropic", NULL, NULL, OPT_FLAG, "Use isotropic version of the regularization"),
-    */
     "\nInitial image:",
     _lst("initial", "random", "NAME", OPT_STRING, "FITS file or method for initial image"),
     _lst("seed", NULL, "VALUE", OPT_REAL, "Seed for the random generator"),
@@ -276,24 +222,12 @@ func mira_main(argv0, argv)
   if (opt.regul == "help") {
     write, format="\n%s\n", "Available regularizations:";
     write, format="\n  -regul=%s -tau=...\n  %s\n  %s\n",
-      "hyperbolic_smoothness",
+      "hyperbolic",
       "Edge-preserving smoothness with hyperbolic norm and threshold TAU,",
       "approximates total variation (TV) with TAU very small.";
-    write, format="\n  -regul=%s -tau=...\n  %s\n",
-      "Huber_smoothness",
-      "Edge-preserving smoothness with Huber semi-norm and threshold TAU.";
-    write, format="\n  -regul=%s\n  %s\n",
-      "quadratic_smoothness",
-      "Quadratic smoothness.";
     write, format="\n  -regul=%s -gamma=...\n  %s\n",
       "compactness",
       "Quadratic compactness with full-width at half maximum GAMMA.";
-    //write, format="\n  -regul=%s -gamma=...\n  %s\n",
-    //  "Huber_compactness",
-    //  "L1-L2 compactness with Huber norm and full-width at half maximum GAMMA.";
-    //write, format="\n  -regul=%s -gamma=...\n  %s\n",
-    //  "hyperbolic_compactness",
-    //  "L1-L2 compactness with Huber norm and full-width at half maximum GAMMA.";
     write, format="%s\n", "";
     quit;
   }
@@ -628,6 +562,7 @@ func mira_main(argv0, argv)
                     xform = opt.xform,
                     smearingfunction = opt.smearingfunction,
                     smearingfactor = opt.smearingfactor);
+  inform, "flags = "+mira_format_flags(master.flags);
 
   /* Post operations for the regularization. */
   if (regul_post) {
