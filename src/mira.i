@@ -821,7 +821,7 @@ func mira_add_oidata(this, .., quiet=, noise_method=, noise_level=,
             vis2err  = vis2err(i);
           }
         }
-        bad = ((amperr <= 0.0) | (phierr <= 0.0));
+        bad = (vis2err <= 0.0);
         if (anyof(bad)) _mira_warn, "there are invalid error bars";
         if (cleanup_bad_data) {
           bad |= ((vis2data < 0.0) | (vis2data > 1.0));
