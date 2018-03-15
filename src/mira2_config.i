@@ -47,8 +47,8 @@ if (! is_scalar(MIRA_HOME) || ! is_string(MIRA_HOME)) {
  *    image dimensions, the pixel size and the specific model for the transform
  *    to use.
  */
-func mira_new(.., target=, wavemin=, wavemax=, flags=, pixelsize=, dims=, xform=,
-              smearingfunction=, smearingfactor=,
+func mira_new(.., target=, wavemin=, wavemax=, flags=, pixelsize=, dims=,
+              xform=, smearingfunction=, smearingfactor=, atol=, rtol=,
               quiet=, noise_method=, noise_level=, baseline_precision=)
 /* DOCUMENT obj = mira_new(oidata, ..., target=...);
 
@@ -64,6 +64,11 @@ func mira_new(.., target=, wavemin=, wavemax=, flags=, pixelsize=, dims=, xform=
        - model of the nonuniform Fourier transform: xform = "nfft"
 
      these can be changed by the corresponding keywords (see `mira_config`).
+
+     Keywords ATOL and RTOL can be used to specify the absolute and relative
+     tolerances when comparing numerical values which should be identical
+     (i.e., when merging different OI-FITS files).
+
 
    SEE ALSO mira_config.
 */
@@ -97,7 +102,8 @@ func mira_new(.., target=, wavemin=, wavemax=, flags=, pixelsize=, dims=, xform=
   /* Load OI-FITS data file(s). */
   while (more_args()) {
     mira_add_oidata, master, next_arg(), quiet=quiet,
-      noise_method=noise_method, noise_level=noise_level;
+      noise_method=noise_method, noise_level=noise_level,
+      atol=atol, rtol=rtol;
   }
 
   return master;

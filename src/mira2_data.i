@@ -29,7 +29,8 @@ include, MIRA_HOME+"oifits.i";
 /* ADDING OI-FITS DATA TO AN INSTANCE */
 
 local _mira_add_oidata;
-func mira_add_oidata(master, .., quiet=, noise_method=, noise_level=)
+func mira_add_oidata(master, .., quiet=, noise_method=, noise_level=,
+                     atol=, rtol=)
 /* DOCUMENT mira_add_oidata, master, data, ...;
 
      Append interferometric OI-FITS data to MiRA handle `master` (as created by
@@ -42,10 +43,17 @@ func mira_add_oidata(master, .., quiet=, noise_method=, noise_level=)
      Keywords `noise_method` and `noise_level` can be used to add some noise to
      the data.
 
+     Keywords ATOL and RTOL can be used to specify the absolute and relative
+     tolerances when comparing numerical values which should be identical
+     (i.e., when merging different OI-FITS files).
+
+
    SEE ALSO: mira_new, oifits_load.
  */
 {
   if (is_void(quiet)) quiet = 0;
+  if (is_void(atol)) atol = 0.0;
+  if (is_void(rtol)) rtol = 1e-8;
   local arg;
   while (more_args()) {
     eq_nocopy, arg, next_arg();
@@ -55,10 +63,10 @@ func mira_add_oidata(master, .., quiet=, noise_method=, noise_level=)
         filename = arg(i);
         if (! (quiet & 2)) write, format="Loading file \"%s\"...\n", filename;
         data = oifits_load(filename, quiet=quiet, errmode=1n);
-        _mira_add_oidata, master, data;
+        _mira_add_oidata, master, data, atol, rtol;
       }
     } else if (! is_void(arg)) {
-      _mira_add_oidata, master, arg;
+      _mira_add_oidata, master, arg, atol, rtol;
     }
   }
   return master;
@@ -79,7 +87,7 @@ local _mira_first, _mira_next;
 func _mira_first(master) { return master.first; }
 func _mira_next(master, db) { return db.next; }
 
-func _mira_add_oidata(master, oidata)
+func _mira_add_oidata(master, oidata, atol, rtol)
 {
   /* Arguments shared with caller. */
   extern quiet, noise_method, noise_level;
@@ -133,7 +141,7 @@ func _mira_add_oidata(master, oidata)
   }
 
   /* Merge OI-FITS data. */
-  oifits_merge, dest=master.oidata, oidata, quiet=quiet;
+  oifits_merge, dest=master.oidata, oidata, quiet=quiet, atol=atol, rtol=rtol;
 
   return h_set(master, stage = 0);
 }
