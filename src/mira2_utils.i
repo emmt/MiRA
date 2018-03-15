@@ -23,7 +23,6 @@
 if (! is_scalar(MIRA_HOME) || ! is_string(MIRA_HOME)) {
   error, "include \"mira2.i\" first";
 }
-include, MIRA_HOME+"utils.i";
 
 /*---------------------------------------------------------------------------*/
 /* UNIVERSAL CONSTANTS AND UNITS */
