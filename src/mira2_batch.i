@@ -240,7 +240,7 @@ func mira_main(argv0, argv)
   if (! opt.debug) {
     error = opt_error;
   }
-  if (! opt.overwrite && open(final_filename, "r", 0)) {
+  if (! opt.overwrite && open(final_filename, "r", 1)) {
     opt_error, ("output file \""+final_filename+"\" already exists");
   }
 
