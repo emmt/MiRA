@@ -205,6 +205,8 @@ func mira_main(argv0, argv)
   nonnegative = _mira_is_nonnegative;
   strictly_positive = _mira_is_strictly_positive;
 
+  /* Pre-parse options. */
+  arguments = mira_concatenate_arguments(argv);
   opt = opt_parse(_MIRA_OPTIONS, argv);
   if (is_void(opt)) {
     /* Options "-help", or "-usage", or "-version" have been set. */
@@ -220,7 +222,9 @@ func mira_main(argv0, argv)
       "compactness",
       "Quadratic compactness with full-width at half maximum GAMMA.";
     write, format="%s\n", "";
-    quit;
+    if (batch()) {
+      quit;
+    }
   }
   argc = numberof(argv);
   if (argc < 2) {
@@ -274,6 +278,8 @@ func mira_main(argv0, argv)
   /* Initial comment. */
   comment = ("Image reconstructed by MiRA algorithm" +
              " <https://github.com/emmt/MiRA>");
+  grow, comment, "Arguments: "+arguments;
+
   /* Setup the regularization. */
   regul_post = FALSE;
   regul_name = opt.regul;
@@ -639,6 +645,51 @@ func mira_main(argv0, argv)
       pause, 100;
     }
   }
+}
+
+func mira_concatenate_arguments(argv)
+/* DOCUMENT mira_concatenate_arguments(argv);
+
+     yields command line arguments ARGV as a single string with common style
+     (i.e., double dashes for options) and strings with spaces protected by
+     double quotes.
+
+   SEE ALSO:
+ */
+{
+  spaces = "*[ \t\n\r\v\f]*";
+  str = "";
+  opt = 1n;
+  for (i = 1; i <= numberof(argv); ++i) {
+    arg = argv(i);
+    if (opt) {
+      if (strpart(arg, 1:1) != "-") {
+        opt = 0n;
+      } else if (arg == "--") {
+        /* last option */
+        opt = 0n;
+      } else if (arg != "-" && strpart(arg, 1:2) != "--") {
+        arg = "-" + arg;
+      }
+    }
+    if (strglob(spaces, arg)) {
+      /* Simple attempt to protect spaces (not double quotes though). */
+      if (opt) {
+        i = strfind("=", arg)(1);
+        if (i >= 0) {
+          arg = strpart(arg, 1:i+1)+"\""+strpart(arg, i+2:0)+"\"";
+        }
+      } else {
+        arg = "\""+arg+"\"";
+      }
+    }
+    if (strlen(str) > 0) {
+      str += " " + arg;
+    } else {
+      eq_nocopy, str, arg;
+    }
+  }
+  return str;
 }
 
 if (batch()) {
