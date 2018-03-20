@@ -27,7 +27,25 @@ YORICK=yorick
 
 # If INCDIR is not specified, use the directory of this script.
 if test "x$INCDIR" = "x"; then
-    INCDIR=$(dirname "$0")/../src
+    path="$0"
+    osname=$(uname -s)
+    if test "$osname" = "Linux"; then
+        # Resolve links (if any) and canonicalize path.
+        path=$(readlink -f -- "$path")
+    else
+        # Emulate `readlink -f` to find the real installation path.
+        while test -L "$path"; do
+            prev="$path"
+            path=$(ls -ld -- "$path")
+            path=${path##* -> }
+            path=$(realpath "$path")
+            if test "$path" != "prev"; then
+                echo 1>&2 "symbolic link loop detected for \"$path\""
+                exit 1
+            fi
+        done
+    fi
+    INCDIR=$(dirname -- "$path")/../src
 fi
 
 # Run the MiRA batch script.
