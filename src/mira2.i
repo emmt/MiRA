@@ -21,6 +21,72 @@
  * details.
  */
 
+local MIRA_DEBUG, MIRA_QUIET;
+/* DOCUMENT MIRA_DEBUG - perform debug checks?
+         or MIRA_QUIET - suppress (some) warning messages?
+
+     Global variables defined by MiRA to globally set debug and quiet modes.
+ */
+MIRA_DEBUG = 1n;
+MIRA_QUIET = 0n;
+
+/* The following function is a duplicate of the one in "utils.i" which is
+   needed to initialize the paths in MiRA software. */
+func mira_absdirname(file)
+/* DOCUMENT mira_absdirname(file);
+
+     yields the absolute directory name of FILE which can be a file name or a
+     file stream.  The returned string is always an absolute directory name
+     (i.e., starting by a "/") terminated by a "/".
+
+   SEE ALSO: dirname, filepath, strfind. */
+{
+  if ((i = strfind("/", (path = filepath(file)), back=1)(2)) <= 0) {
+    error, "expecting a valid file name or file stream";
+  }
+  return strpart(path, 1:i);
+}
+
+func mira_require(pkgfunc, pkgdir, pkgsrc)
+/* DOCUMENT mira_require, pkgfunc, pkgdir, pkgsrc;
+
+     If PKGFUNC is not the name of an existing (interpreted or builtin)
+     function, this subroutine attempts to load file PKGSRC, possibly in
+     subdirectoy PKGDIR of the sub-packages of MiRA.  An error is raised if
+     PKGFUNC is not the name of an existing function after trying to include
+     file PKGSRC in relevant directories
+
+   SEE ALSO: include, is_func, require.
+ */
+{
+  path = "";
+  pass = 0;
+  while (! symbol_exists(pkgfunc) ||
+         (c = is_func(symbol_def(pkgfunc))) == 0n || c == 3n) {
+    if (strlen(path) > 0) {
+      error, "function "+pkgfunc+" not defined in \""+path+"\"";
+    }
+    if (++pass == 1) {
+      /* Package may be installed next to MiRA source. */
+      path = MIRA_HOME + pkgsrc;
+    } else if (pass == 2) {
+      /* May be no installation has been done and package is in the source tree
+         of MiRA. */
+      path = MIRA_HOME + "../lib/" + pkgdir + "/" + pkgsrc;
+    } else if (pass == 3) {
+      /* Package may be installed in a standard location. */
+      path = pksrc;
+    } else {
+      error, "source file \""+pkgsrc+"\" not found";
+    }
+    if (open(path, "r", 1)) {
+      include, path, 3;
+    } else {
+      path = "";
+    }
+  }
+}
+
 local MIRA_HOME, MIRA_VERSION;
 /* DOCUMENT MIRA_HOME
          or MIRA_VERSION
@@ -31,23 +97,39 @@ local MIRA_HOME, MIRA_VERSION;
    SEE ALSO:
  */
 MIRA_VERSION = "2.0.0a";
-MIRA_HOME = fulldirname(current_include());
-include, MIRA_HOME+"mira2_utils.i";
-include, MIRA_HOME+"mira2_config.i";
-include, MIRA_HOME+"mira2_data.i";
-include, MIRA_HOME+"mira2_xform.i";
-include, MIRA_HOME+"mira2_cost.i";
-include, MIRA_HOME+"mira2_image.i";
-include, MIRA_HOME+"mira2_solver.i";
+MIRA_HOME = mira_absdirname(current_include());
 
-local MIRA_DEBUG, MIRA_QUIET;
-/* DOCUMENT MIRA_DEBUG - perform debug checks?
-         or MIRA_QUIET - suppress (some) warning messages?
+/* FIXME: It necessary to make sure Yeti and other mandatory plugins are
+   loaded before otherwise their functions may not be defined despite the
+   `autoload` feature.  This issue seems to only occur in batch mode. */
+if (is_func(h_new) != 2) {
+  include, "yeti.i", 3;
+  if (is_func(h_new) != 2) {
+    error, ("cannot load mandatory Yeti extension " +
+            "(https://github.com/emmt/Yeti)");
+  }
+}
+if (is_func(opl_vmlmb) != 1) {
+  include, "optimpacklegacy.i", 3;
+  if (is_func(opl_vmlmb) != 1) {
+    error, ("cannot load mandatory OptimPackLegacy extension " +
+            "(https://github.com/emmt/OptimPackLegacy)");
+  }
+}
+mira_require, "oifits_new", "yoifits", "oifits.i";
+mira_require, "throw",      "ylib",    "utils.i";
+mira_require, "rgl_new",    "ipy",     "rgl.i";
+mira_require, "linop_new",  "ipy",     "linop.i";
 
-     Global variables defined by MiRA to globally set debug and quiet modes.
- */
-MIRA_DEBUG = 1n;
-MIRA_QUIET = 0n;
+/* Load other parts of MiRA (which should be at the same location of this
+   file). */
+include, MIRA_HOME+"mira2_utils.i", 1;
+include, MIRA_HOME+"mira2_config.i", 1;
+include, MIRA_HOME+"mira2_data.i", 1;
+include, MIRA_HOME+"mira2_xform.i", 1;
+include, MIRA_HOME+"mira2_cost.i", 1;
+include, MIRA_HOME+"mira2_image.i", 1;
+include, MIRA_HOME+"mira2_solver.i", 1;
 
 /*
   MiRA structure:

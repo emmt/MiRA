@@ -20,6 +20,10 @@
  * details.
  */
 
+if (! is_scalar(MIRA_HOME) || ! is_string(MIRA_HOME)) {
+  error, "include \"mira2.i\" first";
+}
+
 local mira_solve;
 /* DOCUMENT img = mira_solve(data, key1=value1, key2=value2, ...);
          or img = mira_solve(data, img_init, key1=value1, key2=value2, ...);

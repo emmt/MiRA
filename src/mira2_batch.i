@@ -20,14 +20,6 @@
  * details.
  */
 
-//write, format="Y_SITE = %s\n", Y_SITE;
-//write, format="Y_HOME = %s\n", Y_HOME;
-//write, format="is_func(h_new) = %d\n", is_func(h_new);
-require, "yeti.i";            // FIXME: should be automatic
-require, "utils.i";           // FIXME: should be automatic
-require, "options.i";         // FIXME: should be automatic
-require, "optimpacklegacy.i"; // FIXME: should be automatic
-
 /* The following initialization function is executed once. */
 local MIRA_BATCH_HOME;
 func _mira_batch_init(path)
@@ -48,10 +40,9 @@ func _mira_batch_init(path)
 MIRA_BATCH_HOME = _mira_batch_init(current_include());
 _mira_batch_init = [];
 
-// FIXME:should be automatic
-mira_require, "opt_init", MIRA_HOME + ["", "../lib/ylib/"] + "options.i";
-mira_require, "rgl_new", MIRA_HOME + ["", "../lib/ipy/"] + "rgl.i";
-mira_require, "linop_new", MIRA_HOME + ["", "../lib/ipy/"] + "linop.i";
+
+/* Make sure "options" package is loaded. */
+mira_require, "opt_init", "ylib", "options.i";
 
 if (! is_func(nfft_new)) {
   /* Attempt to pre-load YNFFT. */

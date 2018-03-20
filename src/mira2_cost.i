@@ -20,6 +20,10 @@
  * details.
  */
 
+if (! is_scalar(MIRA_HOME) || ! is_string(MIRA_HOME)) {
+  error, "include \"mira2.i\" first";
+}
+
 /*--------------------------------------------------------------------------*/
 /* TOPLEVEL ROUTINES */
 
