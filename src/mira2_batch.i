@@ -88,6 +88,11 @@ _MIRA_OPTIONS = opt_init\
     _lst("tau", 1E-6, "VALUE", OPT_REAL, "Edge preserving threshold"),
     _lst("eta", 1.0, "VALUE(S)", OPT_REAL_LIST, "Gradient scales along dimensions"),
     _lst("gamma", NULL, "FWHM", OPT_STRING, "A priori full half width at half maximum, e.g. 15mas"),
+ /*START OP 20180315 */ 
+    _lst("regul_threshold", 1E-3, "VALUE", OPT_REAL, "Threshold for the cost function"),
+    _lst("regul_epsilon", 1E-6, "VALUE", OPT_REAL, "Edge preserving threshold"),
+    _lst("regul_isotropic", NULL, NULL, OPT_FLAG, "Use isotropic version of the regularization"),
+ /*END  OP 20180315 */
     "\nInitial image:",
     _lst("initial", "random", "NAME", OPT_STRING, "FITS file or method for initial image"),
     _lst("seed", NULL, "VALUE", OPT_REAL, "Seed for the random generator"),
@@ -350,6 +355,34 @@ func mira_main(argv0, argv)
                regul_name, mira_format(opt.mu), opt.gamma);
       h_set, opt, gamma=value;
       regul_post = TRUE;
+
+/* begin OP 20180315 */
+   } else if (regul_name == "l2l1_smoothness") {
+      /* l2l1_smoothness option added by FE 20170822. */
+      if (opt.mu <= 0.0) {
+        opt_error, "Value of `-mu` must be > 0.0";
+      }
+      if (opt.regul_threshold <= 0.0) {
+        opt_error, "Value of `-regul_threshold` must be > 0.0";
+      }
+      regul = rgl_new("l2l1_smoothness","threshold",opt.regul_threshold);
+      h_set, opt, mu=opt.mu;
+      grow, comment,
+        swrite(format="Regularization: \"%s\" with MU=%s, REGUL_THRESHOLD=%s",
+               regul_name, format(opt.mu), format(opt.regul_threshold));
+
+   } else if (regul_name == "totvar") {
+      /* total variance option added by FE 20170922 */
+      if (opt.regul_epsilon <= 0.0) {
+        opt_error, "Value of `-regul_epsilon` must be > 0.0";
+      }
+      regul = rgl_new("totvar","epsilon",opt.regul_epsilon,"isotropic",opt.regul_isotropic);
+      h_set, opt, mu=opt.mu;
+//      grow, comment,
+//        swrite(format="Regularization: \"%s\" with MU=%s, REGUL_EPSILON=%s, REGUL_ISOTROPIC=%s",
+//               regul_name, format(opt.mu), format(opt.regul_epsilon), format(opt.regul_isotropic));
+ /* end OP 20180315 */
+
 
 #if 0
     } else {
@@ -636,6 +669,8 @@ func mira_main(argv0, argv)
       comment="Initial image used by MiRA";
   }
   fits_close, fh;
+
+
 
 
   if (opt.view && batch()) {
