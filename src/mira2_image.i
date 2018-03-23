@@ -24,6 +24,36 @@ if (! is_scalar(MIRA_HOME) || ! is_string(MIRA_HOME)) {
   error, "include \"mira2.i\" first";
 }
 
+func mira_soft_threshold(img, lvl, nrm)
+/* DOCUMENT mira_soft_threshold(img, lvl);
+         or mira_soft_threshold(img, lvl, nrm);
+
+     Perform soft-threshlding of image IMG. Argument LVL is the threshold level
+     specified in terms of the fraction of the non-zero pixels.  For instance,
+     LVL = 0.05 means that the threshold will be such that 5% of the less
+     bright pixels (in absolute value) will be set to zero.
+
+     If optional argument NRM is specified, the result is rescaled so that its
+     sum is equal to NRM.  Rescaling is only applied if the sum of
+     soft-thresholded pixels is strictly positive.
+ */
+{
+  j = where(img);
+  if (is_array(j)) {
+    n = numberof(j);
+    v = abs(img(j));
+    l = quick_select(v, lround(1 + (n - 1)*lvl));
+    img = sign(img)*max(0.0, abs(img) - l);
+  }
+  if (! is_void(nrm)) {
+    s = double(sum(img));
+    if (s > 0.0) {
+      img = (double(nrm)/s)*unref(img);
+    }
+  }
+  return img;
+}
+
 func mira_resample_image(src, pad=, norm=,
                          naxis1=, crpix1=, crval1=, cdelt1=, cunit1=,
                          naxis2=, crpix2=, crval2=, cdelt2=, cunit2=,
