@@ -53,9 +53,12 @@ _mira_batch_xform = (is_func(nfft_new) ? "nfft" : "separable");
 
 NULL = []; /* FIXME: make a private function to hide local variables */
 _MIRA_OPTIONS = opt_init\
-  ("Usage: mira2 [OPTIONS] INPUT [...] OUTPUT",
-   "Image reconstruction.  INPUT and [...] are the OI-FITS data file and OUTPUT " +
-   "is the result saved into a FITS file.",
+  ("Usage: mira2 [OPTIONS] INPUT [...] OUTPUT\n",
+   "Image reconstruction.  INPUT and [...] are the OI-FITS data file and\n"+
+   "OUTPUT is the result saved into a FITS file.\n\n"+
+   "Environment variables MIRA_SRCDIR and MIRA_YORICK may be set to specify\n"+
+   "the directory where are installed the sources and the path to the\n"+
+   "Yorick interpreter.",
    _lst\
    (
     "\nData selection:",
