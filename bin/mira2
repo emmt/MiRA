@@ -20,13 +20,13 @@
 #
 #------------------------------------------------------------------------------
 
-# The following variables may be customized, INCDIR is the directory with
+# The following variables may be customized, SRCDIR is the directory with
 # MiRA code source and YORICK is the path for Yorick interpreter.
-INCDIR=
-YORICK=yorick
+SRCDIR=${MIRA_SRCDIR:-""}
+YORICK=${MIRA_YORICK:-yorick}
 
-# If INCDIR is not specified, use the directory of this script.
-if test "x$INCDIR" = "x"; then
+# If SRCDIR is not specified, use the directory of this script.
+if test "x$SRCDIR" = "x"; then
     path="$0"
     osname=$(uname -s)
     if test "$osname" = "Linux"; then
@@ -45,8 +45,8 @@ if test "x$INCDIR" = "x"; then
             fi
         done
     fi
-    INCDIR=$(dirname -- "$path")/../src
+    SRCDIR=$(dirname -- "$path")/../src
 fi
 
 # Run the MiRA batch script.
-exec "$YORICK" -batch "${INCDIR}/mira2_batch.i" "$@"
+exec "$YORICK" -batch "${SRCDIR}/mira2_batch.i" "$@"
