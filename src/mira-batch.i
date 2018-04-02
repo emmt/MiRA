@@ -1,4 +1,7 @@
 /*
+FE modified 20170922
+*/
+/*
  * mira-batch.i -
  *
  * Run MiRA in batch mode all arguments are parsed from the command line.
@@ -114,15 +117,20 @@ _MIRA_OPTIONS = opt_init\
     _lst("tau", 1E-6, "VALUE", OPT_REAL, "Edge preserving threshold"),
     _lst("eta", 1.0, "VALUE(S)", OPT_REAL_LIST, "Gradient scales along dimensions"),
     _lst("gamma", NULL, "FWHM", OPT_STRING, "A priori full half width at half maximum, e.g. 15mas"),
-    /*
-    _lst("regul_epsilon", 1E-6, "VALUE", OPT_REAL, "Edge preserving threshold"),
+ /* FE 20170922 */
     _lst("regul_threshold", 1E-3, "VALUE", OPT_REAL, "Threshold for the cost function"),
+    _lst("regul_epsilon", 1E-6, "VALUE", OPT_REAL, "Edge preserving threshold"),
+    _lst("regul_isotropic", NULL, NULL, OPT_FLAG, "Use isotropic version of the regularization"),
+    _lst("no_vis", NULL, NULL, OPT_FLAG, "Not not use complex visibilities"),
+    _lst("no_vis2", NULL, NULL, OPT_FLAG, "Not not use square visibilities"),
+    _lst("no_t3", NULL, NULL, OPT_FLAG, "Not not use closure quantities"),
+/* FE end */
+     /*
     _lst("regul_power", 2.0, "VALUE", OPT_REAL, "Power for the Lp-norm"),
     _lst("regul_normalized", NULL, NULL, OPT_FLAG, "Image is normalized"),
     _lst("regul_cost", "l2", "NAME", OPT_STRING, "Cost function for the regularization"),
     _lst("regul_type", "log", "NAME", OPT_STRING, "Subtype for the regularization"),
     _lst("regul_periodic", NULL, NULL, OPT_FLAG, "Use periodic conditions for the regularization"),
-    _lst("regul_isotropic", NULL, NULL, OPT_FLAG, "Use isotropic version of the regularization"),
     */
     "\nInitial image:",
     _lst("initial", "random", "NAME", OPT_STRING, "FITS file or method for initial image"),
@@ -323,6 +331,33 @@ func mira_main(argv0, argv)
                regul_name, format(opt.mu), opt.gamma);
       regul_post = TRUE;
 
+ /* begin FE 20170922 */
+   } else if (regul_name == "l2l1_smoothness") {
+      /* l2l1_smoothness option added by FE 20170822. */
+      if (opt.mu <= 0.0) {
+        opt_error, "Value of `-mu` must be > 0.0";
+      }
+      if (opt.regul_threshold <= 0.0) {
+        opt_error, "Value of `-regul_threshold` must be > 0.0";
+      }
+      regul = rgl_new("l2l1_smoothness","threshold",opt.regul_threshold);
+      h_set, opt, mu=opt.mu;
+      grow, comment,
+        swrite(format="Regularization: \"%s\" with MU=%s, REGUL_THRESHOLD=%s",
+               regul_name, format(opt.mu), format(opt.regul_threshold));
+
+   } else if (regul_name == "totvar") {
+      /* total variance option added by FE 20170922 */
+      if (opt.regul_epsilon <= 0.0) {
+        opt_error, "Value of `-regul_epsilon` must be > 0.0";
+      }
+      regul = rgl_new("totvar","epsilon",opt.regul_epsilon,"isotropic",opt.regul_isotropic);
+      h_set, opt, mu=opt.mu;
+      grow, comment,
+        swrite(format="Regularization: \"%s\" with MU=%s, REGUL_EPSILON=%s, REGUL_ISOTROPIC=%s",
+               regul_name, format(opt.mu), format(opt.regul_epsilon), format(opt.regul_isotropic));
+ /* end FE 20170922 */
+
 #if 0
     } else {
       if (opt.regul_threshold <= 0.0) {
@@ -518,12 +553,18 @@ func mira_main(argv0, argv)
   }
 
   /* Read input data. */
+
   master = mira_new(argv(1:-1),
                     target = opt.target,
                     eff_wave = opt.effwave,
                     eff_band = opt.effband,
                     wavemin = opt.wavemin,
                     wavemax = opt.wavemax,
+/* FE 20170922 Start */
+                    no_vis = opt.no_vis,
+                    no_vis2 = opt.no_vis2,
+                    no_t3 = opt.no_t3,
+/* FE 20170922 End */
                     quiet = opt.quiet);
 
   mira_config, master, dim=dim, pixelsize=pixelsize, xform=opt.xform;
@@ -594,6 +635,32 @@ func mira_main(argv0, argv)
       img = mira_recenter(img, quiet=opt.quiet);
     }
   }
+
+  /* OP20180213 get normalized dirty beam*/
+  dirty=mira_dirty_beam(master);
+  dirty = dirty / max(dirty);
+  fh = mira_save_image(mira_wrap_image(dirty, master), "dirty_"+final_filename,
+                       overwrite=opt.overwrite, bitpix=opt.bitpix,
+                       comment=comment);
+
+  /* Define a clean beam from this dirty beam */
+  print,opt.pixelsize;
+  print,opt.dim;
+  pixelsize = _mira_cli_parse_angle(opt.pixelsize, "`-pixelsize=...`");
+
+  x = span(-pixelsize*opt.dim/2,pixelsize*opt.dim/2,opt.dim)(,-:1:opt.dim);
+  y = transpose(x);
+  /* restrict clean beam to <4mas */
+  res_op=4.848e-9 * 4;
+  clean = dirty * (dirty>0.1) * (abs(x,y)<res_op);
+
+  imgS = convoln(img, clean);
+  imgS = imgS / max(imgS);
+
+  fh = mira_save_image(mira_wrap_image(imgS, master), "Convol_"+final_filename,
+                       overwrite=opt.overwrite, bitpix=opt.bitpix,
+                       comment=comment);
+  /* OP20180213 End of modification*/
 
   /* Save the result. */
   fh = mira_save_image(mira_wrap_image(img, master), final_filename,
