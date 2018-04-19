@@ -105,6 +105,8 @@ _MIRA_OPTIONS = opt_init\
          "Method to model the effects of the spectral bandwidth smearing"),
     _lst("smearingfactor", 1.0, "VALUE", OPT_REAL,
          "Factor to scale the effects of the spectral bandwidth smearing"),
+    _lst("nthreads", 1, "NUMBER", OPT_INTEGER,
+         "Number of threads for the fast Fourier transform"),
     "\nRegularization settings:",
     _lst("regul", [], "NAME", OPT_STRING,
          "Name of regularization method (-regul=help for more information)"),
@@ -605,6 +607,7 @@ func mira_main(argv0, argv)
                     dims = dims,
                     flags = flags,
                     xform = opt.xform,
+                    nthreads = opt.nthreads,
                     smearingfunction = opt.smearingfunction,
                     smearingfactor = opt.smearingfactor);
   inform, "flags = "+mira_format_flags(master.flags);

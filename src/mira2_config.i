@@ -48,8 +48,9 @@ if (! is_scalar(MIRA_HOME) || ! is_string(MIRA_HOME)) {
  *    to use.
  */
 func mira_new(.., target=, wavemin=, wavemax=, flags=, pixelsize=, dims=,
-              xform=, smearingfunction=, smearingfactor=, atol=, rtol=,
-              quiet=, noise_method=, noise_level=, baseline_precision=)
+              xform=, nthreads=, smearingfunction=, smearingfactor=,
+              atol=, rtol=, quiet=,
+              noise_method=, noise_level=, baseline_precision=)
 /* DOCUMENT obj = mira_new(oidata, ..., target=...);
 
      Create a new MiRA instance for fitting the data in the `oidata`,
@@ -83,7 +84,7 @@ func mira_new(.., target=, wavemin=, wavemax=, flags=, pixelsize=, dims=,
     error, "target must be a string";
   }
   master = h_new(oidata = oifits_new(), target = target,
-                 stage = 0, xform="nfft",
+                 stage = 0, xform="nfft", nthreads = 1,
                  smearingfactor = 1.0, smearingfunction = "none",
                  dims=[2,128,128], pixelsize = 5*MIRA_MILLIARCSECOND,
                  wavemin = 0.0, wavemax = MIRA_INF,
@@ -96,7 +97,7 @@ func mira_new(.., target=, wavemin=, wavemax=, flags=, pixelsize=, dims=,
 
   /* Apply configuration options. */
   mira_config, master, wavemin=wavemin, wavemax=wavemax, flags=flags,
-    pixelsize=pixelsize, dims=dims, xform=xform,
+    pixelsize=pixelsize, dims=dims, xform=xform, nthreads=nthreads,
     smearingfunction=smearingfunction, smearingfactor=smearingfactor;
 
   /* Load OI-FITS data file(s). */
@@ -113,7 +114,7 @@ func mira_new(.., target=, wavemin=, wavemax=, flags=, pixelsize=, dims=,
 /* CONFIGURING AN INSTANCE */
 
 func mira_config(master, wavemin=, wavemax=, dims=, pixelsize=, xform=,
-                 flags=, smearingfunction=, smearingfactor=)
+                 nthreads=, flags=, smearingfunction=, smearingfactor=)
 /* DOCUMENT mira_config, master, key=val, ...;
 
      Configure options in MiRA instance `master`.  All options are passed as
@@ -135,6 +136,9 @@ func mira_config(master, wavemin=, wavemax=, dims=, pixelsize=, xform=,
      smearing.  By default, `smearingfactor=1` and `smearingfunction=sinc`.
      Setting `smearingfactor=0` or `xform="nfft"`, disables the accounting of
      bandwidth smearing.
+
+     Keyword `nthreads` can be specified with the number of threads to
+     use for computing the fast Fourier transform.
 
      Keyword `dims` specifies the dimension(s) of the restored image.  If it is
      a scalar, it specifies the width and height of the image; otherwise,
@@ -164,6 +168,9 @@ func mira_config(master, wavemin=, wavemax=, dims=, pixelsize=, xform=,
   if (xform != "nfft" && xform != "nonseparable" && xform != "separable") {
     throw, ("unknown `xform` name (must be one of \"nfft\", \"separable\" " +
             "or \"nonseparable\"");
+  }
+  if (! scalar_long(nthreads, master.nthreads) || nthreads < 1) {
+    throw, "`nthreads` must be a strictly nonnegative integer";
   }
   if (! scalar_double(smearingfactor, master.smearingfactor) ||
       smearingfactor < 0) {
@@ -219,10 +226,11 @@ func mira_config(master, wavemin=, wavemax=, dims=, pixelsize=, xform=,
       pixelsize = pixelsize;
     changes |= 1;
   }
-  if (master_xform != xform || smearingfunction != master.smearingfunction ||
+  if (xform != master_xform || nthreads != master.nthreads ||
+      smearingfunction != master.smearingfunction ||
       smearingfactor != master.smearingfactor) {
     h_set, master, model = h_new(), stage = min(master.stage, 2),
-      xform = xform, smearingfunction = smearingfunction,
+      xform = xform, nthreads = nthreads, smearingfunction = smearingfunction,
       smearingfactor = smearingfactor;
   }
   if (! mira_same_dimensions(master.dims, dims)) {
