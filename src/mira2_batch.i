@@ -86,7 +86,6 @@ _MIRA_OPTIONS = opt_init\
     _lst("phasecost", "vonmises", "vonmises|haniff|convexlimit", OPT_STRING,
          "Co-log-likelihood approximation to use for phase data"),
     "\nImage parameters and direct model:",
-<<<<<<< HEAD
     _lst("pixelsize", [], "ANGLE", OPT_STRING,
          "Angular size of pixels, e.g. 0.1mas"),
     _lst("fov", [], "ANGLE", OPT_STRING,
