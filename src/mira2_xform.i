@@ -256,7 +256,8 @@ func _mira_define_xform(master)
     nodes = [pixelsize*ufreq, pixelsize*vfreq];
     dims = [n1, n2];
     xform = h_new(name = xform, ufreq = ufreq, vfreq = vfreq,
-                  nfft = nfft_new(dims, nodes, flags=flags),
+                  nfft = nfft_new(dims, nodes, flags=flags,
+                                  nthreads=master.nthreads),
                   n1 = n1, r1 = r1,
                   n2 = n2, r2 = r2,
                   sub = (n1 != nx || n2 != ny));
