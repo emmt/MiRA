@@ -43,7 +43,12 @@ func mira_soft_threshold(img, lvl, nrm)
     n = numberof(j);
     v = abs(img(j));
     l = quick_select(v, lround(1 + (n - 1)*lvl));
-    img = sign(img)*max(0.0, abs(img) - l);
+    tmp = abs(img) - l;
+    if (max(tmp) <= 0) {
+      warn, "Thresholding is not applied to avoid a zero-filled image";
+    } else {
+      img = sign(img)*max(0.0, tmp);
+    }
   }
   if (! is_void(nrm)) {
     s = double(sum(img));
