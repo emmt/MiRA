@@ -123,6 +123,8 @@ _MIRA_OPTIONS = opt_init\
     _lst("seed", [], "VALUE", OPT_REAL,
          "Seed for the random generator"),
     "\nOutput image:",
+    _lst("save_visibilities", [], [], OPT_FLAG,
+         "Save model complex visibilities"),
     _lst("overwrite", [], [], OPT_FLAG,
          "Overwrite output if it exists"),
     _lst("bitpix", -32, "BITPIX", OPT_INTEGER,
@@ -677,9 +679,10 @@ func mira_main(argv0, argv)
   }
 
   /* Save the result. */
-  fh = mira_save_image(mira_wrap_image(img, master), final_filename,
+  fh = mira_save_image(img, final_filename, data=master,
                        overwrite=opt.overwrite, bitpix=opt.bitpix,
-                       comment=comment);
+                       comment=comment,
+                       savevisibilities=opt.save_visibilities);
   if (opt.save_initial) {
     mira_save_image, initial, fh, bitpix=opt.bitpix,
       extname="INITIAL_IMAGE",
