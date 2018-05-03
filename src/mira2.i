@@ -141,6 +141,9 @@ include, MIRA_HOME+"mira2_solver.i", 1;
      master.coords.v = baseline V-coordinate [m]
      master.coords.wave = effective wavelength [m]
      master.coords.band = effective bandwidth [m]
+     master.coords.ufreq = component u of frequencies [1/cycle]
+     master.coords.vfreq = component v of frequencies [1/cycle]
+     master.coords.unique = list of all unique coordinates (see below)
      master.model.img = current model image
      master.model.vis = model complex visibility
      master.model.phi = phase of model complex visibility
@@ -158,17 +161,15 @@ include, MIRA_HOME+"mira2_solver.i", 1;
      master.baseline_precision = precision for rounding baselines (in meters)
      master.flags = processiong options
 
-     FIXME:
-     master.datalist = list of data blocks
-     master.db1 ... master.dbN = selected datablocks of data to fit
-
-     master.dbK.oidb  = link to OI-FITS datablock
-     master.dbK.oiref = indices of data in OI-FITS
-     master.dbK.ops = table of operations
-     master.dbK.sgn = sign for frequencies
-     master.dbK.idx = index for frequencies in model
-     master.dbK.*
-
+  Note that depending on the type of Fourier transformation, not all
+  fields of `coords` may be present.  If `master.coords.unique` is
+  present then:
+     master.coords.unique.u
+     master.coords.unique.v
+     master.coords.unique.wave
+     master.coords.unique.band
+     master.coords.unique.idx = indirection to retrieve the correspong
+                                complex visibilities
 
      1. selection of target object
 

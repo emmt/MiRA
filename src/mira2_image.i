@@ -705,7 +705,7 @@ func mira_wrap_image(arr, dat)
 }
 
 func mira_save_image(img, dest, overwrite=, bitpix=, data=,
-                     comment=, history=, extname=, savevisibilities=)
+                     comment=, history=, extname=)
 /* DOCUMENT mira_save_image, img, dest;
          or fh = mira_save_image(img, dest);
 
@@ -838,43 +838,5 @@ func mira_save_image(img, dest, overwrite=, bitpix=, data=,
   fits_write_header, fh;
   fits_write_array, fh, img.arr;
   fits_pad_hdu, fh;
-
-  if (savevisibilities) {
-    if (! is_hash(data)) {
-      warn, "Expecting MiRA master";
-    } else if (! is_array(img_arr)) {
-      warn, "Expecting model image";
-    } else if (is_void(data.coords.u) || is_void(data.coords.v) ||
-               is_void(data.coords.wave) || is_void(data.coords.band)) {
-      warn, ("Saving complex visibilities imposes to account for the "+
-             "spectral bandwidth smearing.\n         Use options "+
-             "`--smearingfucntion=sinc -xform=nonseparable`");
-    } else {
-      inform, "Saving complex visbilities";
-      fits_new_bintable, fh;
-      fits_set, fh, "EXTNAME", "MODEL-VISIBILITIES";
-      coords = data.coords;
-      mira_update, data, img_arr;
-      ptr = [];
-      fits_set, fh, "TTYPE1", "ucoord", "baseline u coordinate";
-      fits_set, fh, "TFORM1", "1D";
-      fits_set, fh, "TUNIT1", "m";
-      grow, ptr, &(coords.u);
-      fits_set, fh, "TTYPE2", "vcoord", "baseline v coordinate";
-      fits_set, fh, "TFORM2", "1D";
-      fits_set, fh, "TUNIT2", "m";
-      grow, ptr, &(coords.v);
-      fits_set, fh, "TTYPE3", "eff_wave", "effective wavelength";
-      fits_set, fh, "TFORM3", "1D";
-      fits_set, fh, "TUNIT3", "nm";
-      grow, ptr, &(coords.wave*1e9);
-      fits_set, fh, "TTYPE4", "eff_band", "effective spectral bandwidth";
-      fits_set, fh, "TFORM4", "1D";
-      fits_set, fh, "TUNIT4", "nm";
-      grow, ptr, &(coords.band*1e9);
-      fits_write_bintable, fh, ptr;
-      fits_pad_hdu, fh;
-    }
-  }
   return fh;
 }

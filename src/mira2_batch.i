@@ -681,8 +681,13 @@ func mira_main(argv0, argv)
   /* Save the result. */
   fh = mira_save_image(img, final_filename, data=master,
                        overwrite=opt.overwrite, bitpix=opt.bitpix,
-                       comment=comment,
-                       savevisibilities=opt.save_visibilities);
+                       comment=comment);
+  if (opt.save_visibilities) {
+    /* Update the model complex visibilities and save them. */
+    inform, "Saving model complex visibilities...";
+    mira_update, master, img;
+    mira_save_visibilities, master, fh;
+  }
   if (opt.save_initial) {
     mira_save_image, initial, fh, bitpix=opt.bitpix,
       extname="INITIAL_IMAGE",

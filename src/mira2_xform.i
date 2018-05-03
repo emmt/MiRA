@@ -391,6 +391,51 @@ func _mira_cos_sin(&re, &im, phi)
   im = sin(unref(phi));
 }
 
+func mira_save_visibilities(master, fh)
+{
+  local idx;
+  coords = master.coords;
+  if (h_has(coords, "unique")) {
+    coords = coords.unique;
+  }
+
+  fits_new_bintable, fh;
+  fits_set, fh, "EXTNAME", "MODEL-VISIBILITIES";
+  ptr = array(pointer, 6);
+
+  fits_set, fh, "TTYPE1", "model_visamp", "Model of the visibility amplitudes";
+  fits_set, fh, "TFORM1", "1D";
+  ptr(1) = &mira_model_amp(master, idx);
+
+  fits_set, fh, "TTYPE2", "model_visphi", "Model of the visibility phases";
+  fits_set, fh, "TFORM2", "1D";
+  fits_set, fh, "TUNIT2", "deg";
+  ptr(2) = &(mira_model_phi(master, idx)*(180/pi));
+
+  fits_set, fh, "TTYPE3", "ucoord", "U coordinates of baselines";
+  fits_set, fh, "TFORM3", "1D";
+  fits_set, fh, "TUNIT3", "m";
+  ptr(3) = &(coords.u);
+
+  fits_set, fh, "TTYPE4", "vcoord", "V coordinates of baselines";
+  fits_set, fh, "TFORM4", "1D";
+  fits_set, fh, "TUNIT4", "m";
+  ptr(4) = &(coords.v);
+
+  fits_set, fh, "TTYPE5", "eff_wave", "Effective wavelengths";
+  fits_set, fh, "TFORM5", "1D";
+  fits_set, fh, "TUNIT5", "nm";
+  ptr(5) = &(coords.wave*1e9);
+
+  fits_set, fh, "TTYPE6", "eff_band", "Effective spectral bandwidths";
+  fits_set, fh, "TFORM6", "1D";
+  fits_set, fh, "TUNIT6", "nm";
+  ptr(6) = &(coords.band*1e9);
+
+  fits_write_bintable, fh, ptr;
+  fits_pad_hdu, fh;
+}
+
 /*---------------------------------------------------------------------------*/
 
 func _mira_reduce_coordinates(master, mode, debug=)
@@ -406,9 +451,12 @@ func _mira_reduce_coordinates(master, mode, debug=)
 
 */
 {
-  /* Check stage. */
+  /* Check stage and mode. */
   if (master.stage != 1) {
     throw, "private routine called at wrong stage";
+  }
+  if (! scalar_long(mode, 1) || mode < 1 || mode > 3) {
+    error, "invalid MODE";
   }
 
   /* Get coordinates (should be flat vectors of doubles or void). */
@@ -419,73 +467,127 @@ func _mira_reduce_coordinates(master, mode, debug=)
   eq_nocopy, wave, coords.wave;
   eq_nocopy, band, coords.band;
 
-  /* Check mode. */
-  if (! scalar_long(mode, 1) || mode < 1 || mode > 3) {
-    error, "invalid MODE";
-  }
-
-  /* Sort coordinates. */
-  if (mode == 1) {
-    ufreq = u/wave;
-    vfreq = v/wave;
-    i = msort(ufreq, vfreq);
-  } else if (mode == 2) {
-    i = msort(wave, u, v);
-  } else {
-    i = msort(wave, band, u, v);
-  }
-
-  /* Select unique coordinates. */
-  i1 = i(1:-1);
-  i2 = i(2:0);
-  if (mode == 1) {
-    uniq = (ufreq(i2) != ufreq(i1)) | (vfreq(i2) != vfreq(i1));
-  } else {
-    uniq = (u(i2) != u(i1)) | (v(i2) != v(i1));
-  }
-  if (mode > 1) uniq |= (wave(i2) != wave(i1));
-  if (mode > 2) uniq |= (band(i2) != band(i1));
-  uniq = grow(1n, uniq);
-
-  /* Build indirection indices and extract unique coordinates. */
-  (idx = array(long, numberof(i)))(i) = long(uniq)(psum);
-  i = i(where(uniq));
-  if (mode == 1) {
-    coords = h_new(ufreq = ufreq(i), vfreq = vfreq(i));
-    if (debug && (max(abs(ufreq - coords.ufreq(idx))) != 0 ||
-                  max(abs(vfreq - coords.vfreq(idx))) != 0)) {
-      throw, "bug: something wrong with `(u/λ,v/λ)`!";
+  /* Uniquely sort all coordinates. */
+  local sel, rev;
+  _mira_unique, sel, rev, wave, band, u, v;
+  wave = wave(sel);
+  band = band(sel);
+  u = u(sel);
+  v = v(sel);
+  coords = h_new(u=u, v=v, wave=wave, band=band);
+  if (mode < 3) {
+    /* Uniquely sort a restricted list of coordinates (only the ones which have
+     an influence on the computation of the model complex visibilities). */
+    local subrev;
+    unique = coords;
+    idx = indgen(numberof(sel));
+    if (mode == 1) {
+      ufreq = u/wave;
+      vfreq = v/wave;
+      _mira_unique, sel, subrev, ufreq, vfreq;
+      coords = h_new(ufreq = ufreq(sel), vfreq = vfreq(sel));
+    } else {
+      _mira_unique, sel, subrev, wave, u, v;
+      coords = h_new(wave = wave(sel), u = u(sel), v = v(sel));
     }
-  } else {
-    coords = h_new(u = u(i), v = v(i));
-    if (debug && (max(abs(u - coords.u(idx))) != 0 ||
-                  max(abs(v - coords.v(idx))) != 0)) {
-      throw, "bug: something wrong with `(u,v)`!";
-    }
-    if (mode > 1) {
-      h_set, coords, wave = wave(i);
-      if (debug && max(abs(wave - coords.wave(idx))) != 0) {
-        throw, "bug: something wrong with `wave`!";
-      }
-    }
-    if (mode > 2) {
-      h_set, coords, band = band(i);
-      if (debug && max(abs(band - coords.band(idx))) != 0) {
-        throw, "bug: something wrong with `band`!";
-      }
-    }
+    idx = subrev(idx);
+    rev = subrev(rev);
+    h_set, coords, unique = h_set(unique, idx = idx);
   }
 
   /* Overwrite coordinates and indirections for every data block. */
   h_set, master, stage=-1; // in case of interrupts
   for (db = _mira_first(master); db; db = _mira_next(master, db)) {
     if (h_has(db, "idx")) {
-      h_set, db, idx = idx(db.idx);
+      h_set, db, idx = rev(db.idx);
     }
   }
 
   /* Overwrite coordinates in MASTER and update stage. */
   return h_set(master, coords=h_set(coords, mode=mode), stage=2);
+}
+
+func _mira_unique(&sel, &rev, x1, x2, x3, x4)
+/* DOCUMENT local sel, rev; _mira_unique, sel, rev, x1, x2, ...;
+
+     Yields arrays of indices sel and rev such that (x1(sel), x2(sel), ...)
+     form a list of unique multiplets and such that x1(sel)(rev) == x1
+     everywhere and similarly for x2 and the subsequent arguments.  The values
+     x1(sel), x2(sel), ... are sorted with x1 the most significant key, x2 the
+     next most significant key, and so on.  Arguments sel and rev must be
+     simple variables, not expression nor values.
+
+   SEE ALSO: msort.
+*/
+{
+  /* Check inputs. */
+  if (! is_void(x4)) {
+    mode = 4;
+  } else if (! is_void(x3)) {
+    mode = 3;
+  } else if (! is_void(x2)) {
+    mode = 2;
+  } else if (! is_void(x1)) {
+    mode = 1;
+  } else {
+    error, "expecting at least one non-void argument";
+  }
+  if (! is_vector(x1)) {
+    error, "X1 must be a vector";
+  }
+  n = numberof(x1);
+  badlength = 0n;
+  if (mode >= 2) {
+    if (! is_vector(x2)) {
+      error, "X2 must be a vector";
+    }
+    badlength = (badlength || (numberof(x2) != n));
+  }
+  if (mode >= 3) {
+    if (! is_vector(x3)) {
+      error, "X3 must be a vector";
+    }
+    badlength = (badlength || (numberof(x3) != n));
+  }
+  if (mode >= 4) {
+    if (! is_vector(x4)) {
+      error, "X4 must be a vector";
+    }
+    badlength = (badlength || (numberof(x4) != n));
+  }
+  if (badlength) {
+    error, "all arguments must be vectors of same length";
+  }
+
+  /* Multi-key sort of coordinates. */
+  if (mode == 1) {
+    i = msort(x1);
+  } else if (mode == 2) {
+    i = msort(x1, x2);
+  }  else if (mode == 3) {
+    i = msort(x1, x2, x3);
+  } else if (mode == 4) {
+    i = msort(x1, x2, x3, x4);
+  }
+
+  /* Select unique coordinates. */
+  i1 = i(1:-1);
+  i2 = i(2:0);
+  uniq = (x1(i2) != x1(i1));
+  if (mode > 1) {
+    uniq |= (x2(i2) != x2(i1));
+    if (mode > 2) {
+      uniq |= (x3(i2) != x3(i1));
+      if (mode > 3) {
+        uniq |= (x4(i2) != x4(i1));
+      }
+    }
+  }
+  uniq = grow(1n, uniq);
+
+  /* Build indirection indices and extract unique coordinates. */
+  (rev = array(long, numberof(i)))(i) = long(uniq)(psum);
+  sel = i(where(uniq));
 }
 
 /*---------------------------------------------------------------------------*/
