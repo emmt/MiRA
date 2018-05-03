@@ -29,6 +29,56 @@ pixelsize = "0.3mas";
 //u = uniquevalues(h.u);
 //v = uniquevalues(h.v);
 
+func check_reduce_coordinates(n1, n2)
+{
+  if (is_void(n1)) n1 = 30;
+  if (is_void(n2)) n2 = 50;
+
+  // create random coordinates, with redundancy (all w for each (x,y)),
+  w = random_n(n1)(, -:1:n2);
+  x = random_n(n2)(-:1:n1, );
+  y = random_n(n2)(-:1:n1, );
+
+  // duplicate all triplets twice in random order
+  i = grow(sort(random(n1*n2)), sort(random(n1*n2)));
+  w = w(i);
+  x = x(i);
+  y = y(i);
+
+  // compute a fake model r given by the length of (x,y)
+  r = abs(x, y)
+  write, format="n1 = %d, n2 = %d, n1*n2 = %d, ntot = %d\n",
+    n1, n2, n1*n2, numberof(r);
+
+  // find unique triplets of coordinates (w,x,y)
+  local sel, rev, subrev;
+  _mira_unique, sel, rev, w, x, y;
+  w1 = w(sel);
+  x1 = x(sel);
+  y1 = y(sel);
+  r1 = r(sel);
+  if (max(abs(w1(rev) - w)) != 0) warn, "failure along W";
+  if (max(abs(x1(rev) - x)) != 0) warn, "failure along X";
+  if (max(abs(y1(rev) - y)) != 0) warn, "failure along Y";
+  if (max(abs(r1(rev) - r)) != 0) warn, "failure along R";
+  write, format="unique triplets = %d\n", numberof(sel);
+
+  // subselect according to (x,y)
+  idx = indgen(numberof(sel));
+  _mira_unique, sel, subrev, x1, y1;
+  idx = subrev(idx);
+  rev = subrev(rev);
+  x2 = x1(sel);
+  y2 = y1(sel);
+  r2 = r1(sel);
+  if (max(abs(x2(rev) - x)) != 0) warn, "failure along X";
+  if (max(abs(y2(rev) - y)) != 0) warn, "failure along Y";
+  if (max(abs(r2(rev) - r)) != 0) warn, "failure along R";
+  if (max(abs(r2(idx) - r1)) != 0) warn, "failure along R1";
+  write, format="unique pairs = %d\n", numberof(sel);
+}
+check_reduce_coordinates;
+
 func model(main, force=, pixelsize=, xform=, smearingfunction=,
            smearingfactor=)
 {
