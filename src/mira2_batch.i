@@ -122,7 +122,7 @@ _MIRA_OPTIONS = opt_init\
          "FITS file or method for initial image"),
     _lst("seed", [], "VALUE", OPT_REAL,
          "Seed for the random generator"),
-    "\nOutput image:",
+    "\nOutput file:",
     _lst("save_visibilities", [], [], OPT_FLAG,
          "Save model complex visibilities"),
     _lst("overwrite", [], [], OPT_FLAG,
