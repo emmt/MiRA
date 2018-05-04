@@ -1,5 +1,12 @@
 # History of MiRA
 
+## Version 2.0.0b (2018-05-04-12)
+* Can save model complex visibilities (options `--save_visibilities`).
+* Add soft-thresholding (skip thresholding if no pixels above soft-threshold
+  level).
+* Add multi-thread support.
+* Use environment variables `MIRA_SRCDIR` and `MIRA_YORICK`.
+
 ## Version 2.0.0a (2018-02-12)
 * Accounting of bandwidth smearing (with customizable shape and importance
   factor).
@@ -9,6 +16,13 @@
 * Speedup building of non-separable linear model (with or without smearing).
 * Global setting of the debug and quiet modes.
 * Colored messages.
+
+## Version 1.1.2 (2018-05-04)
+
+* Fix accounting of bad data in OI-FITS file.
+* Ability to resample images.
+* Improve graphics.
+* Fix multiple wavelenghts case.
 
 ## Version 1.1.1 (2017-01-26)
 * Better algorithm to compute the dirty map and the dirty beam.
