@@ -10,10 +10,11 @@ DESTDIR=
 
 MAN_PAGES = ymira.1
 BIN_FILES = ymira
-MIRA_FILES = mira.i mira-batch.i
-IPY_FILES = linop.i rgl.i
-YLIB_FILES = options.i xplot.i xplot0.i
-YOIFITS_FILES = oifits.i
+MIRA_FILES = mira2.i mira2_batch.i mira2_config.i mira2_cost.i mira2_data.i \
+    mira2_image.i mira2_solver.i mira2_tests.i mira2_utils.i mira2_xform.i
+#IPY_FILES = linop.i rgl.i
+#YLIB_FILES = options.i utils.i
+#YOIFITS_FILES = oifits.i
 TEST_FILES = mira-demo.i mira-test1.i mira-test2.i
 DATA_FILES = data1.oifits data2.oifits README
 OTHER_FILES = AUTHOR LICENSE Makefile configure \
@@ -39,7 +40,7 @@ clean:
 distclean: clean
 	rm -f $(CONFIG)
 
-TEST_FLAGS=-pixelsize=0.1mas -fov=20mas -regul=hyperbolic -bootstrap=1 -recenter -mu=3e3 -tau=5e-5 -ftol=0 -gtol=0 -maxeval=2000 -overwrite -normalization=1 -min=0 -verb=10
+TEST_FLAGS=-pixelsize=0.1mas -fov=20mas -regul=hyperbolic -bootstrap=1 -recenter -mu=3e3 -tau=5e-5 -ftol=0 -gtol=0 -maxeval=2000 -overwrite -save_visibilities -save_initial -normalization=1 -min=0 -verb=10
 test:
 	$(srcdir)/bin/ymira $(TEST_FLAGS) \
 	    $(srcdir)/data/data1.oifits test1.fits
