@@ -1,0 +1,9 @@
+*.fits     binary
+*.oifits   binary
+*.pdf      binary
+*.tar.bz2  binary
+*.tar.gz   binary
+*.tar.xz   binary
+*.tgz      binary
+*.txz      binary
+*.zip      binary
