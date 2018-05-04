@@ -2,7 +2,7 @@
 .\" For a tutorial about writing a manpage, see
 .\" http://www.linuxhowtos.org/System/creatingman.htm and
 .\" https://liw.fi/manpages/
-.TH ymira 1 "23 January 2017" "Version 1.1.0" "MiRA image reconstruction algorithm"
+.TH ymira 1 "23 March 2018" "Version 2.0.0" "MiRA image reconstruction algorithm"
 .\"
 .SH NAME
 ymira \- reconstruct an image from optical interferometric data
@@ -62,6 +62,35 @@ This the lower bound of the spectral range to consider.
 Specify the maximum wavelength; for example, \fB\-wavemin=1.7µm\fR.
 This the upper bound of the spectral range to consider.
 .\"
+.SS Which Data to Fit and How
+By default, MiRA attempts to fit all available data (providing it knws how to
+handle this kind of data).  Omitting some kind of data is possible with the
+following options.  The metric used to compare the model and the data can also
+be tuned.
+.TP
+\fB\-visamp\fR=\fByes\fR|\fBno\fR
+Fit complex visibility amplitudes?
+.TP
+\fB\-visphi\fR=\fByes\fR|\fBno\fR
+Fit complex visibility phases?
+.TP
+\fB\-vis2\fR=\fByes\fR|\fBno\fR
+Fit powerspectrum data?
+.TP
+\fB\-t3amp\fR=\fByes\fR|\fBno\fR
+Fit bispectrum amplitudes?
+.TP
+\fB\-t3phi\fR=\fByes\fR|\fBno\fR
+Fit bispectrum phases?
+.TP
+\fB\-convexcost\fR=\fByes\fR|\fBno\fR
+Use convex approximation for fitting complex data?  The default is
+\fB\-convexcost\fR=\fByes\fR.
+.TP
+\fB\-phasecost\fR=\fBvonmises\fR|\fBhaniff\fR|\fBconvexlimit\fR
+Co-log-likelihood approximation to use for phase-only data.  The default is
+\fB\-phasecost\fR=\fBvonmises\fR which is also the recommended value.
+.\"
 .SS Image Settings
 If no initial image is provided as a FITS file (see option \fB\-initial\fR),
 the pixel size (with option \fB\-pixelsize\fR) and the image dimensions (with
@@ -74,9 +103,9 @@ Specify the angular size of pixels.  For example, \fB\-pixelsize=0.1mas\fR.
 \fB\-fov\fR=\fI\,angle\/\fR
 Specify the angular size of the field of view. For example, \fB\-fov=20mas\fR.
 .TP
-\fB\-dim\fR=\fI\,number\/\fR
+\fB\-imagesize\fR=\fI\,dim\/\fR|\fI\,dim1\/\fRx\fI\,dim2\/\fR
 Specify the number of pixels per side of the image.
-For example, \fB\-dim=200\fR.
+For example, \fB\-dim=200\fR or \fB\-dim=300x200\fR.
 .TP
 \fB\-normalization\fR=\fI\,value\/\fR
 Specify the sum of pixels.  A recommended setting is: \fB\-normalization=1\fR.
@@ -91,9 +120,33 @@ Specify the upper bound for the pixel values.
 .SS Direct Model
 .TP
 \fB\-xform\fR=\fI\,name\/\fR
-Specify the method to compute the nonequispaced Fourier transform.  Argument
-\fI\,name\/\fR can be \fBnfft\fR, \fBexact\fR or \fBfft\fR (the latter value is
-however not recommended).
+Specify the method to compute the complex visibilities given the image.
+Argument \fI\,name\/\fR can be \fBnfft\fR, \fBseparable\fR or
+\fBnonseparable\fR.  \fBnfft\fR is the fastest but cannot account for
+non-stationary effects such as spectral bandwidth smearing.  \fBseparable\fR is
+slower and has the same restrictions (it is only interesting if YNFFT plugin is
+not installed, see <https://github.com/emmt/ynfft>).  \fBnonseparable\fR is the
+slowest but is mandatory if spectral bandwidth smearing is to be taken into
+account.  Beware that \fBseparable\fR and \fBnonseparable\fR have high memory
+requirements (of the order of the number of pixels times the number of
+different spatial frequencies in the data).
+.TP
+\fB\-smearingfunction\fR=\fI\,name\/\fR
+Specify the function to model the effects of the spectral bandwidth smearing.
+Argument \fI\,name\/\fR can be \fBnone\fR, \fBsinc\fR, or \fBgauss\fR to ignore
+bandwidth smearing or to model bandwidth smearing by a cardinal sine or by a
+Gaussian (whose full-width at half-maximum matches that of the cardinal sine).
+To account for spectral bandwidth smearing, options
+\fB\-xform\fR=\fBnonseparable\fR and \fB\-smearingfunction\fR=\fBsinc\fR (or
+\fB\-smearingfunction\fR=\fBgauss\fR) must be chosen.  In addition, option
+\fB\-smearingfactor\fR=\fI\,value\/\fR (see below) may be used to tune the
+importance of the smearing.
+.TP
+\fB\-smearingfactor\fR=\fI\,value\/\fR
+Set the factor to scale the effects of the spectral bandwidth smearing.  The
+full-width at half-maximum of the effective spectral bandwidth is assumed to be
+equal to \fI\,value\/\fR times the \fBEFF_BAND\fR parameter in the data.  The
+default is \fI\,value\/\fR=\fB1.0\fR.
 .\"
 .SS Regularization Settings
 .TP
@@ -140,9 +193,12 @@ Specify the number of bootstrapping iterations.
 Recenter result of bootstrapping iterations.
 .TP
 \fB\-threshold\fR=\fI\,fraction\/\fR
-Specify the level for soft-thresholding input image(s).
+Specify the level for soft-thresholding input image(s).  The threshold level is
+the fraction of non-zero pixels to set to zero.  For instance,
+\fB\-threshold=0.3\fR will soft-threshold the initial image so that 30% of the
+least (in magnitude) nonzero pixels are cleared.
 .\"
-.SS Information and Graphics
+.SS Information
 .TP
 \fB\-quiet\fR
 Suppress most messages.
@@ -150,14 +206,6 @@ Suppress most messages.
 \fB\-verb\fR=\fI\,count\/\fR
 Set the verbose level.  Information will be printed every \fI\,count\/\fR
 iteration.  Also see option \fB\-view\fR.
-.TP
-\fB\-view\fR=\fI\,bits\/\fR
-Bitwise value to specify which graphics to show each time some information is
-printed.  The least significant bits of \fI\,bits\/\fR indicate which sub-panel
-to display.  Use \fB\-view=0\fR to suppress all graphics and \fB\-view=-1\fR to
-show all graphics.  The default is to not display anything.  If some graphics
-are shown, the graphic window has to be closed at the end of the reconstruction
-to effectively quit the program.
 .\"
 .SS Optimizer Settings
 .TP
@@ -199,6 +247,9 @@ that is 32-bit floating point values.
 .TP
 \fB\-save\_initial\fR
 Save initial image as a secondary HDU in the output file.
+.TP
+\fB\-save\_visibilities\fR
+Save model complex visibilities in the output file.
 .\"
 .SS Miscellaneous
 .TP
@@ -207,6 +258,13 @@ Print out this help.
 .TP
 \fB\-version\fR
 Print out version number.
+.\"
+.SH ENVIRONMENT VARIABLES
+.PP
+Environment variables \fBMIRA_SRCDIR\fR and \fBMIRA_YORICK\fR may be set to
+specify the directory where are installed the sources and the path to the
+Yorick interpreter.
+.PP
 .\"
 .\".SH BUGS
 .\"
@@ -219,5 +277,9 @@ interferometry\/\fR, in SPIE Proc. Astronomical Telescopes and Instrumentation
 \fB7013\fR, 70131I-1-70131I-12 (2008) <http://dx.doi.org/10.1117/12.788822>
 .PP
 Thiébaut, É. & Giovannelli, J.-F.: \fI\,Image Reconstruction in Optical
-Interferometry\/\fR, in IEEE Signal Processing Magazine \fB27\fR, pp. 97-109
-(2010) <http://dx.doi.org/10.1109/MSP.2009.934870>
+Interferometry\/\fR, in IEEE Signal Processing Magazine, vol. \fB27\fR,
+pp. 97-109 (2010) <http://dx.doi.org/10.1109/MSP.2009.934870>
+.PP
+Thiébaut, É. & Young J.: \fI\,Principles of image reconstruction in optical
+interferometry: a tutorial\/\fR, in Journal of the Optical Society of America
+A, vol. \fB34\fR, pp. 904-923 (2017) <http://dx.doi.org/10.1364/JOSAA.34.000904>
