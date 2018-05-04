@@ -20,9 +20,12 @@ RUN echo http://nl.alpinelinux.org/alpine/edge/testing >> /etc/apk/repositories 
     make && make install && cd /opt && rm -rf ynfft-master && \
     git clone https://github.com/ferreolS/MiRA.git && cd MiRA/ && \
     git submodule init && git submodule update && \
-    git submodule foreach 'git checkout master' && \ 
-    ./configure --bindir=/usr/local/bin && make install && cd /opt && rm -rf MiRA && \
+    git submodule foreach 'git checkout master' && \
+    cd lib/yoifits/ && ./configure  && make && make install && \
+    cd ../ylib && ./configure  && make && make install && \
+    cd ../ipy && ./configure  && make && make install && \
+    cd ../.. && ./configure  && make install && \
     apk del .build-deps  && \
     rm -rf /var/cache/apk/* && rm -rf /usr/local/share/doc
 
-ENTRYPOINT ["ymira"]
+ENTRYPOINT ["/opt/MiRA/bin/ymira"]
