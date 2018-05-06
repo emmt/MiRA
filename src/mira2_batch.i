@@ -77,7 +77,7 @@ _MIRA_OPTIONS = opt_init\
          "Fit complex visibility phases?"),
     _lst("vis2", "yes", "yes|no", OPT_STRING,
          "Fit powerspectrum data?"),
-    _lst("t3amp", "no", "yes|no", OPT_STRING,
+    _lst("t3amp", "yes", "yes|no", OPT_STRING,
          "Fit bispectrum amplitudes?"),
     _lst("t3phi", "yes", "yes|no", OPT_STRING,
          "Fit bispectrum phases?"),
@@ -118,7 +118,7 @@ _MIRA_OPTIONS = opt_init\
     _lst("gamma", [], "FWHM", OPT_STRING,
          "A priori full half width at half maximum, e.g. 15mas"),
     "\nInitial image:",
-    _lst("initial", "random", "NAME", OPT_STRING,
+    _lst("initial", [], "NAME", OPT_STRING,
          "FITS file or method for initial image"),
     _lst("seed", [], "VALUE", OPT_REAL,
          "Seed for the random generator"),
@@ -437,12 +437,16 @@ func mira_main(argv0, argv)
     }
   }
 
+  if (is_void(opt.initial)) {
+    opt_error, ("An initial image must be specified with "+
+                "`--initial=Dirac|random|FILENAME`");
+  }
+  initial_name = opt.initial;
   initial_random = FALSE;
   initial_dirac = FALSE;
   initial_gauss = FALSE;
   initial_cauchy = FALSE;
   initial_filename = [];
-  initial_name = opt.initial;
   if (initial_name == "random") {
     initial_random = TRUE;
   } else if  (initial_name == "Gauss") {

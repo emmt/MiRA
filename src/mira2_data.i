@@ -403,6 +403,9 @@ func _mira_append_vis2_data(master, oidata, oidb, wave, band,
     "idx", abs(idx),
     "dat", dat,
     "wgt", 1.0/(err*err);
+  if (MIRA_DEBUG) {
+    inform, "will fit %d OI_VIS2 data", numberof(idx);
+  }
 }
 
 func _mira_append_vis_data(master, oidata, oidb, wave, band,
@@ -454,6 +457,9 @@ func _mira_append_vis_data(master, oidata, oidb, wave, band,
         "idx", abs(idx),
         "re", ws.re, "im", sgn*ws.im,
         "wrr", ws.wrr, "wii", ws.wii, "wri", sgn*ws.wri;
+      if (MIRA_DEBUG) {
+        inform, "will fit %d OI_VIS data", numberof(idx);
+      }
     }
   }
 
@@ -471,6 +477,9 @@ func _mira_append_vis_data(master, oidata, oidb, wave, band,
         "idx", abs(idx),
         "dat", dat,
         "wgt", 1.0/(err*err);
+      if (MIRA_DEBUG) {
+        inform, "will fit %d OI_VISAMP data", numberof(idx);
+      }
     }
   }
 
@@ -488,6 +497,9 @@ func _mira_append_vis_data(master, oidata, oidb, wave, band,
         "idx", abs(idx),
         "dat", double(sign(idx))*dat,
         "wgt", 1.0/(err*err);
+      if (MIRA_DEBUG) {
+        inform, "will fit %d OI_VISPHI data", numberof(idx);
+      }
     }
   }
 }
@@ -555,6 +567,9 @@ func _mira_append_t3_data(master, oidata, oidb, wave, band,
         "sgn", double(sign(idx)),
         "re", ws.re, "im", ws.im,
         "wrr", ws.wrr, "wii", ws.wii, "wri", ws.wri;
+      if (MIRA_DEBUG) {
+        inform, "will fit %d OI_T3 data", numberof(idx);
+      }
     }
   }
 
@@ -578,6 +593,9 @@ func _mira_append_t3_data(master, oidata, oidb, wave, band,
         "sgn", double(sign(idx)),
         "dat", dat,
         "wgt", 1.0/(err*err);
+      if (MIRA_DEBUG) {
+        inform, "will fit %d OI_T3AMP data", numberof(idx);
+      }
     }
   }
 
@@ -601,6 +619,9 @@ func _mira_append_t3_data(master, oidata, oidb, wave, band,
         "sgn", double(sign(idx)),
         "dat", dat,
         "wgt", 1.0/(err*err);
+      if (MIRA_DEBUG) {
+        inform, "will fit %d OI_T3PHI data", numberof(idx);
+      }
     }
   }
 }
