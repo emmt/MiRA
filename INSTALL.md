@@ -7,6 +7,8 @@ There are 2 possible ways to use MiRA:
 
 * from the command line with the `ymira` command.
 
+* via the Docker images `ferreol/mira` 
+
 Provided you have installed required software (see
 [*Prerequisites*](#prerequisites) below), MiRA software is usable right after
 unpacking the archive or cloning the repository and its sub-modules (see
@@ -141,3 +143,9 @@ executable.  For instance:
     cp bin/ymira "$BINDIR"
     edit "$BINDIR/ymira"
     chmod 755 "$BINDIR/ymira"
+
+
+
+###  MiRA  via Docker
+
+MiRA is available as a Docker image that can be run on any system without any further installation. 

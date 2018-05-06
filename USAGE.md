@@ -217,6 +217,17 @@ of computation.
   less than `FTOL` between two successive iterations or when the norm of the
   gradient becomes smaller than `GTOL`.
 
+## Using MiRA from the command line via Docker
+
+MiRA is available as a Docker image that can be run without installation.  It can be run from the command line:
+
+    docker run --rm -ti -v FOLDER:/home/yorick ferreol/mira [OPTIONS] INPUT [...] OUTPUT
+
+where `FOLDER` is the local folder containing the `INPUT` files,  `[OPTIONS]` are optional settings, `INPUT [...]` are any number of OIFITS 
+input data files and `OUTPUT` is the name of the output FITS file to save the
+resulting image.  Option `-help` can be used for a short description of all
+options.
+
 
 ## Using MiRA in Yorick interpreter
 
