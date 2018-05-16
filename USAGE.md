@@ -21,7 +21,7 @@ the number of pixels along the width and height of the restored image; keyword
 the method to approximate the Fourier transform, can be `"exact"`, `"fft"` or
 `"nfft"`, default is `"exact"`):
 
-    mira_config, db, dim=50, pixelsize=0.5*MIRA_MILLIARCSECOND,
+    mira_config, db, dims=50, pixelsize=0.5*MIRA_MILLIARCSECOND,
             xform="nfft";
 
 Choose a suitable regularization method:
