@@ -7,7 +7,7 @@ It is assumed that MiRA is properly installed (see [`INSTALL.md`](INSTALL.md)).
 
 Launch Yorick and load `"mira.i"` (this should also load Yeti plugin):
 
-    include, "mira.i";
+    include, "mira2.i";
 
 Load OI-FITS data file (`db` will be your MiRA instance for this data file; in
 the data file, you may select a spectral range with keywords `eff_wave` and
