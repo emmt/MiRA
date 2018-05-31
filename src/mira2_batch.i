@@ -56,7 +56,7 @@ _MIRA_DESCR = "Image reconstruction.  INPUT and [...] are the OI-FITS data file 
   "the directory where are installed the sources and the path to the\n"+
   "Yorick interpreter.\n\n"+
   "Plugin selection:\n"+
-  "  -plugin=NAME                            Name of plugin (must be first option).";
+  "  -plugin=NAME                            Name of plugin";
 _MIRA_OPTIONS = _lst\
   ("\nData selection:",
    _lst("target", [], "NAME", OPT_STRING,
@@ -246,40 +246,50 @@ errs2caller, mira_get_yesno;
 
 func _mira_fetch_plugin(&argv, &options)
 {
-  plugin = [];
-  if (numberof(argv) >= 1) {
-    name = [];
-    if (strpart(argv(1), 1:8) == "-plugin=") {
-      name = strpart(argv(1), 9:0);
-    } else if  (strpart(argv(1), 1:9) == "--plugin=") {
-      name = strpart(argv(1), 10:0);
-    }
-    if (is_string(name)) {
-      if (strlen(name) < 1) {
-        throw, "Missing plugin name";
-      }
-      dir = get_env("MIRA_PLUGDIR");
-      if (dir == string()) {
-        dir = MIRA_HOME;
-      }
-      if (strpart(dir, 0:0) != "/") {
-        dir += "/";
-      }
-      inc = dir + "mira2_plugin_" + name + ".i";
-      include, inc, 3;
-      init = "mira_plugin_" + name + "_init";
-      if (! symbol_exists(init)) {
-        throw, ("File \"" + inc + "\" not readable of function \"" +
-                init + "\" not defined in this file.");
-      }
-      plugin = symbol_def(init)();
-      if (! is_hash(plugin) || ! h_has(plugin, "__vops__")) {
-        throw, ("Invalid plugin \"" + name + "\"");
-      }
-      options = _cat(plugin.__vops__.options, options);
-      argv = numberof(argv) > 1 ? argv(2:0) : [];
-    }
+  n = numberof(argv);
+  if (n < 1) {
+    return;
   }
+  test = strglob("--", argv);
+  imax = anyof(test) ? where(test)(1) - 1 : n;
+  if (imax < 1) {
+    return;
+  }
+  sel = strgrep("^--?plugin=(.*)", argv, sub=1, n=1);
+  test = (sel(2,) > 0);
+  if (noneof(test)) {
+    return;
+  }
+  i = where(test)(1);
+  if (i > imax) {
+    return;
+  }
+  name = strpart(argv(i), sel(,i));
+  test = array(1n, n);
+  test(i) = 0n;
+  argv = argv(where(test));
+  if (strlen(name) < 1) {
+    throw, "Missing plugin name";
+  }
+  dir = get_env("MIRA_PLUGDIR");
+  if (dir == string()) {
+    dir = MIRA_HOME;
+  }
+  if (strpart(dir, 0:0) != "/") {
+    dir += "/";
+  }
+  inc = dir + "mira2_plugin_" + name + ".i";
+  include, inc, 3;
+  init = "mira_plugin_" + name + "_init";
+  if (! symbol_exists(init)) {
+    throw, ("File \"" + inc + "\" not readable of function \"" +
+            init + "\" not defined in this file.");
+  }
+  plugin = symbol_def(init)();
+  if (! is_hash(plugin) || ! h_has(plugin, "__vops__")) {
+    throw, ("Invalid plugin \"" + name + "\"");
+  }
+  options = _cat(plugin.__vops__.options, options);
   return plugin;
 }
 
