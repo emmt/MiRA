@@ -720,7 +720,11 @@ func mira_new_plugin(nil, options=, parse_options=,
      OPTIONS: Additional command line options for the plugin.  This should be a
          list of lists.  See the documentation of `opt_init` for the syntax.
 
-     PARSE_OPTIONS: FIXME:
+     PARSE_OPTIONS: Function called by the command line version of MiRA to let
+         the pluging examines the command line options and tunes its behavior
+         accordingly.  The function is called with 2 arguments, the plugin
+         instance and a hash table with parsed options, and shall return
+         nothing.  If not specified, the default is do do nothing.
 
      TWEAK_VISIBILITIES: Function called to tweak the model complex
          visibilities computed from the pixelized image.  The function is
