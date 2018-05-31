@@ -705,7 +705,7 @@ func mira_wrap_image(arr, dat)
 }
 
 func mira_save_image(img, dest, overwrite=, bitpix=, data=,
-                     comment=, history=, extname=)
+                     comment=, history=, extname=, save_visibilities=)
 /* DOCUMENT mira_save_image, img, dest;
          or fh = mira_save_image(img, dest);
 
@@ -742,6 +742,7 @@ func mira_save_image(img, dest, overwrite=, bitpix=, data=,
     if (! is_void(data)) {
       write, format="WARNING - %s\n", "MiRA data ignored";
     }
+    eq_nocopy, img_arr, img.arr;
   } else {
     error, "unexpected image type";
   }
@@ -850,6 +851,14 @@ func mira_save_image(img, dest, overwrite=, bitpix=, data=,
   if (is_hash(plugin)) {
     subroutine = plugin.__vops__.add_extensions;
     subroutine, data, fh;
+  }
+
+  /* Maybe save mode complex visibilities. */
+  if (save_visibilities && is_hash(data)) {
+    /* Update the model complex visibilities and save them. */
+    inform, "Saving model complex visibilities...";
+    mira_update, data, img_arr;
+    mira_save_visibilities, data, fh;
   }
 
   return fh;

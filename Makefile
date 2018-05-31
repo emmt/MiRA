@@ -40,7 +40,7 @@ clean:
 distclean: clean
 	rm -f $(CONFIG)
 
-TEST_FLAGS=-pixelsize=0.1mas -fov=20mas -regul=hyperbolic -mu=3e3 -tau=5e-5 -ftol=0 -gtol=0 -maxeval=2000 -overwrite -save_visibilities -save_initial -normalization=1 -min=0 -verb=10
+TEST_FLAGS=-pixelsize=0.1mas -fov=20mas -regul=hyperbolic -mu=3e3 -tau=5e-5 -ftol=0 -gtol=0 -maxeval=1000 -overwrite -save_visibilities -save_initial -normalization=1 -min=0 -verb=10
 test:
 	$(srcdir)/bin/ymira $(TEST_FLAGS) -initial=Dirac -bootstrap=1 -recenter \
 	    $(srcdir)/data/data1.oifits test1.fits

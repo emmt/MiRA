@@ -55,7 +55,7 @@ _MIRA_DESCR = "Image reconstruction.  INPUT and [...] are the OI-FITS data file 
   "Environment variables MIRA_SRCDIR and MIRA_YORICK may be set to specify\n"+
   "the directory where are installed the sources and the path to the\n"+
   "Yorick interpreter.\n\n"+
-  "Plugin selection:\n"+
+  "Plugin:\n"+
   "  -plugin=NAME                            Name of plugin";
 _MIRA_OPTIONS = _lst\
   ("\nData selection:",
@@ -739,14 +739,7 @@ func mira_main(argv0, argv)
   /* Save the result. */
   fh = mira_save_image(img, final_filename, data=master,
                        overwrite=opt.overwrite, bitpix=opt.bitpix,
-                       comment=comment);
-  if (opt.save_visibilities) {
-    // FIXME: move this into mira_save_image
-    /* Update the model complex visibilities and save them. */
-    inform, "Saving model complex visibilities...";
-    mira_update, master, img;
-    mira_save_visibilities, master, fh;
-  }
+                       comment=comment, save_visibilities=opt.save_visibilities);
   if (opt.save_initial) {
     mira_save_image, initial, fh, bitpix=opt.bitpix,
       extname="INITIAL_IMAGE",
