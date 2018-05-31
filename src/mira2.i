@@ -160,6 +160,8 @@ include, MIRA_HOME+"mira2_solver.i", 1;
      master.target = name of target (as found in OI-FITS data)
      master.baseline_precision = precision for rounding baselines (in meters)
      master.flags = processiong options
+     master.plugin = plugin data if a plugin is present
+     master.plugin.__vops__ = plugin virtual table of operations
 
   Note that depending on the type of Fourier transformation, not all
   fields of `coords` may be present.  If `master.coords.unique` is
