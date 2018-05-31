@@ -1,5 +1,5 @@
 func mira_plugin_example_init(nil) {
-  write, "PLUGIN EXAMPLE";
+  inform, "Loading \"example\" plugin...";
   return mira_new_plugin(options=_lst("\nExample plugin options:",
                                       _lst("example_option", 0, "NUMBER", OPT_INTEGER,
                                            "Some unused value")),
