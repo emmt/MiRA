@@ -42,9 +42,9 @@ distclean: clean
 
 TEST_FLAGS=-pixelsize=0.1mas -fov=20mas -regul=hyperbolic -bootstrap=1 -recenter -mu=3e3 -tau=5e-5 -ftol=0 -gtol=0 -maxeval=2000 -overwrite -save_visibilities -save_initial -normalization=1 -min=0 -verb=10
 test:
-	$(srcdir)/bin/ymira $(TEST_FLAGS) \
+	$(srcdir)/bin/ymira $(TEST_FLAGS) -initial=Dirac \
 	    $(srcdir)/data/data1.oifits test1.fits
-	$(srcdir)/bin/ymira $(TEST_FLAGS) -view=-1 -initial=test1.fits \
+	$(srcdir)/bin/ymira $(TEST_FLAGS) -initial=test1.fits \
 	    $(srcdir)/data/data1.oifits test2.fits
 
 # Installation parameters are variables so that they can be overwritten when
@@ -244,4 +244,3 @@ distrib:
 	rm -rf "$$pkgdir"; \
 	echo "archive $$archive created"; \
 	return 0
-
