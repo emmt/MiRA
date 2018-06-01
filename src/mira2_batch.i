@@ -266,9 +266,6 @@ func _mira_fetch_plugin(&argv, &options)
     return;
   }
   name = strpart(argv(i), sel(,i));
-  test = array(1n, n);
-  test(i) = 0n;
-  argv = argv(where(test));
   if (strlen(name) < 1) {
     throw, "Missing plugin name";
   }
