@@ -35,11 +35,6 @@ must be suffixed with \fBm\fR, \fBmeter\fR, \fBmeters\fR, \fBmm\fR,
 .PP
 Some options may take several values which are separated by commas.
 .\"
-.SS Plugin
-.TP
-\fB\-plugin\fR=\fI\,name\/\fR
-Specify the name of a plugin to load.
-.\"
 .SS Data Selection
 The following options can be used to select which data to consider.  If no
 spectral range is given (either with options \fB\-effwave\fR and
@@ -257,6 +252,10 @@ Save initial image as a secondary HDU in the output file.
 Save model complex visibilities in the output file.
 .\"
 .SS Miscellaneous
+.TP
+\fB\-plugin\fR=\fI\,name\/\fR
+Specify the name of a plugin to load.  A plugin may add its own command line
+options.
 .TP
 \fB\-help\fR
 Print out this help.

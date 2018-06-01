@@ -49,15 +49,14 @@ if (! is_func(nfft_new)) {
   include, "nfft.i", 3;
 }
 _mira_batch_xform = (is_func(nfft_new) ? "nfft" : "separable");
-_MIRA_USAGE = "Usage: mira2 [OPTIONS] INPUT [...] OUTPUT\n";
-_MIRA_DESCR = "Image reconstruction.  INPUT and [...] are the OI-FITS data file and\n"+
-  "OUTPUT is the result saved into a FITS file.\n\n"+
+_MIRA_CL_USAGE = "Usage: ymira [-help] [OPTIONS] INPUT [...] OUTPUT\n";
+_MIRA_CL_BRIEF = \
+  "Run the MiRA image reconstruction algorithm.  INPUT and [...] are the\n"+
+  "OI-FITS data file and OUTPUT is the result saved into a FITS file.\n\n"+
   "Environment variables MIRA_SRCDIR and MIRA_YORICK may be set to specify\n"+
   "the directory where are installed the sources and the path to the\n"+
-  "Yorick interpreter.\n\n"+
-  "Plugin:\n"+
-  "  -plugin=NAME                            Name of plugin";
-_MIRA_OPTIONS = _lst\
+  "Yorick interpreter.";
+_MIRA_CL_OPTS = _lst\
   ("\nData selection:",
    _lst("target", [], "NAME", OPT_STRING,
         "Name of the astrophysical object"),
@@ -161,6 +160,8 @@ _MIRA_OPTIONS = _lst\
    _lst("sxtol", [], "REAL", OPT_REAL,
         "Step tolerance for the line search"),
    "\nMiscellaneous:",
+   _lst("plugin", [], "NAME", OPT_STRING,
+        "Name of plugin"),
    _lst("debug", [], [], OPT_FLAG,
         "Debug mode"),
    _lst("help", [], [], OPT_HELP,
@@ -304,10 +305,14 @@ func mira_main(argv0, argv)
   nonnegative = _mira_is_nonnegative;
   strictly_positive = _mira_is_strictly_positive;
 
-  /* Pre-parse options. */
+  /* Pre-parse options.  A plugin may insert its own options *before* the list
+     of standard options so that a new list can be created without perturbating
+     the standard one. */
   arguments = mira_concatenate_arguments(argv);
-  plugin = _mira_fetch_plugin(argv, _MIRA_OPTIONS);
-  opt = opt_parse(opt_init(_MIRA_USAGE, _MIRA_DESCR, _MIRA_OPTIONS), argv);
+  options = _MIRA_CL_OPTS; /* to start a new list of options */
+  plugin = _mira_fetch_plugin(argv, options);
+  options = opt_init(_MIRA_CL_USAGE, _MIRA_CL_BRIEF, options)
+  opt = opt_parse(options, argv);
   if (is_void(opt)) {
     /* Options "-help", or "-usage", or "-version" have been set. */
     return;
@@ -332,7 +337,7 @@ func mira_main(argv0, argv)
   }
   argc = numberof(argv);
   if (argc < 2) {
-    opt_usage, _MIRA_OPTIONS;
+    opt_usage, options;
     return;
   }
   final_filename = argv(0);
