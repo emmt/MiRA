@@ -489,7 +489,8 @@ func mira_fix_flags(flags) /* DOCUMENTED */
   /* Clear unused bits. */
   flags &= (MIRA_FIT_VISAMP | MIRA_FIT_VISPHI | MIRA_FIT_VIS2 |
             MIRA_FIT_T3AMP | MIRA_FIT_T3PHI | MIRA_CONVEX_APPROX |
-            _MIRA_PHASE_ONLY_BITS);
+            _MIRA_PHASE_ONLY_BITS |
+            MIRA_KEEP_WAVELENGTH | MIRA_KEEP_WAVELENGTH);
 
   /* Check phase-only data bits. */
   bits = (flags & _MIRA_PHASE_ONLY_BITS);
@@ -523,6 +524,8 @@ func mira_format_flags(flags) /* DOCUMENTED */
   } else if (bits == MIRA_CONVEX_LIMIT) {
     _mira_format_flags_helper2, "MIRA_CONVEX_LIMIT";
   }
+  _mira_format_flags_helper1, MIRA_KEEP_WAVELENGTH, "MIRA_KEEP_WAVELENGTH";
+  _mira_format_flags_helper1, MIRA_KEEP_BANDWIDTH, "MIRA_KEEP_BANDWIDTH";
   return is_void(str) ? "0" : str;
 }
 
