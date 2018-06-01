@@ -314,6 +314,7 @@ func mira_main(argv0, argv)
     /* Options "-help", or "-usage", or "-version" have been set. */
     return;
   }
+  h_set, opt, flags = 0n;
   if (is_hash(plugin)) {
     subroutine = plugin.__vops__.parse_options;
     subroutine, plugin, opt;
@@ -346,7 +347,7 @@ func mira_main(argv0, argv)
   }
 
   /* Data fidelity functions and data selection. */
-  flags = 0;
+  flags = opt.flags;
   if (get_yesno(opt, "visamp")) {
     flags |= MIRA_FIT_VISAMP;
   }

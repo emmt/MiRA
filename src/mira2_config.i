@@ -417,6 +417,7 @@ local MIRA_FIT_VISAMP, MIRA_FIT_VISPHI, MIRA_FIT_VIS2;
 local MIRA_FIT_T3AMP, MIRA_FIT_T3PHI;
 local MIRA_CONVEX_APPROX;
 local MIRA_HANIFF_APPROX, MIRA_CONVEX_LIMIT, MIRA_VON_MISES_APPROX;
+local MIRA_KEEP_WAVELENGTH, MIRA_KEEP_BANDWIDTH;
 local mira_fix_flags, mira_format_flags;
 func mira_flags(master)
 /* DOCUMENT mira_flags(master);
@@ -438,6 +439,8 @@ func mira_flags(master)
          MIRA_CONVEX_LIMIT ....... use limit of the convex approximation for
                                    fitting phase data;
          MIRA_VON_MISES_APPROX ... use von Mises approximation for phase data;
+         MIRA_KEEP_WAVELENGTH .... keep wavelength coordinate;
+         MIRA_KEEP_BANDWIDTH ..... keep bandwidth coordinate;
 
       The second function returns FLAGS after checking its type, bits and
       setting defaults.
@@ -463,6 +466,9 @@ MIRA_CONVEX_APPROX    = (1n << 5);
 MIRA_HANIFF_APPROX    = (1n << 6);
 MIRA_CONVEX_LIMIT     = (2n << 6);
 MIRA_VON_MISES_APPROX = (3n << 6);
+
+MIRA_KEEP_WAVELENGTH  = (1n << 8);
+MIRA_KEEP_BANDWIDTH   = (1n << 9);
 
 MIRA_FIT_VIS = (MIRA_FIT_VISAMP | MIRA_FIT_VISPHI);
 MIRA_FIT_T3  = (MIRA_FIT_T3AMP | MIRA_FIT_T3PHI);
@@ -680,30 +686,44 @@ func mira_model_reciprocal_vis2(master, idx)
   return model.reciprocal_vis2(idx);
 }
 
-func _mira_coords(master)
-{
-  coords = master.coords;
-  return h_has(coords, "unique") ? coords.unique : coords;
-}
+local mira_model_ufreq, mira_model_vfreq;
+local mira_model_u, mira_model_v;
+/* DOCUMENT mira_model_ufreq(master);
+         or mira_model_vfreq(master);
+         or mira_model_u(master);
+         or mira_model_v(master);
+         or mira_model_wave(master);
+         or mira_model_band(master);
 
-func mira_model_u(master)
-{
-  return _mira_coords(master).u;
-}
+     These functions yield the coordinates where the model complex visibilities
+     are computed.  UFREQ and VFREQ are the spatial frequencies, U and V are
+     the baseline coordinates (in meters), WAVE and BAND are the wavelength and
+     spectral bandwidth (in meters).
 
-func mira_model_v(master)
-{
-  return _mira_coords(master).v;
-}
+     Depending on the coordinate selection mode, not all coordinates may be
+     available: UFREQ and VFREQ are always available, U, V and WAVE are only
+     available if `MIRA_KEEP_WAVELENGTH` is set in the "flags" of master (which
+     can be set by `mira_config` or `mira_new`) or if spectral bandwidth
+     smearing is taken into account, BAND is only available if
+     `MIRA_KEEP_BANDWIDTH` is set in the "flags" of master or if spectral
+     bandwidth smearing is taken into account.  If the requested coordinate is
+     not available, void is returned.
 
-func mira_model_wave(master)
-{
-  return _mira_coords(master).wave;
-}
+   SEE ALSO: mira_config, mira_update, mira_cost_and_gradient, mira_cost.
+ */
+func mira_model_ufreq(master) { return _mira_model_coords(master).ufreq; }
+func mira_model_vfreq(master) { return _mira_model_coords(master).vfreq; }
+func mira_model_u(master)     { return _mira_model_coords(master).u;     }
+func mira_model_v(master)     { return _mira_model_coords(master).v;     }
+func mira_model_wave(master)  { return _mira_model_coords(master).wave;  }
+func mira_model_band(master)  { return _mira_model_coords(master).band;  }
 
-func mira_model_band(master)
+func _mira_model_coords(master)
 {
-  return _mira_coords(master).band;
+  if (master.stage < 3) {
+    mira_update, master;
+  }
+  return master.coords;
 }
 
 /*---------------------------------------------------------------------------*/
