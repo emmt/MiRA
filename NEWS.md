@@ -1,6 +1,9 @@
 # History of MiRA
 
-## Version 2.0.0b (2018-05-04-12)
+## Version 2.0.0c (2018-06-01)
+* Plugins can be loaded by MiRA to modify the model of the complex visbilities.
+
+## Version 2.0.0b (2018-05-04)
 * Can save model complex visibilities (options `--save_visibilities`).
 * Add soft-thresholding (skip thresholding if no pixels above soft-threshold
   level).

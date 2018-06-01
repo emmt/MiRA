@@ -58,6 +58,10 @@ func mira_cost(master, x)
 
 func mira_cost_and_gradient(master, x, &grd)
 {
+  if (master.tweaking_gradient) {
+    throw, "mira_cost_and_gradient cannot be called while tweaking gradient";
+  }
+
   /* Update model and integrate cost and gradient with respect to the complex
      visibilities. */
   mira_update, master, x;
@@ -100,6 +104,12 @@ func mira_cost_and_gradient(master, x, &grd)
   }
   if (! is_void(grd_im)) {
     grd(2,) = grd_im;
+  }
+  plugin = mira_plugin(master);
+  if (is_hash(plugin)) {
+    h_set, master, tweaking_gradient=1n;
+    grd = plugin.__vops__.tweak_gradient(master, grd);
+    h_set, master, tweaking_gradient=0n;
   }
   grd = master.xform(grd, 1);
   return cost;

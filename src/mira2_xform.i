@@ -72,6 +72,7 @@ func _mira_define_xform(master)
   smearingfactor = master.smearingfactor;
   smearingfunction = master.smearingfunction;
 
+
   /* Figure out whether or not to account for spectral bandwidth smearing. */
   smearing = (smearingfunction != "none" && smearingfactor > 0);
   if (smearing && (xform == "nfft" || xform == "separable")) {
@@ -88,8 +89,14 @@ func _mira_define_xform(master)
   }
 
   /* Select reduced list of coordinates. */
+  flags = master.flags & (MIRA_KEEP_WAVELENGTH|MIRA_KEEP_BANDWIDTH);
   if (smearing) {
+    flags |= (MIRA_KEEP_WAVELENGTH|MIRA_KEEP_BANDWIDTH);
+  }
+  if (flags == (MIRA_KEEP_WAVELENGTH|MIRA_KEEP_BANDWIDTH)) {
     mode = 3;
+  } else if (flags == MIRA_KEEP_WAVELENGTH) {
+    mode = 2;
   } else {
     mode = 1;
   }
@@ -124,7 +131,20 @@ func _mira_define_xform(master)
     if (! vector_double(ufreq)) error, "UFREQ must be a vector of reals";
     if (! vector_double(vfreq)) error, "VFREQ must be a vector of reals";
     if (numberof(vfreq) != numberof(ufreq)) {
-      error, "UFREQ and VFREQ must have the same number of elements";
+      error, "UFREQ and VFREQ must have the same size";
+    }
+  } else if (mode == 2) {
+    eq_nocopy, u,    master.coords.u;
+    eq_nocopy, v,    master.coords.v;
+    eq_nocopy, wave, master.coords.wave;
+    if (! vector_double(u)) error, "U must be a vector of reals";
+    if (! vector_double(v)) error, "V must be a vector of reals";
+    if (! vector_double(wave) || min(wave) <= 0) {
+      error, "WAVE must be a vector of strictly positive reals";
+    }
+    m = numberof(u);
+    if (numberof(v) != m || numberof(wave) != m) {
+      error, "U, V and WAVE must have the same size";
     }
   } else {
     eq_nocopy, u,    master.coords.u;
@@ -141,8 +161,13 @@ func _mira_define_xform(master)
     }
     m = numberof(u);
     if (numberof(v) != m || numberof(wave) != m || numberof(band) != m) {
-      error, "U, V, WAVE and BAND must have the same number of elements";
+      error, "U, V, WAVE and BAND must have the same size";
     }
+  }
+  if (mode > 1) {
+    ufreq = u/wave;
+    vfreq = v/wave;
+    h_set, master.coords, ufreq=ufreq, vfreq=vfreq;
   }
 
   /* Convert smearing function name into a function. */
@@ -477,7 +502,7 @@ func _mira_reduce_coordinates(master, mode, debug=)
   coords = h_new(u=u, v=v, wave=wave, band=band);
   if (mode < 3) {
     /* Uniquely sort a restricted list of coordinates (only the ones which have
-     an influence on the computation of the model complex visibilities). */
+       an influence on the computation of the model complex visibilities). */
     local subrev;
     unique = coords;
     idx = indgen(numberof(sel));

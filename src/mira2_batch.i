@@ -49,125 +49,125 @@ if (! is_func(nfft_new)) {
   include, "nfft.i", 3;
 }
 _mira_batch_xform = (is_func(nfft_new) ? "nfft" : "separable");
-
-_MIRA_OPTIONS = opt_init\
-  ("Usage: mira2 [OPTIONS] INPUT [...] OUTPUT\n",
-   "Image reconstruction.  INPUT and [...] are the OI-FITS data file and\n"+
-   "OUTPUT is the result saved into a FITS file.\n\n"+
-   "Environment variables MIRA_SRCDIR and MIRA_YORICK may be set to specify\n"+
-   "the directory where are installed the sources and the path to the\n"+
-   "Yorick interpreter.",
-   _lst\
-   (
-    "\nData selection:",
-    _lst("target", [], "NAME", OPT_STRING,
-         "Name of the astrophysical object"),
-    _lst("effwave", [], "LENGTH", OPT_STRING,
-         "Effective wavelength, e.g. 1.6micron"),
-    _lst("effband", [], "LENGTH", OPT_STRING,
-         "Effective bandwidth, e.g. 200nm"),
-    _lst("wavemin", [], "LENGTH", OPT_STRING,
-         "Minimum wavelength, e.g. 1.5µm"),
-    _lst("wavemax", [], "LENGTH", OPT_STRING,
-         "Maximum wavelength, e.g. 1.7µm"),
-    "\nWhich data to fit and how:",
-    _lst("visamp", "yes", "yes|no", OPT_STRING,
-         "Fit complex visibility amplitudes?"),
-    _lst("visphi", "yes", "yes|no", OPT_STRING,
-         "Fit complex visibility phases?"),
-    _lst("vis2", "yes", "yes|no", OPT_STRING,
-         "Fit powerspectrum data?"),
-    _lst("t3amp", "yes", "yes|no", OPT_STRING,
-         "Fit bispectrum amplitudes?"),
-    _lst("t3phi", "yes", "yes|no", OPT_STRING,
-         "Fit bispectrum phases?"),
-    _lst("convexcost", "yes", "yes|no", OPT_STRING,
-         "Use convex approximation for fitting complex data?"),
-    _lst("phasecost", "vonmises", "vonmises|haniff|convexlimit", OPT_STRING,
-         "Co-log-likelihood approximation to use for phase data"),
-    "\nImage parameters and direct model:",
-    _lst("pixelsize", [], "ANGLE", OPT_STRING,
-         "Angular size of pixels, e.g. 0.1mas"),
-    _lst("fov", [], "ANGLE", OPT_STRING,
-         "Angular size of the field of view, e.g. 20mas"),
-    _lst("imagesize", [], "DIM|DIM1xDIM2", OPT_STRING,
-         "Number of pixels per side of the image"),
-    _lst("normalization", [], "VALUE", OPT_REAL,
-         "Flux normalization (sum of pixels = VALUE)"),
-    _lst("min", [], "LOWER", OPT_REAL,
-         "Lower bound for the pixel values"),
-    _lst("max", [], "UPPER", OPT_REAL,
-         "Upper bound for the pixel values"),
-    _lst("xform", _mira_batch_xform, "nfft|separable|nonseparable", OPT_STRING,
-         "Method to compute the Fourier transform"),
-    _lst("smearingfunction", "none", "none|sinc|gauss", OPT_STRING,
-         "Method to model the effects of the spectral bandwidth smearing"),
-    _lst("smearingfactor", 1.0, "VALUE", OPT_REAL,
-         "Factor to scale the effects of the spectral bandwidth smearing"),
-    _lst("nthreads", 1, "NUMBER", OPT_INTEGER,
-         "Number of threads for the fast Fourier transform"),
-    "\nRegularization settings:",
-    _lst("regul", [], "NAME", OPT_STRING,
-         "Name of regularization method (-regul=help for more information)"),
-    _lst("mu", 0.0, "VALUE(S)", OPT_REAL_LIST,
-         "Global regularization weight"),
-    _lst("tau", 1E-6, "VALUE", OPT_REAL,
-         "Edge preserving threshold"),
-    _lst("eta", 1.0, "VALUE(S)", OPT_REAL_LIST,
-         "Gradient scales along dimensions"),
-    _lst("gamma", [], "FWHM", OPT_STRING,
-         "A priori full half width at half maximum, e.g. 15mas"),
-    "\nInitial image:",
-    _lst("initial", [], "NAME", OPT_STRING,
-         "FITS file or method for initial image"),
-    _lst("seed", [], "VALUE", OPT_REAL,
-         "Seed for the random generator"),
-    "\nOutput file:",
-    _lst("save_visibilities", [], [], OPT_FLAG,
-         "Save model complex visibilities"),
-    _lst("overwrite", [], [], OPT_FLAG,
-         "Overwrite output if it exists"),
-    _lst("bitpix", -32, "BITPIX", OPT_INTEGER,
-         "Bits per pixel"),
-    _lst("save_initial", [], [], OPT_FLAG,
-         "Save initial image as a secondary HDU in the result"),
-    "\nReconstruction strategy:",
-    _lst("bootstrap", [], "COUNT", OPT_INTEGER,
-         "Number of bootstrapping iterations"),
-    _lst("recenter", [], [], OPT_FLAG,
-         "Recenter result of bootstrapping iterations"),
-    _lst("threshold", [], "FRACTION", OPT_REAL,
-         "Level for soft-thresholding input image(s)"),
-    "\nMessages:",
-    _lst("quiet", [], [], OPT_FLAG,
-         "Suppress most messages"),
-    _lst("verb", [], "COUNT", OPT_INTEGER,
-         "Verbose level"),
-    "\nOptimizer Settings:",
-    _lst("mem", [], "COUNT", OPT_INTEGER,
-         "Number of previous steps to memorize in VMLMB"),
-    _lst("ftol", [], "REAL", OPT_REAL,
-         "Function tolerance for the global convergence"),
-    _lst("gtol", [], "REAL", OPT_REAL,
-         "Gradient tolerance for the global convergence"),
-    _lst("maxiter", [], "COUNT", OPT_INTEGER,
-         "Maximum number of iterations"),
-    _lst("maxeval", [], "COUNT", OPT_INTEGER,
-         "Maximum number of evaluations of the objective function"),
-    "\nLine search:",
-    _lst("sftol", [], "REAL", OPT_REAL,
-         "Function tolerance for the line search"),
-    _lst("sgtol", [], "REAL", OPT_REAL,
-         "Gradient tolerance for the line search"),
-    _lst("sxtol", [], "REAL", OPT_REAL,
-         "Step tolerance for the line search"),
-    "\nMiscellaneous:",
-    _lst("debug", [], [], OPT_FLAG,
-         "Debug mode"),
-    _lst("help", [], [], OPT_HELP,
-         "Print out this help"),
-    _lst("version", MIRA_VERSION, [], OPT_VERSION,
-         "Print out version number")));
+_MIRA_CL_USAGE = "Usage: ymira [-help] [OPTIONS] INPUT [...] OUTPUT\n";
+_MIRA_CL_BRIEF = \
+  "Run the MiRA image reconstruction algorithm.  INPUT and [...] are the\n"+
+  "OI-FITS data file and OUTPUT is the result saved into a FITS file.\n\n"+
+  "Environment variables MIRA_SRCDIR and MIRA_YORICK may be set to specify\n"+
+  "the directory where are installed the sources and the path to the\n"+
+  "Yorick interpreter.";
+_MIRA_CL_OPTS = _lst\
+  ("\nData selection:",
+   _lst("target", [], "NAME", OPT_STRING,
+        "Name of the astrophysical object"),
+   _lst("effwave", [], "LENGTH", OPT_STRING,
+        "Effective wavelength, e.g. 1.6micron"),
+   _lst("effband", [], "LENGTH", OPT_STRING,
+        "Effective bandwidth, e.g. 200nm"),
+   _lst("wavemin", [], "LENGTH", OPT_STRING,
+        "Minimum wavelength, e.g. 1.5µm"),
+   _lst("wavemax", [], "LENGTH", OPT_STRING,
+        "Maximum wavelength, e.g. 1.7µm"),
+   "\nWhich data to fit and how:",
+   _lst("visamp", "yes", "yes|no", OPT_STRING,
+        "Fit complex visibility amplitudes?"),
+   _lst("visphi", "yes", "yes|no", OPT_STRING,
+        "Fit complex visibility phases?"),
+   _lst("vis2", "yes", "yes|no", OPT_STRING,
+        "Fit powerspectrum data?"),
+   _lst("t3amp", "yes", "yes|no", OPT_STRING,
+        "Fit bispectrum amplitudes?"),
+   _lst("t3phi", "yes", "yes|no", OPT_STRING,
+        "Fit bispectrum phases?"),
+   _lst("convexcost", "yes", "yes|no", OPT_STRING,
+        "Use convex approximation for fitting complex data?"),
+   _lst("phasecost", "vonmises", "vonmises|haniff|convexlimit", OPT_STRING,
+        "Co-log-likelihood approximation to use for phase data"),
+   "\nImage parameters and direct model:",
+   _lst("pixelsize", [], "ANGLE", OPT_STRING,
+        "Angular size of pixels, e.g. 0.1mas"),
+   _lst("fov", [], "ANGLE", OPT_STRING,
+        "Angular size of the field of view, e.g. 20mas"),
+   _lst("imagesize", [], "DIM|DIM1xDIM2", OPT_STRING,
+        "Number of pixels per side of the image"),
+   _lst("normalization", [], "VALUE", OPT_REAL,
+        "Flux normalization (sum of pixels = VALUE)"),
+   _lst("min", [], "LOWER", OPT_REAL,
+        "Lower bound for the pixel values"),
+   _lst("max", [], "UPPER", OPT_REAL,
+        "Upper bound for the pixel values"),
+   _lst("xform", _mira_batch_xform, "nfft|separable|nonseparable", OPT_STRING,
+        "Method to compute the Fourier transform"),
+   _lst("smearingfunction", "none", "none|sinc|gauss", OPT_STRING,
+        "Method to model the effects of the spectral bandwidth smearing"),
+   _lst("smearingfactor", 1.0, "VALUE", OPT_REAL,
+        "Factor to scale the effects of the spectral bandwidth smearing"),
+   _lst("nthreads", 1, "NUMBER", OPT_INTEGER,
+        "Number of threads for the fast Fourier transform"),
+   "\nRegularization settings:",
+   _lst("regul", [], "NAME", OPT_STRING,
+        "Name of regularization method (-regul=help for more information)"),
+   _lst("mu", 0.0, "VALUE(S)", OPT_REAL_LIST,
+        "Global regularization weight"),
+   _lst("tau", 1E-6, "VALUE", OPT_REAL,
+        "Edge preserving threshold"),
+   _lst("eta", 1.0, "VALUE(S)", OPT_REAL_LIST,
+        "Gradient scales along dimensions"),
+   _lst("gamma", [], "FWHM", OPT_STRING,
+        "A priori full half width at half maximum, e.g. 15mas"),
+   "\nInitial image:",
+   _lst("initial", [], "NAME", OPT_STRING,
+        "FITS file or method for initial image"),
+   _lst("seed", [], "VALUE", OPT_REAL,
+        "Seed for the random generator"),
+   "\nOutput file:",
+   _lst("save_visibilities", [], [], OPT_FLAG,
+        "Save model complex visibilities"),
+   _lst("overwrite", [], [], OPT_FLAG,
+        "Overwrite output if it exists"),
+   _lst("bitpix", -32, "BITPIX", OPT_INTEGER,
+        "Bits per pixel"),
+   _lst("save_initial", [], [], OPT_FLAG,
+        "Save initial image as a secondary HDU in the result"),
+   "\nReconstruction strategy:",
+   _lst("bootstrap", [], "COUNT", OPT_INTEGER,
+        "Number of bootstrapping iterations"),
+   _lst("recenter", [], [], OPT_FLAG,
+        "Recenter result of bootstrapping iterations"),
+   _lst("threshold", [], "FRACTION", OPT_REAL,
+        "Level for soft-thresholding input image(s)"),
+   "\nMessages:",
+   _lst("quiet", [], [], OPT_FLAG,
+        "Suppress most messages"),
+   _lst("verb", [], "COUNT", OPT_INTEGER,
+        "Verbose level"),
+   "\nOptimizer Settings:",
+   _lst("mem", [], "COUNT", OPT_INTEGER,
+        "Number of previous steps to memorize in VMLMB"),
+   _lst("ftol", [], "REAL", OPT_REAL,
+        "Function tolerance for the global convergence"),
+   _lst("gtol", [], "REAL", OPT_REAL,
+        "Gradient tolerance for the global convergence"),
+   _lst("maxiter", [], "COUNT", OPT_INTEGER,
+        "Maximum number of iterations"),
+   _lst("maxeval", [], "COUNT", OPT_INTEGER,
+        "Maximum number of evaluations of the objective function"),
+   "\nLine search:",
+   _lst("sftol", [], "REAL", OPT_REAL,
+        "Function tolerance for the line search"),
+   _lst("sgtol", [], "REAL", OPT_REAL,
+        "Gradient tolerance for the line search"),
+   _lst("sxtol", [], "REAL", OPT_REAL,
+        "Step tolerance for the line search"),
+   "\nMiscellaneous:",
+   _lst("plugin", [], "NAME", OPT_STRING,
+        "Name of plugin"),
+   _lst("debug", [], [], OPT_FLAG,
+        "Debug mode"),
+   _lst("help", [], [], OPT_HELP,
+        "Print out this help"),
+   _lst("version", MIRA_VERSION, [], OPT_VERSION,
+        "Print out version number"));
 
 func _mira_is_nonnegative(x) { return x >= 0; }
 func _mira_is_strictly_positive(x) { return x > 0; }
@@ -245,6 +245,63 @@ func mira_get_yesno(opt, key)
 }
 errs2caller, mira_get_yesno;
 
+func _mira_fetch_plugin(&argv, &options)
+{
+  n = numberof(argv);
+  if (n < 1) {
+    return;
+  }
+  test = strglob("--", argv);
+  imax = anyof(test) ? where(test)(1) - 1 : n;
+  if (imax < 1) {
+    return;
+  }
+  sel = strgrep("^--?plugin=(.*)", argv, sub=1, n=1);
+  test = (sel(2,) > 0);
+  if (noneof(test)) {
+    return;
+  }
+  i = where(test)(1);
+  if (i > imax) {
+    return;
+  }
+  name = strpart(argv(i), sel(,i));
+  if (strlen(name) < 1) {
+    throw, "Missing plugin name";
+  }
+  if (strpart(name, -1:0) == ".i") {
+    file = name;
+    sel = strgrep("^(|.*/)mira2_plugin_(.+)\.i$", file, sub=2, n=1);
+    name = strpart(file, sel);
+    if (strlen(name) < 1) {
+      throw, "Plugin file name must be \"SOMEDIR/mira2_plugin_SOMENAME.i\"";
+    }
+    if (strglob("*/*", file) && ! strglob("[~/]*", file)) {
+      /* Assume file path is relative. */
+      file = cd(".") + file;
+    }
+  } else {
+    file = "mira2_plugin_" + name + ".i";
+    tmp = MIRA_HOME + file;
+    write, tmp;
+    if (open(tmp, "r", 1n)) {
+      eq_nocopy, file, tmp;
+    }
+  }
+  include, file, 3;
+  init = "mira_plugin_" + name + "_init";
+  if (! symbol_exists(init)) {
+    throw, ("File \"" + file + "\" not readable/found or function \"" +
+            init + "\" not defined in this file.");
+  }
+  plugin = symbol_def(init)();
+  if (! is_hash(plugin) || ! h_has(plugin, "__vops__")) {
+    throw, ("Invalid initialization of plugin \"" + name + "\"");
+  }
+  options = _cat(plugin.__vops__.options, options);
+  return plugin;
+}
+
 func mira_main(argv0, argv)
 {
   /* Constants and shortcuts. */
@@ -256,12 +313,22 @@ func mira_main(argv0, argv)
   nonnegative = _mira_is_nonnegative;
   strictly_positive = _mira_is_strictly_positive;
 
-  /* Pre-parse options. */
+  /* Pre-parse options.  A plugin may insert its own options *before* the list
+     of standard options so that a new list can be created without perturbating
+     the standard one. */
   arguments = mira_concatenate_arguments(argv);
-  opt = opt_parse(_MIRA_OPTIONS, argv);
+  options = _MIRA_CL_OPTS; /* to start a new list of options */
+  plugin = _mira_fetch_plugin(argv, options);
+  options = opt_init(_MIRA_CL_USAGE, _MIRA_CL_BRIEF, options)
+  opt = opt_parse(options, argv);
   if (is_void(opt)) {
     /* Options "-help", or "-usage", or "-version" have been set. */
     return;
+  }
+  h_set, opt, flags = 0n;
+  if (is_hash(plugin)) {
+    subroutine = plugin.__vops__.parse_options;
+    subroutine, plugin, opt;
   }
   if (opt.regul == "help") {
     write, format="\n%s\n", "Available regularizations:";
@@ -279,7 +346,7 @@ func mira_main(argv0, argv)
   }
   argc = numberof(argv);
   if (argc < 2) {
-    opt_usage, _MIRA_OPTIONS;
+    opt_usage, options;
     return;
   }
   final_filename = argv(0);
@@ -291,7 +358,7 @@ func mira_main(argv0, argv)
   }
 
   /* Data fidelity functions and data selection. */
-  flags = 0;
+  flags = opt.flags;
   if (get_yesno(opt, "visamp")) {
     flags |= MIRA_FIT_VISAMP;
   }
@@ -604,6 +671,7 @@ func mira_main(argv0, argv)
 
   /* Read input data. */
   master = mira_new(argv(1:-1),
+                    plugin = plugin,
                     target = opt.target,
                     wavemin = wavemin,
                     wavemax = wavemax,
@@ -685,13 +753,7 @@ func mira_main(argv0, argv)
   /* Save the result. */
   fh = mira_save_image(img, final_filename, data=master,
                        overwrite=opt.overwrite, bitpix=opt.bitpix,
-                       comment=comment);
-  if (opt.save_visibilities) {
-    /* Update the model complex visibilities and save them. */
-    inform, "Saving model complex visibilities...";
-    mira_update, master, img;
-    mira_save_visibilities, master, fh;
-  }
+                       comment=comment, save_visibilities=opt.save_visibilities);
   if (opt.save_initial) {
     mira_save_image, initial, fh, bitpix=opt.bitpix,
       extname="INITIAL_IMAGE",

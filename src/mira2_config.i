@@ -49,7 +49,7 @@ if (! is_scalar(MIRA_HOME) || ! is_string(MIRA_HOME)) {
  */
 func mira_new(.., target=, wavemin=, wavemax=, flags=, pixelsize=, dims=,
               xform=, nthreads=, smearingfunction=, smearingfactor=,
-              atol=, rtol=, quiet=,
+              atol=, rtol=, quiet=, plugin=,
               noise_method=, noise_level=, baseline_precision=)
 /* DOCUMENT obj = mira_new(oidata, ..., target=...);
 
@@ -98,7 +98,8 @@ func mira_new(.., target=, wavemin=, wavemax=, flags=, pixelsize=, dims=,
   /* Apply configuration options. */
   mira_config, master, wavemin=wavemin, wavemax=wavemax, flags=flags,
     pixelsize=pixelsize, dims=dims, xform=xform, nthreads=nthreads,
-    smearingfunction=smearingfunction, smearingfactor=smearingfactor;
+    smearingfunction=smearingfunction, smearingfactor=smearingfactor,
+    plugin=plugin;
 
   /* Load OI-FITS data file(s). */
   while (more_args()) {
@@ -114,7 +115,8 @@ func mira_new(.., target=, wavemin=, wavemax=, flags=, pixelsize=, dims=,
 /* CONFIGURING AN INSTANCE */
 
 func mira_config(master, wavemin=, wavemax=, dims=, pixelsize=, xform=,
-                 nthreads=, flags=, smearingfunction=, smearingfactor=)
+                 nthreads=, flags=, smearingfunction=, smearingfactor=,
+                 plugin=)
 /* DOCUMENT mira_config, master, key=val, ...;
 
      Configure options in MiRA instance `master`.  All options are passed as
@@ -144,8 +146,11 @@ func mira_config(master, wavemin=, wavemax=, dims=, pixelsize=, xform=,
      a scalar, it specifies the width and height of the image; otherwise,
      `dims` can be `[width,height]` or `[2,width,height]`.
 
+     Keyword `plugin` specifies an optional plugin.  The value is a hash table
+     initialized by `mira_new_plugin`.
 
-   SEE ALSO mira_new.
+
+   SEE ALSO mira_new, mira_new_plugin.
 */
 {
   /* Check all options. */
@@ -212,6 +217,10 @@ func mira_config(master, wavemin=, wavemax=, dims=, pixelsize=, xform=,
 
   /* Apply changes if any. */
   changes = 0;
+  if (is_hash(plugin)) {
+    // FIXME: Find means to unload plugin.
+    h_set, master, plugin = plugin;
+  }
   if (master.wavemin != wavemin || master.wavemax != wavemax) {
     h_set, master, model = h_new(), stage = min(master.stage, 0),
       wavemin = wavemin, wavemax = wavemax;
@@ -408,6 +417,7 @@ local MIRA_FIT_VISAMP, MIRA_FIT_VISPHI, MIRA_FIT_VIS2;
 local MIRA_FIT_T3AMP, MIRA_FIT_T3PHI;
 local MIRA_CONVEX_APPROX;
 local MIRA_HANIFF_APPROX, MIRA_CONVEX_LIMIT, MIRA_VON_MISES_APPROX;
+local MIRA_KEEP_WAVELENGTH, MIRA_KEEP_BANDWIDTH;
 local mira_fix_flags, mira_format_flags;
 func mira_flags(master)
 /* DOCUMENT mira_flags(master);
@@ -429,6 +439,8 @@ func mira_flags(master)
          MIRA_CONVEX_LIMIT ....... use limit of the convex approximation for
                                    fitting phase data;
          MIRA_VON_MISES_APPROX ... use von Mises approximation for phase data;
+         MIRA_KEEP_WAVELENGTH .... keep wavelength coordinate;
+         MIRA_KEEP_BANDWIDTH ..... keep bandwidth coordinate;
 
       The second function returns FLAGS after checking its type, bits and
       setting defaults.
@@ -455,6 +467,9 @@ MIRA_HANIFF_APPROX    = (1n << 6);
 MIRA_CONVEX_LIMIT     = (2n << 6);
 MIRA_VON_MISES_APPROX = (3n << 6);
 
+MIRA_KEEP_WAVELENGTH  = (1n << 8);
+MIRA_KEEP_BANDWIDTH   = (1n << 9);
+
 MIRA_FIT_VIS = (MIRA_FIT_VISAMP | MIRA_FIT_VISPHI);
 MIRA_FIT_T3  = (MIRA_FIT_T3AMP | MIRA_FIT_T3PHI);
 
@@ -474,7 +489,8 @@ func mira_fix_flags(flags) /* DOCUMENTED */
   /* Clear unused bits. */
   flags &= (MIRA_FIT_VISAMP | MIRA_FIT_VISPHI | MIRA_FIT_VIS2 |
             MIRA_FIT_T3AMP | MIRA_FIT_T3PHI | MIRA_CONVEX_APPROX |
-            _MIRA_PHASE_ONLY_BITS);
+            _MIRA_PHASE_ONLY_BITS |
+            MIRA_KEEP_WAVELENGTH | MIRA_KEEP_WAVELENGTH);
 
   /* Check phase-only data bits. */
   bits = (flags & _MIRA_PHASE_ONLY_BITS);
@@ -508,6 +524,8 @@ func mira_format_flags(flags) /* DOCUMENTED */
   } else if (bits == MIRA_CONVEX_LIMIT) {
     _mira_format_flags_helper2, "MIRA_CONVEX_LIMIT";
   }
+  _mira_format_flags_helper1, MIRA_KEEP_WAVELENGTH, "MIRA_KEEP_WAVELENGTH";
+  _mira_format_flags_helper1, MIRA_KEEP_BANDWIDTH, "MIRA_KEEP_BANDWIDTH";
   return is_void(str) ? "0" : str;
 }
 
@@ -549,6 +567,9 @@ func mira_update(master, img, force=)
              mira_model_re, mira_model_im, mira_model_amp, mira_model_phi.
  */
 {
+  if (master.tweaking_visibilities) {
+    throw, "mira_update cannot be called while tweaking visibilities";
+  }
   if (force) {
     h_set, master, stage = 0;
   }
@@ -562,6 +583,12 @@ func mira_update(master, img, force=)
     /* Compute complex visibilities (derived quantities will be computed on
        demand). */
     vis = master.xform(img);
+    plugin = mira_plugin(master);
+    if (is_hash(plugin)) {
+      h_set, master, tweaking_visibilities=1n;
+      vis = plugin.__vops__.tweak_visibilities(master, vis);
+      h_set, master, tweaking_visibilities=0n;
+    }
     h_set, master.model, img=img, vis=vis, re=[], im=[],
       vis2=[], amp=[], phi=[], reciprocal_amp=[], reciprocal_vis2=[];
   }
@@ -662,4 +689,128 @@ func mira_model_reciprocal_vis2(master, idx)
   return model.reciprocal_vis2(idx);
 }
 
+local mira_model_ufreq, mira_model_vfreq;
+local mira_model_u, mira_model_v;
+/* DOCUMENT mira_model_ufreq(master);
+         or mira_model_vfreq(master);
+         or mira_model_u(master);
+         or mira_model_v(master);
+         or mira_model_wave(master);
+         or mira_model_band(master);
+
+     These functions yield the coordinates where the model complex visibilities
+     are computed.  UFREQ and VFREQ are the spatial frequencies, U and V are
+     the baseline coordinates (in meters), WAVE and BAND are the wavelength and
+     spectral bandwidth (in meters).
+
+     Depending on the coordinate selection mode, not all coordinates may be
+     available: UFREQ and VFREQ are always available, U, V and WAVE are only
+     available if `MIRA_KEEP_WAVELENGTH` is set in the "flags" of master (which
+     can be set by `mira_config` or `mira_new`) or if spectral bandwidth
+     smearing is taken into account, BAND is only available if
+     `MIRA_KEEP_BANDWIDTH` is set in the "flags" of master or if spectral
+     bandwidth smearing is taken into account.  If the requested coordinate is
+     not available, void is returned.
+
+   SEE ALSO: mira_config, mira_update, mira_cost_and_gradient, mira_cost.
+ */
+func mira_model_ufreq(master) { return _mira_model_coords(master).ufreq; }
+func mira_model_vfreq(master) { return _mira_model_coords(master).vfreq; }
+func mira_model_u(master)     { return _mira_model_coords(master).u;     }
+func mira_model_v(master)     { return _mira_model_coords(master).v;     }
+func mira_model_wave(master)  { return _mira_model_coords(master).wave;  }
+func mira_model_band(master)  { return _mira_model_coords(master).band;  }
+
+func _mira_model_coords(master)
+{
+  if (master.stage < 3) {
+    mira_update, master;
+  }
+  return master.coords;
+}
+
 /*---------------------------------------------------------------------------*/
+
+func mira_new_plugin(nil, options=, parse_options=,
+                     tweak_visibilities=, tweak_gradient=,
+                     add_keywords=, add_extensions=)
+/* DOCUMENT plugin = mira_new_plugin(...)
+
+     Create a new MiRA plugin.  All settings are passed by keywords.
+
+   KEYWORDS
+
+     OPTIONS: Additional command line options for the plugin.  This should be a
+         list of lists.  See the documentation of `opt_init` for the syntax.
+
+     PARSE_OPTIONS: Function called by the command line version of MiRA to let
+         the pluging examines the command line options and tunes its behavior
+         accordingly.  The function is called with 2 arguments, the plugin
+         instance and a hash table with parsed options, and shall return
+         nothing.  If not specified, the default is do do nothing.
+
+     TWEAK_VISIBILITIES: Function called to tweak the model complex
+         visibilities computed from the pixelized image.  The function is
+         called with 2 arguments `master`, the MiRA instance, and `vis`, the
+         complex visibilities computed from the image, and shall return the
+         modified complex visbilities.  If not specified, the default is do do
+         nothing.
+
+     TWEAK_GRADIENT: Function called to tweak the gradient of the objective
+         function with respect to the complex visibilities computed from the
+         model complex visibilities.  The function is called with 2 arguments
+         `master`, the MiRA instance, and `grd`, the gradient of the objective
+         function, and shall return the modified complex gradient.  If not
+         specified, the default is do do nothing.
+
+     ADD_KEYWORDS: Function called to add keywords in the primary HDU of the
+         output FITS file.  The function is called with 2 arguments `master`,
+         the MiRA instance, and `fh` a FITS handle.  If not specified, the
+         default is do do nothing.
+
+     ADD_EXTENSIONS: Function called to add extension(s) to the output FITS
+         file.  The function is called with 2 arguments `master`, the MiRA
+         instance, and `fh` a FITS handle.  If not specified, the default is do
+         do nothing.
+
+   SEE ALSO: opt_init, mira_config.
+ */
+{
+  if (! is_void(nil)) {
+    throw, "All settings are passed by keywords";
+  }
+  vops = h_new();
+  if (is_list(options)) {
+    h_set, vops, options=options;
+  } else if (! is_void(options)) {
+    throw, "keyword `options` must be set with a list of lists";
+  }
+  h_set, vops,
+    parse_options = (is_void(parse_options) ?
+                       symlink_to_name("_mira_plugin_parse_options") :
+                       parse_options),
+    tweak_visibilities = (is_void(tweak_visibilities) ?
+                          symlink_to_name("_mira_plugin_tweak_visibilities") :
+                          tweak_visibilities),
+    tweak_gradient = (is_void(tweak_gradient) ?
+                      symlink_to_name("_mira_plugin_tweak_gradient") :
+                      tweak_gradient),
+    add_keywords = (is_void(add_keywords) ?
+                    symlink_to_name("_mira_plugin_add_keywords") :
+                    add_keywords),
+    add_extensions = (is_void(add_extensions) ?
+                      symlink_to_name("_mira_plugin_add_extensions") :
+                      add_extensions);
+  return h_new(__vops__=vops);
+}
+
+func _mira_plugin_parse_options(plugin, opt) { /* do nothing */ }
+func _mira_plugin_tweak_visibilities(master, vis) { return vis; }
+func _mira_plugin_tweak_gradient(master, grd) { return grd; }
+func _mira_plugin_add_extensions(master, fh) { /* do nothing */ }
+func _mira_plugin_add_keywords(master, fh) { /* do nothing */ }
+
+func mira_plugin(master)
+{
+  return master.plugin;
+}

@@ -705,14 +705,14 @@ func mira_wrap_image(arr, dat)
 }
 
 func mira_save_image(img, dest, overwrite=, bitpix=, data=,
-                     comment=, history=, extname=)
+                     comment=, history=, extname=, save_visibilities=)
 /* DOCUMENT mira_save_image, img, dest;
          or fh = mira_save_image(img, dest);
 
      Save image IMG in FITS file DEST (can be a file name or a FITS handle).
      Image IMG can be a structured object as returned by `mira_read_image` or
      `mira_wrap_image` or an array of pixel values.  In the latter case,
-     keyword DATA can be set with the MiRA data instance form which the image
+     keyword DATA can be set with the MiRA data instance from which the image
      has been reconstructed (see `mira_wrap_image`).  When called as a
      function, the FITS handle is returned and can be used, for instance, to
      append more FITS extensions.
@@ -742,6 +742,7 @@ func mira_save_image(img, dest, overwrite=, bitpix=, data=,
     if (! is_void(data)) {
       write, format="WARNING - %s\n", "MiRA data ignored";
     }
+    eq_nocopy, img_arr, img.arr;
   } else {
     error, "unexpected image type";
   }
@@ -774,6 +775,13 @@ func mira_save_image(img, dest, overwrite=, bitpix=, data=,
       "number of elements along axis";
   }
   fits_set, fh, "EXTEND", 'T', "this file may contain FITS extensions";
+
+  /* Maybe add plug-in specific keywords. */
+  plugin = is_hash(data) ? mira_plugin(data) : [];
+  if (is_hash(plugin)) {
+    subroutine = plugin.__vops__.add_keywords;
+    subroutine, data, fh;
+  }
 
   /* Save axis information. Manage to have the image correctly displayed with
      most viewers (East toward left and North toward top).  */
@@ -838,5 +846,20 @@ func mira_save_image(img, dest, overwrite=, bitpix=, data=,
   fits_write_header, fh;
   fits_write_array, fh, img.arr;
   fits_pad_hdu, fh;
+
+  /* Maybe add plug-in specific extensions. */
+  if (is_hash(plugin)) {
+    subroutine = plugin.__vops__.add_extensions;
+    subroutine, data, fh;
+  }
+
+  /* Maybe save mode complex visibilities. */
+  if (save_visibilities && is_hash(data)) {
+    /* Update the model complex visibilities and save them. */
+    inform, "Saving model complex visibilities...";
+    mira_update, data, img_arr;
+    mira_save_visibilities, data, fh;
+  }
+
   return fh;
 }
