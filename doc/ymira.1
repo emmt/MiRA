@@ -254,9 +254,15 @@ Save model complex visibilities in the output file.
 .SS Miscellaneous
 .TP
 \fB\-plugin\fR=\fI\,name\/\fR
-Specify the name of a plugin to load.  A plugin may add its own command line
-options.  See file "\fBmira2_plugin_central_star.i\fR" for an example of
-plugin code.
+Specify the name or the path of a plugin to load.  If \fI\,name\/\fR is
+terminated by a "\fB.i\fR", it is assumed to be the path of a Yorick file to
+include; otherwise, the Yorick code of the plugin is assumed to be in a file
+named "\fBmira2_plugin_\fIname\fB.i\fR" which is searched first in the
+directory where is installed MiRA then in Yorick standard search paths.
+
+A plugin may add its own command line options.  See file
+"\fBmira2_plugin_central_star.i\fR" for an example of plugin code.
+
 .TP
 \fB\-help\fR
 Print out this help.

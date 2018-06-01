@@ -269,23 +269,34 @@ func _mira_fetch_plugin(&argv, &options)
   if (strlen(name) < 1) {
     throw, "Missing plugin name";
   }
-  dir = get_env("MIRA_PLUGDIR");
-  if (dir == string()) {
-    dir = MIRA_HOME;
+  if (strpart(name, -1:0) == ".i") {
+    file = name;
+    sel = strgrep("^(|.*/)mira2_plugin_(.+)\.i$", file, sub=2, n=1);
+    name = strpart(file, sel);
+    if (strlen(name) < 1) {
+      throw, "Plugin file name must be \"SOMEDIR/mira2_plugin_SOMENAME.i\"";
+    }
+    if (strglob("*/*", file) && ! strglob("[~/]*", file)) {
+      /* Assume file path is relative. */
+      file = cd(".") + file;
+    }
+  } else {
+    file = "mira2_plugin_" + name + ".i";
+    tmp = MIRA_HOME + file;
+    write, tmp;
+    if (open(tmp, "r", 1n)) {
+      eq_nocopy, file, tmp;
+    }
   }
-  if (strpart(dir, 0:0) != "/") {
-    dir += "/";
-  }
-  inc = dir + "mira2_plugin_" + name + ".i";
-  include, inc, 3;
+  include, file, 3;
   init = "mira_plugin_" + name + "_init";
   if (! symbol_exists(init)) {
-    throw, ("File \"" + inc + "\" not readable of function \"" +
+    throw, ("File \"" + file + "\" not readable/found or function \"" +
             init + "\" not defined in this file.");
   }
   plugin = symbol_def(init)();
   if (! is_hash(plugin) || ! h_has(plugin, "__vops__")) {
-    throw, ("Invalid plugin \"" + name + "\"");
+    throw, ("Invalid initialization of plugin \"" + name + "\"");
   }
   options = _cat(plugin.__vops__.options, options);
   return plugin;
