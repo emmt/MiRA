@@ -1,6 +1,6 @@
 # History of MiRA
 
-## Version 2.0.0c (2018-06-01)
+## Version 2.0.0 (2018-06-01)
 * Plugins can be loaded by MiRA to modify the model of the complex
   visibilities.  See file `mira2_plugin_central_star.i` for a concrete example
   or have a look at [`SPARCO`](https://github.com/kluskaj/mira-sparco) plugin.
