@@ -70,12 +70,12 @@ func mira_require(pkgfunc, pkgdir, pkgsrc)
       /* Package may be installed next to MiRA source. */
       path = MIRA_HOME + pkgsrc;
     } else if (pass == 2) {
-      /* May be no installation has been done and package is in the source tree
+      /* Maybe no installation has been done and package is in the source tree
          of MiRA. */
       path = MIRA_HOME + "../lib/" + pkgdir + "/" + pkgsrc;
     } else if (pass == 3) {
       /* Package may be installed in a standard location. */
-      path = pksrc;
+      path = pkgsrc;
     } else {
       error, "source file \""+pkgsrc+"\" not found";
     }
