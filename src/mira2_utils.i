@@ -219,7 +219,7 @@ func mira_convert_units(src, dst)
      Returns the factor to convert a value in units SRC into a value in units
      DST.
 
-   SEE ALSO: mira_parse_angular_units.
+   SEE ALSO: mira_angle, mira_length.
  */
 {
   local table;
