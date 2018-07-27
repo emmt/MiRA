@@ -2,72 +2,55 @@
 
 It is assumed that MiRA is properly installed (see [`INSTALL.md`](INSTALL.md)).
 
-
-## Using MiRA in Yorick interpreter
-
-Launch Yorick and load `"mira.i"` (this should also load Yeti plugin):
-
-    include, "mira2.i";
-
-Load OI-FITS data file (`db` will be your MiRA instance for this data file; in
-the data file, you may select a spectral range with keywords `eff_wave` and
-`eff_band` or with keywords `wavemin` and `wavemax`):
-
-    db = mira_new("data/data1.oifits");
-
-Configure data instance for image reconstruction parameters (keyword `dim` is
-the number of pixels along the width and height of the restored image; keyword
-`pixelsize` is the size of the pixel in radians; keyword `xform` is the name of
-the method to approximate the Fourier transform, can be `"exact"`, `"fft"` or
-`"nfft"`, default is `"exact"`):
-
-    mira_config, db, dims=50, pixelsize=0.5*MIRA_MILLIARCSECOND,
-            xform="nfft";
-
-Choose a suitable regularization method:
-
-    rgl = rgl_new("smoothness");
-
-Attempt an image reconstruction (from scratch):
-
-    img1 = mira_solve(db, maxeval=500, verb=1, xmin=0.0, normalization=1,
-                      regul=rgl, mu=1e6);
-
-where `img1` is the output image, `db` is the data instance, `maxeval` is the
-maximum number of evaluations of the cost function, `verb` is set to one to
-display convergence information at every successful step (`verb=10` to display
-this information every 10 steps and `verb=0` or nil to display no information),
-`xmin=0` to enforce a positivity constraint (`xmin` is the minimum allowed
-value in the restored image, you certainly do not to want to omit this option),
-`regul` set the regularization method, `mu` is the global weight of
-regularization (the higher its value the smoother the result), `ftol` controls
-the stopping criterion of OptimPack1 (which to see).
-
-You can also try a reconstruction given an initial image `img0`:
-
-    img2 = mira_solve(db, img0, maxeval=500, verb=1, xmin=0.0,
-                      normalization=1, regul=rgl, mu=1e6);
-
-Note that if `img0` is not of size `dim×dim` it will be resampled to that size
-(*i.e.*, assuming the field of view is the same).
-
-With keyword `zap_data`, you can just build the default image as imposed by
-the regularization:
-
-    img0 = mira_solve(db, maxeval=500, verb=1, xmin=0.0, normalization=1,
-                      regul=rgl, mu=1e6, zap_data=1);
+See the man pages of MiRA for a more complete list of all options.
 
 
 ## Using MiRA from the command line
 
 MiRA can be run from the command line:
 
-    mira [OPTIONS] INPUT [...] OUTPUT
+    ymira [OPTIONS] INPUT [...] OUTPUT
 
 where `[OPTIONS]` are optional settings, `INPUT [...]` are any number of OIFITS
 input data files and `OUTPUT` is the name of the output FITS file to save the
 resulting image.  Option `-help` can be used for a short description of all
 options.
+
+### Examples
+
+To start, a typical command is:
+
+```sh
+ymira -pixelsize=0.1mas -fov=20mas -flux=1 -min=0 \
+    -regul=hyperbolic -mu=3e3 -tau=5e-5 \
+    -ftol=0 -gtol=0 -maxeval=1000 -verb=10 \
+    -overwrite -save_visibilities -save_initial \
+    -initial=Dirac \
+    data/data1.oifits /tmp/test1.fits
+```
+
+To automatically recenter the image (and run two successive reconstructions):
+
+```sh
+ymira -pixelsize=0.1mas -fov=20mas -flux=1 -min=0 \
+    -regul=hyperbolic -mu=3e3 -tau=5e-5 \
+    -ftol=0 -gtol=0 -maxeval=1000 -verb=10 \
+    -overwrite -save_visibilities -save_initial \
+    -initial=Dirac -bootstrap=1 -recenter \
+    data/data1.oifits /tmp/test2.fits
+```
+
+To account for bandwidth smearing:
+
+```sh
+ymira -pixelsize=0.1mas -fov=20mas -flux=1 -min=0 \
+    -regul=hyperbolic -mu=3e3 -tau=5e-5 \
+    -ftol=0 -gtol=0 -maxeval=1000 -verb=10 \
+    -overwrite -save_visibilities -save_initial \
+    -xform=nonseparable -smearingfunction=sinc \
+    -initial=Dirac \
+    data/data1.oifits /tmp/test3.fits
+```
 
 
 ### Data selection
@@ -97,25 +80,26 @@ target to consider can be specified as:
 
 ### Image parameters
 
-An initial image for the reconstruction can be provided as:
+An initial image for the reconstruction must be provided as:
 
-    ... -initial=FILENAME
+    ... -initial=NAME
 
-where `FILENAME` is the name of the FITS file with the image to start with.
-
-If no initial image is provided, the reconstruction starts with a random image
-and option `-seed=NUMBER` can be used to seed the random generator.
+where `NAME` is the name of the FITS file with the image to start with.
+Another possibility is to have `NAME` set to `Dirac` or `random` to start with
+a centered point-like object or a map of random pixels.  In the latter case,
+option `-seed=NUMBER` can be used to seed the random generator.
 
 By default, the reconstructed image will have the same pixel size and
 dimensions as the initial image if provided.  Otherwise, the pixel size can be
-specified with option `-pixelsize=PIXSIZ` and the image dimensions can be chosen
-with `-dim=NUMBER` or `-fov=ANGLE`, where `PIXSIZ` and `ANGLE` are in angular units and `NUMBER` is a number of pixels.  For instance:
+specified with option `-pixelsize=PIXSIZ` and the image dimensions can be
+chosen with `-imagesize=NUMBER` or `-fov=ANGLE`, where `PIXSIZ` and `ANGLE` are
+in angular units and `NUMBER` is a number of pixels.  For instance:
 
     ... -pixelsize=0.25mas -fov=100mas
 
 or
 
-    ... -pixelsize=250e-6arcsec -dim=400
+    ... -pixelsize=250e-6arcsec -imagesize=400
 
 
 both yield a 400×400 image with a pixel size of 0.25 milliarcsecond.
@@ -124,24 +108,24 @@ both yield a 400×400 image with a pixel size of 0.25 milliarcsecond.
 ### Non-uniform Fourier transform
 
 The nonequispaced Fourier transform of the pixels can be computed by different
-methods: `-xform=exact` uses an exact transform, `-xform=nfft` use a precise
-approximation by the NFFT algorithm while `-xform=fft` uses a built-in
-algorithm which is less precise.  The exact transform can be very slow if the
-image is large and/or if there are many data.  The two others exploit an FFT
-algorithm and are faster.  If you have installed
-[Yorick NFFT plug-in](https://github.com/emmt/ynfft), `-xform=nfft` is
-certainly the method of choice.
+methods: `-xform=separable`, `-xform=nonseparable` or `-xform=nfft`.  With the
+latter option, a precise approximation by the NFFT algorithm will be used.
+Option `-xform=nonseparable` is slower but it is required to account for
+spectral bandwidth smearing.  If you have installed [Yorick NFFT
+plug-in](https://github.com/emmt/ynfft), `-xform=nfft` is certainly the method
+of choice.
 
 
 ### Image constraints
 
 The total flux of the sought image, and the lower and upper bounds for pixel
-values can be specified with options `-normalization=SUM`, `-min=LOWER` and
+values can be specified with options `-flux=SUM`, `-min=LOWER` and
 `-max=UPPER` respectively.  For instance:
 
-    ... -normalization=1 -min=0
+    ... -flux=1 -min=0
 
-is a must for processing OIFITS data.
+is a must for processing OIFITS data.  In fact, these are the default values for
+these otions.
 
 
 ### Regularization
@@ -208,6 +192,61 @@ of computation.
   gradient becomes smaller than `GTOL`.
 
 
+## Using MiRA in Yorick interpreter
+
+Launch Yorick and load `"mira.i"` (this should also load Yeti plugin):
+
+    include, "mira2.i";
+
+Load OI-FITS data file (`db` will be your MiRA instance for this data file; in
+the data file, you may select a spectral range with keywords `eff_wave` and
+`eff_band` or with keywords `wavemin` and `wavemax`):
+
+    db = mira_new("data/data1.oifits");
+
+Configure data instance for image reconstruction parameters (keyword `dim` is
+the number of pixels along the width and height of the restored image; keyword
+`pixelsize` is the size of the pixel in radians; keyword `xform` is the name of
+the method to approximate the Fourier transform, can be `"exact"`, `"fft"` or
+`"nfft"`, default is `"exact"`):
+
+    mira_config, db, dims=50, pixelsize=0.5*MIRA_MILLIARCSECOND,
+            xform="nfft";
+
+Choose a suitable regularization method:
+
+    rgl = rgl_new("smoothness");
+
+Attempt an image reconstruction (from scratch):
+
+    img1 = mira_solve(db, maxeval=500, verb=1, xmin=0.0, normalization=1,
+                      regul=rgl, mu=1e6);
+
+where `img1` is the output image, `db` is the data instance, `maxeval` is the
+maximum number of evaluations of the cost function, `verb` is set to one to
+display convergence information at every successful step (`verb=10` to display
+this information every 10 steps and `verb=0` or nil to display no information),
+`xmin=0` to enforce a positivity constraint (`xmin` is the minimum allowed
+value in the restored image, you certainly do not to want to omit this option),
+`regul` set the regularization method, `mu` is the global weight of
+regularization (the higher its value the smoother the result), `ftol` controls
+the stopping criterion of OptimPack1 (which to see).
+
+You can also try a reconstruction given an initial image `img0`:
+
+    img2 = mira_solve(db, img0, maxeval=500, verb=1, xmin=0.0,
+                      normalization=1, regul=rgl, mu=1e6);
+
+Note that if `img0` is not of size `dim×dim` it will be resampled to that size
+(*i.e.*, assuming the field of view is the same).
+
+With keyword `zap_data`, you can just build the default image as imposed by
+the regularization:
+
+    img0 = mira_solve(db, maxeval=500, verb=1, xmin=0.0, normalization=1,
+                      regul=rgl, mu=1e6, zap_data=1);
+
+
 ## Caveats
 
 * *All* units are in SI (*i.e.*, angles are in radians, wavelengths in meters,
@@ -248,4 +287,3 @@ of computation.
 
 * It is usually better to work with a purposely too high regularization level
   and then lower the value of `mu` as the image reconstruction converges.
-
