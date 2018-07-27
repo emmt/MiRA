@@ -10,7 +10,8 @@ A quick way to install MiRA is to use
 downloading, compiling and installing all needed code.  Otherwise, see
 [`INSTALL.md`](INSTALL.md) for prerequisites and instructions to install MiRA.
 
-See [`USAGE.md`](USAGE.md) for a short introduction about using MiRA.
+The man pages of MiRA give all options.  See [`USAGE.md`](USAGE.md) for a short
+introduction about using MiRA.
 
 
 ## References
