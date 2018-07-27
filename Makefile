@@ -156,8 +156,8 @@ install:
 	              return 1; \
 	          fi; \
 	          sed <"$$src" >"$$dst" \
-	            -e "s,^YORICK=.*,YORICK=$$YORICK," \
-	            -e "s,^INCDIR=.*,INCDIR=$$INCDIR,"; \
+	            -e "s,^\(YORICK=.{MIRA_YORICK:\).*,\1-$$YORICK}," \
+	            -e "s,^\(SRCDIR=.{MIRA_SRCDIR:\).*,\1-$$INCDIR},"; \
 	          chmod 755 "$$dst"; \
 	      done; \
 	      if test "x$$MANDIR" != "x"; then \

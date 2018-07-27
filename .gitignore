@@ -12,6 +12,7 @@ lib*.so
 *.txz
 *.tar.bz2
 *.zip
+config.cfg
 config.h
 config.log
 config.status

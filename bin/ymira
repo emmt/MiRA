@@ -25,27 +25,27 @@
 SRCDIR=${MIRA_SRCDIR:-""}
 YORICK=${MIRA_YORICK:-yorick}
 
-# If SRCDIR is not specified, use the directory of this script.
-if test "x$SRCDIR" = "x"; then
-    path="$0"
-    osname=$(uname -s)
-    if test "$osname" = "Linux"; then
-        # Resolve links (if any) and canonicalize path.
-        path=$(readlink -f -- "$path")
-    else
-        # Emulate `readlink -f` to find the real installation path.
-        while test -L "$path"; do
-            prev="$path"
-            path=$(ls -ld -- "$path")
-            path=${path##* -> }
-            path=$(realpath "$path")
-            if test "$path" != "prev"; then
-                echo 1>&2 "symbolic link loop detected for \"$path\""
-                exit 1
-            fi
-        done
+# If SRCDIR is not specified, use the directory of this script or Y_SITE.
+if test "x$SRCDIR" = "x"
+then
+    dir=$(dirname "$0")
+    SRCDIR=$dir/../src
+    if ! test -r "${SRCDIR}/mira2_batch.i"
+    then
+        Y_SITE=$(echo 'write, format="@Y_SITE@%s@\n", Y_SITE; quit;' \
+                     | "$YORICK" \
+                     | sed -e '/^@Y_SITE@.*@$/!d;s/^@Y_SITE@\(.*\)@$/\1/')
+        SRCDIR=$Y_SITE/i
     fi
-    SRCDIR=$(dirname -- "$path")/../src
+fi
+if ! test -r "${SRCDIR}/mira2_batch.i"
+then
+    exe=$(basename "$0")
+    echo 1>&2 "$exe: File mira2_batch.i not found."
+    echo 1>&2 "       MiRA may not be properly installed or try setting"
+    echo 1>&2 "       environment variable MIRA_SRCDIR with the correct"
+    echo 1>&2 "       directory."
+    exit 1
 fi
 
 # Run the MiRA batch script.
