@@ -1,5 +1,34 @@
 # History of MiRA
 
+## Version 2.1.0 (2018-07-27)
+
+This version introduces a few changes in the available options (see below) and
+has been modified to be usable from a [common
+GUI](http://www.jmmc.fr/oimaging.htm).  All changes are listed below.
+
+* Option `--normalization` has been renamed as `--flux` and there is a
+  `--fluxerr` option to specify the error bar for the flux.  If `--fluxerr=0`
+  (the default) is specified, then strict normalization constraint is applied
+  (as before).
+
+* Options `--visamp=yes|no` and `--visphi=yes|no` have been merged in option
+  `--use_vis=all|none|amp|phi`.  Likewise, options `--t3amp=yes|no` and
+  `--t3phi=yes|no` have been merged in option `--use_t3=all|none|amp|phi`.  For
+  consistency, option `--vis2=yes|no` has been renamed as
+  `--use_vis2=all|none`.
+
+* By default, `--min=0` and `--flux=1`.
+
+* MiRA has been modified to be usable from a [common
+  GUI](http://www.jmmc.fr/oimaging.htm).  This is still a work in progress.
+
+* New option `--settings=NAME` to specify the name of a FITS file with all
+  input parameters.  This file should comply with the [OI-Imaging
+  Specifications](https://github.com/emmt/OI-Imaging-JRA/blob/master/doc/interface/OI-Interface.pdf).
+  When this option is specified, other expected arguments are the OI-FITS data
+  file(s) and the name of the output FITS file.  If other options are given in
+  the command line, they have precedence over the settings in the input file.
+
 ## Version 2.0.0 (2018-06-01)
 * Plugins can be loaded by MiRA to modify the model of the complex
   visibilities.  See file `mira2_plugin_central_star.i` for a concrete example

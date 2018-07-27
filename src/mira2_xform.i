@@ -72,7 +72,6 @@ func _mira_define_xform(master)
   smearingfactor = master.smearingfactor;
   smearingfunction = master.smearingfunction;
 
-
   /* Figure out whether or not to account for spectral bandwidth smearing. */
   smearing = (smearingfunction != "none" && smearingfactor > 0);
   if (smearing && (xform == "nfft" || xform == "separable")) {
@@ -425,7 +424,7 @@ func mira_save_visibilities(master, fh)
   }
 
   fits_new_bintable, fh;
-  fits_set, fh, "EXTNAME", "MODEL-VISIBILITIES";
+  fits_set, fh, "EXTNAME", "IMAGE-OI MODEL VISIBILITIES";
   ptr = array(pointer, 6);
 
   fits_set, fh, "TTYPE1", "model_visamp", "Model of the visibility amplitudes";

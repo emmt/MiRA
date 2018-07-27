@@ -375,6 +375,26 @@ func mira_define_table(args)
 }
 wrap_args, mira_define_table;
 
+func mira_set_defaults(tab, def)
+/* DOCUMENT mira_set_defaults, tab, def;
+
+     This subroutine copies the non-void entries of hash table DEF into hash
+     table TAB if not yet defined with a non-void value in TAB.  When called as
+     a function, TAB is returned.
+
+   SEE ALSO: h_new.
+ */
+{
+  local val;
+  for (key = h_first(def); key; key = h_next(def, key)) {
+    eq_nocopy, val, h_get(def, key);
+    if (! is_void(val) && is_void(h_get(tab, key))) {
+      h_set, tab, key, val;
+    }
+  }
+  return tab;
+}
+
 /*--------------------------------------------------------------------------*/
 /* GENERAL PURPOSE */
 

@@ -41,7 +41,7 @@ local mira_solve;
      regularization method and level by the keywords REGUL and MU.  Usually,
      you also want to impose a positivity constraint with XMIN=0.0 (use a small
      but strictly positive value if regularization such as entropy with a
-     logarithm is used) and a normalization constraint with NORMALIZATION=1.0
+     logarithm is used) and a normalization constraint with FLUX=1.0
      (which is suitable for OI-FITS data, otherwise the actual value should be
      equal to the total flux in the image).
 
@@ -58,13 +58,17 @@ local mira_solve;
          FTOT = NDATA*FDATA + MU*FPRIOR
 
 
-   KEYWORDS
-     XMIN - minimum allowed value in the image; can be a scalar or a
-            pixel-wise value; there is no limit if this option is not set.
-     XMAX - maximum allowed value in the image; can be a scalar or a
-            pixel-wise value; there is no limit if this option is not set.
-     NORMALIZATION - value of the sum of the image pixels to impose a
-            normalization constraint.
+   KEYWORDS:
+     XMIN - minimum allowed value in the image; can be a scalar or a pixel-wise
+            value; there is no limit if this option is not set.
+     XMAX - maximum allowed value in the image; can be a scalar or a pixel-wise
+            value; there is no limit if this option is not set.
+     FLUX - value of the sum of the image pixels to impose a constraint on the
+            total flux.
+     FLUXERR - standard deviation of the flux (can be 0 to apply a srict
+            constraint, "auto" or nil to set it automatically according to the
+            value of FLUX and to the effective number of measurements, must be
+            strictly positive otherwise).
      ZAPDATA - is true to completely ignore the data.
      MU    - regularization level; the higher is MU the more the solution is
              influenced by the priors set by the regularization.
@@ -78,11 +82,11 @@ local mira_solve;
             standard text output (see keyword VERB).
      VERB - verbose level: informations get printed out every VERB iterations
             and at convergence.
-     MEM  - control the memory usage by the optimizer; the value is the
-            number of corrections and gradient differences memorized by the
-            variable metric algorithm; by default, MEM=7 (see op_vmlmb).
-     FTOL - relative function tolerance for the stopping criterion of
-            the optimizer; default value is: FTOL = 1e-15 (see op_vmlmb).
+     MEM  - control the memory usage by the optimizer; the value is the number
+            of corrections and gradient differences memorized by the variable
+            metric algorithm; by default, MEM=7 (see op_vmlmb).
+     FTOL - relative function tolerance for the stopping criterion of the
+            optimizer; default value is: FTOL = 1e-15 (see op_vmlmb).
      GTOL - relative gradient tolerance for the stopping criterion of the
             optimizer; default value is: GTOL = 0.0 (see op_vmlmb).
      SFTOL, SGTOL, SXTOL - control the stopping criterion of the
@@ -92,7 +96,7 @@ local mira_solve;
      mira_new, mira_config.
  */
 func mira_solve(master, x, &penalty, xmin=, xmax=,
-                normalization=, zapdata=, regul=, mu=, cubic=,
+                flux=, fluxerr=, zapdata=, regul=, mu=, cubic=,
                 /* options for OptimPackLegacy */
                 mem=, verb=, maxiter=, maxeval=, output=,
                 ftol=, gtol=, sftol=, sgtol=, sxtol=,
@@ -116,8 +120,12 @@ func mira_solve(master, x, &penalty, xmin=, xmax=,
   }
 
   /* Build functor to evaluate the objective function. */
-  fg = mira_objective_function(master, normalization=normalization,
+  fg = mira_objective_function(master, flux=flux, fluxerr=fluxerr,
                                zapdata=zapdata, mu=mu, regul=regul);
+  if (verb && fg.flux != 0) {
+    inform, "using normalization constraint with FLUX=%g and FLUXERR=%g\n",
+      fg.flux, fg.fluxerr;
+  }
 
   printer = _mira_solve_printer;
   viewer = [];
@@ -148,7 +156,7 @@ func mira_solve(master, x, &penalty, xmin=, xmax=,
   return x;
 }
 
-func mira_objective_function(master, normalization=,
+func mira_objective_function(master, flux=, fluxerr=,
                              zapdata=, regul=, mu=)
 /* DOCUMENT fg = mira_objective_function(master, ...);
 
@@ -161,7 +169,20 @@ func mira_objective_function(master, normalization=,
   if (is_array(zapdata) && ! is_scalar(zapdata)) {
     throw, "invalid value for `zapdata`";
   }
-  ndata = (zapdata ? 0 : mira_ndata(master));
+
+  /* Effective number of measurements. */
+  ndata = mira_ndata(master);
+
+  /* Flux constraint and its error bar. */
+  if (! scalar_double(flux, 1.0) || flux < 0) {
+    throw, "invalid value for `flux`";
+  }
+  if (is_void(fluxerr) ||
+      (is_scalar(fluxerr) && is_string(fluxerr) && fluxerr == "auto")) {
+    fluxerr = flux/sqrt(ndata);
+  } else if (! scalar_double(fluxerr) || fluxerr < 0) {
+    throw, "invalid value for `fluxerr`";
+  }
 
   /* Setup for regularization. */
   if (is_void(regul)) {
@@ -180,9 +201,10 @@ func mira_objective_function(master, normalization=,
     }
   }
 
-  /* Build a functior. */
-  fg = h_new(normalization=normalization, master=master,
-             ndata=ndata, mu=mu, regul=regul);
+  /* Build a functor. */
+  fg = h_new(flux = flux, fluxerr = fluxerr, master = master,
+             ndata = (zapdata ? 0 : ndata),
+             mu = mu, regul = regul);
   h_evaluator, fg, "_mira_evaluate_objfunc";
   return fg;
 }
@@ -204,15 +226,16 @@ func _mira_evaluate_objfunc(this, x, &grd) /* DOCUMENTED */
 
 func _mira_solve_objfunc(x, &grd, this) /* DOCUMENTED */
 {
-  /* Re-normalization. */
-  normalization = this.normalization;
-  if (normalization && (xsum = sum(x)) > 0) {
-    xscl = normalization/double(xsum);
+  /* Normalization constraint. */
+  flux = this.flux;
+  fluxerr = this.fluxerr;
+  strict_flux = (flux > 0 && fluxerr == 0);
+  loose_flux  = (flux > 0 && fluxerr > 0);
+  if (strict_flux && (xsum = sum(x)) > 0) {
+    xscl = flux/double(xsum);
     if (xscl != 1) {
       x *= xscl;
     }
-  } else {
-    normalization = 0n;
   }
 
   /* Data penalty. */
@@ -235,13 +258,19 @@ func _mira_solve_objfunc(x, &grd, this) /* DOCUMENTED */
     fprior = 0.0;
     if (this.ndata <= 0) {
       grd = array(double, dimsof(x));
-      normalization = 0n;
     }
   }
 
-  /* Fix the gradient. */
-  if (normalization) {
+  /* Account for the flux constraint. */
+  if (strict_flux) {
     grd = xscl*grd - sum(grd*x)/xsum;
+  } else if (loose_flux) {
+    fluxres = sum(x) - flux;
+    if (fluxres != 0) {
+      fluxwgt = 1.0/fluxerr^2;
+      fdata += fluxwgt*fluxres*fluxres;
+      grd += 2.0*fluxwgt*fluxres;
+    }
   }
 
   /* Compute total penalty and update best solution so far. */
@@ -271,7 +300,7 @@ func _mira_solve_printer(output, iter, eval, cpu, fx, gnorm, steplen, x, extra)
 
 func mira_projected_gradient_norm(x, gx, xmin=, xmax=)
 {
-  // FIXME: normalization not take into account
+  // FIXME: strict flux constraint not taken into account
   local gp;
   if (is_void(xmin)) {
     eq_nocopy, gp, gx;

@@ -68,20 +68,20 @@ handle this kind of data).  Omitting some kind of data is possible with the
 following options.  The metric used to compare the model and the data can also
 be tuned.
 .TP
-\fB\-visamp\fR=\fByes\fR|\fBno\fR
-Fit complex visibility amplitudes?  Default is \fByes\fR.
+\fB\-use_vis\fR=\fBall\fR|\fBnone\fR|\fBamp\fR|\fBphi\fR
+Specify which complex visibility data to consider.  Can be \fBall\fR,
+\fBnone\fR, \fBamp\fR or \fBphi\fR to use all complex visibility data, to not
+use any complex visibility data, to use only their amplitudes or to use only
+their phase.  Default is \fBall\fR.
 .TP
-\fB\-visphi\fR=\fByes\fR|\fBno\fR
-Fit complex visibility phases?  Default is \fByes\fR.
+\fB\-use_vis2\fR=\fBall\fR|\fBnone\fR
+Specify which powerspectrum data to consider.  Default is \fBall\fR.
 .TP
-\fB\-vis2\fR=\fByes\fR|\fBno\fR
-Fit powerspectrum data?  Default is \fByes\fR.
-.TP
-\fB\-t3amp\fR=\fByes\fR|\fBno\fR
-Fit bispectrum amplitudes?  Default is \fByes\fR.
-.TP
-\fB\-t3phi\fR=\fByes\fR|\fBno\fR
-Fit bispectrum phases?  Default is \fByes\fR.
+\fB\-use_t3\fR=\fBall\fR|\fBnone\fR|\fBamp\fR|\fBphi\fR
+Specify which bispectrum data to consider.  Can be \fBall\fR, \fBnone\fR,
+\fBamp\fR or \fBphi\fR to use all bispectrum data, to not use any bispectrum
+data, to use only the amplitudes of the bispectrum or to use only the phase
+closure data.  Default is \fBall\fR.
 .TP
 \fB\-convexcost\fR=\fByes\fR|\fBno\fR
 Use convex approximation for fitting complex data?  The default is
@@ -107,15 +107,27 @@ Specify the angular size of the field of view. For example, \fB\-fov=20mas\fR.
 Specify the number of pixels per side of the image.
 For example, \fB\-dim=200\fR or \fB\-dim=300x200\fR.
 .TP
-\fB\-normalization\fR=\fI\,value\/\fR
-Specify the sum of pixels.  A recommended setting is: \fB\-normalization=1\fR.
+\fB\-flux\fR=\fI\,value\/\fR
+Specify the sum of pixel values.  The default value is 1.
+.TP
+\fB\-fluxerr\fR=\fI\,value\/\fR
+Specify the standard deviation for the flux.  Must be a nonnegative value.  A
+value of zero implies a strict flux constraint.  The default value is
+\fB\-fluxerr=0\fR, that is a strict constraint is applied.  Note that a lower
+bound other than \fB\-min=0\fR or specifying an upper bound (with option
+\fB\-max\fR=\fI\,upper\/\fR) is not compatible with a strict flux constraint
+because it is implemented by means or renormalization.  Specify a strictly
+positive standard deviation of the flux (for instance \fB\-fluxerr=1e-3\fR),
+if non-standard bound constraints are chosen.
 .TP
 \fB\-min\fR=\fI\,lower\/\fR
 Specify the lower bound for the pixel values.
-A recommended setting is:\fB\-min=0\fR.
+A recommended setting is:\fB\-min=0\fR.  See the comments about option
+\fB\-fluxerr\fR above if a value different from zero is chosen.
 .TP
 \fB\-max\fR=\fI\,upper\/\fR
-Specify the upper bound for the pixel values.
+Specify the upper bound for the pixel values.  See the comments about option
+\fB\-fluxerr\fR above if an upper bound is imposed.
 .\"
 .SS Direct Model
 .TP
@@ -262,6 +274,14 @@ directory where is installed MiRA then in Yorick standard search paths.
 
 A plugin may add its own command line options.  See file
 "\fBmira2_plugin_central_star.i\fR" for an example of plugin code.
+
+.TP
+\fB\-settings\fR=\fI\,name\/\fR
+Specify the name of a FITS file with the settings of the algorithm.  Command
+line options have precedence over the settings defined in the file
+\fI\,name\/\fR. The format of this file closely follows that of the output FITS
+file but is subject to change as the OI-Imaging standard
+(https://github.com/emmt/OI-Imaging-JRA) is currently evolving.
 
 .TP
 \fB\-help\fR

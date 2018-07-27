@@ -1,7 +1,7 @@
 /*
  * mira2_image.i -
  *
- * Management of images in MiRA.
+ * Management of images and FITS files in MiRA.
  *
  *-----------------------------------------------------------------------------
  *
@@ -363,7 +363,7 @@ func mira_recenter(x, quiet=)
   c1 = sum(double(indgen(n1) - o1)     * x)/sx;
   c2 = sum(double(indgen(n2) - o2)(-,) * x)/sx;
   if (! quiet) {
-    write, format="Offsets of photo-center: (%+.1f, %+.1f) pixels.\n", c1, c2;
+    inform, "Offsets of photo-center: (%+.1f, %+.1f) pixels.\n", c1, c2;
   }
   i1 = lround(c1);
   i2 = lround(c2);
@@ -392,15 +392,22 @@ func mira_recenter(x, quiet=)
 /*---------------------------------------------------------------------------*/
 /* SAVE/LOAD IMAGES */
 
-func mira_read_image(inp, hdu)
+func mira_read_image(inp, start=, hduname=, extname=)
 /* DOCUMENT img = mira_read_image(inp);
-         or img = mira_read_image(inp, hdu);
-         or img = mira_read_image(inp, extname);
 
      Read an image in input FITS file INP which can be a file name or a FITS
-     handle.  Optional second argument (an integer HDU number or an extension
-     name) may be used to read the image in a specific FITS Header Data Unit.
-     By default the image from the primary HDU is read.
+     handle.
+
+     Keyword START specifies from which FITS Header Data Unit (HDU) the search
+     of an image should start.  Default is to start at the current HDU.
+
+     If keyword EXTNAME is specified, the image must be in a FITS extension
+     whose name is EXTNAME.
+
+     If keyword HDUNAME is specified, the header of the image must have a FITS
+     keyword "HDUNAME" matching value HDUNAME.
+
+     The first FITS image matching all the above criteria is returned.
 
      The returned value is a hash table with the following members:
 
@@ -453,35 +460,9 @@ func mira_read_image(inp, hdu)
     close_on_exit = 0n;
   }
 
-  /* Move to given HDU/EXTNAME. */
-  if (! is_void(hdu)) {
-    if (is_scalar(hdu) && is_integer(hdu)) {
-      if (hdu != 1) {
-        fits_goto_hdu, fh, hdu;
-        if (fits_current_hdu(fh) != hdu) {
-          error, "cannot read given HDU";
-        }
-      }
-      xtension = fits_get_xtension(fh);
-      if (xtension != "IMAGE") {
-        error, swrite(format="HDU=%d is not a FITS 'IMAGE' extension", hdu);
-      }
-    } else if (is_scalar(hdu) && is_string(hdu)) {
-      extname = strcase(1, strtrim(hdu, 2));
-      while (1n) {
-        if (fits_eof(fh)) {
-          error, swrite(format="EXTNAME='%s' not found in FITS file", extname);
-        }
-        fits_next_hdu, fh;
-        value = fits_get(fh, "EXTNAME");
-        if (is_string(value) && strcase(1, strtrim(value, 2)) == extname) {
-          break;
-        }
-      }
-    } else {
-      error, "HDU/EXTNAME must be a scalar integer/string";
-    }
-  }
+  /* Move to given HDU/EXTNAME/HDUNAME. */
+  mira_find_fits_hdu, fh, "IMAGE", start=start,
+    extname=extname, hduname=hduname;
 
   /* Read image, get coordinates (FIXME: deal with PCij and CDij) and fix
      orientation of axes. */
@@ -704,8 +685,9 @@ func mira_wrap_image(arr, dat)
   }
 }
 
-func mira_save_image(img, dest, overwrite=, bitpix=, data=,
-                     comment=, history=, extname=, save_visibilities=)
+func mira_save_image(img, dest, overwrite=, bitpix=, data=, hook=,
+                     comment=, history=, extname=, hduname=,
+                     save_visibilities=)
 /* DOCUMENT mira_save_image, img, dest;
          or fh = mira_save_image(img, dest);
 
@@ -720,10 +702,20 @@ func mira_save_image(img, dest, overwrite=, bitpix=, data=,
      Keywords COMMENT and HISTORY can be set with an array of strings to
      specify comments and history records.
 
+     For more flexibility on the contents of the FITS header, keyword HOOK may
+     be set with a callable object called as:
+
+         hook, fh;
+
+     with FH the FITS handle and in order to add custom FITS keywords to the
+     header before writing the data.
+
      If DEST is a string, keyword OVERWRITE can be set true to allow for
      overwriting file DEST if it already exists.
 
      Keyword EXTNAME can be used to specify the name of the FITS extension.
+
+     Keyword HDUNAME can be used to specify the name of the FITS HDU.
 
      Keyword BITPIX (by default -32, that is single precision floating point)
      can be used to specify the binary format of pixel values written in the
@@ -831,6 +823,9 @@ func mira_save_image(img, dest, overwrite=, bitpix=, data=,
   if (hdu > 1 && ! is_void(extname)) {
     fits_set, fh, "EXTNAME", extname, "Name of this HDU";
   }
+  if (! is_void(hduname)) {
+    fits_set, fh, "HDUNAME", hduname, "Name of this HDU";
+  }
   if (! is_void(comment)) {
     for (k = 1; k <= numberof(comment); ++k) {
       fits_set, fh, "COMMENT", comment(k);
@@ -840,6 +835,11 @@ func mira_save_image(img, dest, overwrite=, bitpix=, data=,
     for (k = 1; k <= numberof(history); ++k) {
       fits_set, fh, "HISTORY", history(k);
     }
+  }
+
+  /* Call the hook, if any, to edit the FITS header. */
+  if (! is_void(hook)) {
+    hook, fh;
   }
 
   /* Write the header, the data and pad the HDU. */
@@ -862,4 +862,433 @@ func mira_save_image(img, dest, overwrite=, bitpix=, data=,
   }
 
   return fh;
+}
+
+/*---------------------------------------------------------------------------*/
+/* UTILITIES FOR FITS FILES */
+
+local _MIRA_FITS_TRUE, _MIRA_FITS_FALSE;
+local mira_get_fits_string, mira_get_fits_logical;
+local mira_get_fits_integer, mira_get_fits_real;
+/* DOCUMENT  str = mira_get_fits_string(fh, kwd);
+         or bool = mira_get_fits_logical(fh, kwd);
+         or ival = mira_get_fits_integer(fh, kwd);
+         or rval = mira_get_fits_real(fh, kwd);
+
+     These functions retrieve the value of FITS keyword KWD from the FITS
+     handle FH.  Returned values have a specific type.  If keyword does not
+     exist, nil is returned.  If keyword does exist but has an incompatible
+     value, an error is thrown.  In the above examples:
+
+     - STR is either [] or a string in upper case letters with trailing spaces
+       removed.
+
+     - BOOL is either [], 1n (true) or 0n (false).
+
+     - IVAL is either [] or an integer (long) value.
+
+     - RVAL is either [] or a floating-point (double) value.
+
+
+   SEE ALSO: fits_get.
+ */
+func mira_get_fits_string(fh, kwd) /* DOCUMENTED */
+{
+  value = fits_get(fh, kwd);
+  if (is_scalar(value) && structof(value) == string) {
+    value = strcase(1n, strtrim(value, 2));
+  } else if (! is_void(value)) {
+    throw, "invalid value for FITS keyword " + kwd;
+  }
+  return value;
+}
+errs2caller, mira_get_fits_string;
+
+func mira_get_fits_logical(fh, kwd) /* DOCUMENTED */
+{
+  value = fits_get(fh, kwd);
+  if (is_scalar(value) && identof(value) == char &&
+      (value == _MIRA_FITS_TRUE || value == _MIRA_FITS_FALSE)) {
+    value = (value == _MIRA_FITS_TRUE);
+  } else if (! is_void(value)) {
+    throw, "invalid value for FITS keyword " + kwd;
+  }
+  return value;
+}
+_MIRA_FITS_TRUE = 'T';
+_MIRA_FITS_FALSE = 'F';
+errs2caller, mira_get_fits_logical;
+
+func mira_get_fits_integer(fh, kwd) /* DOCUMENTED */
+{
+  value = fits_get(fh, kwd);
+  if (is_scalar(value) && identof(value) <= Y_LONG) {
+    value = long(value);
+  } else if (! is_void(value)) {
+    throw, "invalid value for FITS keyword " + kwd;
+  }
+  return value;
+}
+errs2caller, mira_get_fits_integer;
+
+func mira_get_fits_real(fh, kwd) /* DOCUMENTED */
+{
+  value = fits_get(fh, kwd);
+  if (is_scalar(value) && identof(value) <= Y_DOUBLE) {
+    value = double(value);
+  } else if (! is_void(value)) {
+    throw, "invalid value for FITS keyword " + kwd;
+  }
+  return value;
+}
+errs2caller, mira_get_fits_real;
+
+func mira_find_fits_hdu(fh, xtension, start=, extname=, hduname=)
+/* DOCUMENT mira_find_fits_hdu, fh, xtension;
+         or bool = mira_find_fits_hdu(fh, xtension);
+
+     moves to the first FITS Header Data Units (HDU) of FITS handle FH which
+     has extension XTENSION and which matches all criteria set by the
+     following keywords.
+
+     Keyword START specifies from which FITS HDU the search should start.
+     Default is to use current HDU.
+
+     If keyword EXTNAME is specified, the HDU must be in a FITS extension
+     whose name is EXTNAME.
+
+     If keyword HDUNAME is specified, the header of the HDU must have a FITS
+     card "HDUNAME" matching value HDUNAME.
+
+     When called as a subroutine, an error is thrown (in the caller's context)
+     if no HDU matching the criteria is found.  When called as a function, a
+     boolean value indicating whether the HDU has been found is returned.
+
+     If no matching HDU is found, the FITS current HDU remains unchanged;
+     otherwise, the FITS current HDU is the one matchng all the criteria.
+
+
+   SEE ALSO: fits_eof, fits_next_hdu.
+ */
+{
+  if (is_scalar(xtension) && is_string(hxtension)) {
+    xtension = strcase(1n, strtrim(xtension, 2));
+  } else {
+    error, "XTENSION must be a string";
+  }
+  if (! is_void(hduname)) {
+    if (is_scalar(hduname) && is_string(hduname)) {
+      hduname = strcase(1n, strtrim(hduname, 2));
+    } else {
+      error, "HDUNAME must be a string";
+    }
+  }
+  if (! is_void(extname)) {
+    if (is_scalar(extname) && is_string(extname)) {
+      extname = strcase(1n, strtrim(extname, 2));
+    } else {
+      error, "EXTNAME must be a string";
+    }
+  }
+  initial_hdu = fits_current_hdu(fh);
+  current_hdu = initial_hdu;
+  if (! is_void(start)) {
+    /* Move to specified HDU number. */
+    if (! is_scalar(start) || ! is_integer(start) || start < 1) {
+      error, "START must be an integer greater or equal 1";
+    }
+    if (start > current_hdu) {
+      fits_rewind, fh;
+      current_hdu = fits_current_hdu(fh);
+    }
+    while (start < current_hdu) {
+      fits_next_hdu, fh;
+      if (fits_eof(fh)) {
+        error, swrite(format="START=%d is too large", start);
+      }
+      current_hdu = fits_current_hdu(fh);
+    }
+  }
+  while (! fits_eof(fh)) {
+    flag = (fits_get_xtension(fh) == xtension);
+    if (flag && ! is_void(extname) && current_hdu > 1) {
+      value = fits_get(fh, "EXTNAME");
+      flag = (is_string(value) && strcase(1, strtrim(value, 2)) == extname);
+    }
+    if (flag && ! is_void(hduname)) {
+      value = fits_get(fh, "HDUNAME");
+      flag = (is_string(value) && strcase(1, strtrim(value, 2)) == hduname);
+    }
+    if (flag) {
+      /* All criteria satisfied. */
+      return 1n;
+    }
+    fits_next_hdu, fh;
+    current_hdu = fits_current_hdu(fh);
+  }
+
+  /* HDU not found. */
+  fits_goto_hdu, fh, initial_hdu;
+  if (! am_subroutine()) {
+    return 0n;
+  }
+  msg = "no " + extension;
+  if (! is_void(extname)) {
+    msg += ("with EXTNAME='" + extname + "'");
+  }
+  if (! is_void(hduname)) {
+    msg += ((is_void(extname) ? " with " : " and ") +
+            "HDUNAME='" + hduname + "'");
+  }
+  msg += " found in FITS file";
+  if (! is_void(hdu)) {
+    msg += swrite(format=" after HDU=%d", hdu);
+  }
+  error, msg;
+}
+errs2caller, mira_find_fits_hdu;
+
+/*---------------------------------------------------------------------------*/
+/* READ/WRITE ALGORITHM PARAMATERS */
+
+func mira_read_input_params(src)
+/* DOCUMENT tab = mira_read_input_params(src);
+
+      yields a hash table with the input parameters found in FITS extension
+      "IMAGE-OI INPUT PARAM".  Argument SRC can be a FITS file name or a FITS
+      handle.  The returned table may be empty if no such extension is found or
+      if it does not contain any known parameters.
+
+   SEE ALSO: mira_write_input_params.
+ */
+{
+  local fh;
+  if (is_string(src)) {
+    fh = fits_open(src, "r");
+    finally_close = 1n;
+  } else {
+    eq_nocopy, fh, src;
+    finally_close = 0n;
+  }
+  tab = h_new();
+  if (mira_find_fits_hdu(fh, "BINTABLE", start=2,
+                         extname="IMAGE-OI INPUT PARAM")) {
+    h_set, tab,
+      target           = mira_get_fits_string(   fh, "TARGET"),
+      wavemin          = mira_get_fits_real(     fh, "WAVE_MIN"),
+      wavemax          = mira_get_fits_real(     fh, "WAVE_MAX"),
+      use_vis          = mira_get_fits_use_polar(fh, "USE_VIS"),
+      use_vis2         = mira_get_fits_logical(  fh, "USE_VIS2"),
+      use_t3           = mira_get_fits_use_polar(fh, "USE_T3"),
+      initial          = mira_get_fits_string(   fh, "INIT_IMG"),
+      threshold        = mira_get_fits_real(     fh, "SOFT_CUT"),
+      recenter         = mira_get_fits_logical(  fh, "RECENTER"),
+      bootstrap        = mira_get_fits_integer(  fh, "REPEAT"),
+      regul            = mira_get_fits_string(   fh, "RGL_NAME"),
+      mu               = mira_get_fits_real(     fh, "RGL_WGT"),
+      tau              = mira_get_fits_real(     fh, "RGL_TAU"),
+      gamma            = mira_get_fits_real(     fh, "RGL_GAMM"),
+      flux             = mira_get_fits_real(     fh, "FLUX"),
+      fluxerr          = mira_get_fits_real(     fh, "FLUXERR"),
+      "min",             mira_get_fits_real(     fh, "PXL_MIN"),
+      "max",             mira_get_fits_real(     fh, "PXL_MAX"),
+      xform            = mira_get_fits_string(   fh, "XFORM"),
+      smearingfunction = mira_get_fits_string(   fh, "SMEAR_FN"),
+      smearingfactor   = mira_get_fits_real(     fh, "SMEAR_FC"),
+      maxeval          = mira_get_fits_integer(  fh, "MAXEVAL"),
+      maxiter          = mira_get_fits_integer(  fh, "MAXITER"),
+      mem              = mira_get_fits_integer(  fh, "OPT_MEM"),
+      ftol             = mira_get_fits_real(     fh, "OPT_FTOL"),
+      gtol             = mira_get_fits_real(     fh, "OPT_GTOL"),
+      sftol            = mira_get_fits_real(     fh, "LNS_FTOL"),
+      sgtol            = mira_get_fits_real(     fh, "LNS_GTOL"),
+      sxtol            = mira_get_fits_real(     fh, "LNS_XTOL");
+    if (! is_void(tab.use_vis2)) {
+      h_set, tab, use_vis2 = (tab.use_vis2 ? "all" : "none");
+    }
+    if (! is_void(tab.gamma)) {
+      /* Fix units (SI for MiRA, degrees in the FITS file). */
+      h_set, tab, gamma = tab.gamma*MIRA_DEGREE;
+    }
+    if (! is_void(tab.xform)) {
+      h_set, tab, xform = strcase(0n, strtrim(tab.xform, 3));
+    }
+    if (! is_void(tab.smearingfunction)) {
+      h_set, tab,
+        smearingfunction = strcase(0n, strtrim(tab.smearingfunction, 3));
+    }
+    if (! is_void(tab.initial)) {
+      h_set, tab, initial = mira_read_image(fh, hduname=tab.initial);
+    }
+  }
+  if (finally_close) {
+    fits_close, fh;
+  }
+  return tab;
+}
+
+func mira_write_input_params(dest, master, opt)
+/* DOCUMENT mira_write_input_params, dest, master, opt;
+
+     writes a FITS binary table with the imput parameters used for an image
+     reconstruction with MiRA algorithm.  The extension name of the table is
+     "IMAGE-OI INPUT PARAM" and it contains all parameters for running the
+     algorithm.  Argument DEST is the destination which can be a FITS handle
+     or a FITS file name.  Arguments MASTER and OPT are the main MiRA instance
+     and the command line options.
+
+   SEE ALSO: mira_read_input_params.
+ */
+{
+  /* Get FITS handle and start a new binary table. */
+  local fh;
+  if (is_string(dest)) {
+    fh = fits_open(dest, "w");
+    finally_close = 1n;
+  } else {
+    eq_nocopy, fh, dest;
+    finally_close = 0n;
+  }
+  fits_new_bintable, fh;
+  fits_set, fh, "EXTNAME", "IMAGE-OI INPUT PARAM";
+
+  /* INP_IMG keyword. */
+  if (! is_void(opt.init_img)) {
+    fits_set, fh, "INIT_IMG", opt.init_img,
+      "HDUNAME of initial image";
+  }
+  if (! is_void(opt.threshold)) {
+    fits_set, fh, "SOFT_CUT", opt.threshold,
+      "Soft threshold of starting images";
+  }
+  if (! is_void(opt.recenter)) {
+    fits_set, fh, "RECENTER", (opt.recenter ? 'T' : 'F'),
+      "Recenter starting images";
+  }
+  if (! is_void(opt.bootstrap)) {
+    fits_set, fh, "REPEAT", opt.bootstrap,
+      "Number of algorithm repetitions";
+  }
+
+  /* XFORM keyword. */
+  fits_set, fh, "XFORM", mira_xform_name(master),
+    "Image to complex visibility transform";
+  fits_set, fh, "SMEAR_FN", mira_smearing_function(master, 1n),
+    "Smearing function";
+  fits_set, fh, "SMEAR_FC", mira_smearing_factor(master, 1n),
+    "Smearing factor";
+
+  /* WAVE_MIN and WAVE_MAX keywords. */
+  if (! is_void(opt.wavemin)) {
+    fits_set, fh, "WAVE_MIN", opt.wavemin/MIRA_METER,
+      "Minimal wavelength [m]";
+  }
+  if (! is_void(opt.wavemax)) {
+    fits_set, fh, "WAVE_MAX", opt.wavemax/MIRA_METER,
+      "Maximal wavelength [m]";
+  }
+
+  /* USE_VIS keyword. */
+  bits = (flags & (MIRA_FIT_VISAMP|MIRA_FIT_VISPHI));
+  if (bits == 0) {
+    value = "NONE";
+  } else if (bits == MIRA_FIT_VISAMP) {
+    value = "AMP";
+  } else if (bits == MIRA_FIT_VISPHI) {
+    value = "PHI";
+  } else {
+    value = "ALL";
+  }
+  fits_set, fh, "USE_VIS", value, "Complex visibility data to consider";
+
+  /* USE_VIS2 keyword. */
+  fits_set, fh, "USE_VIS2", ((flags & MIRA_FIT_VIS2) != 0 ? 'T' : 'F'),
+    "Powerspectrum data to consider";
+
+  /* USE_T3 keyword. */
+  bits = (flags & (MIRA_FIT_T3AMP|MIRA_FIT_T3PHI));
+  if (bits == 0) {
+    value = "NONE";
+  } else if (bits == MIRA_FIT_T3AMP) {
+    value = "AMP";
+  } else if (bits == MIRA_FIT_T3PHI) {
+    value = "PHI";
+  } else {
+    value = "ALL";
+  }
+  fits_set, fh, "USE_T3", value, "Bispectrum data to consider";
+
+  /* RGL_NAME keyword. */
+  regul = opt.regul;
+  mu = 0.0;
+  fits_set, fh, "RGL_NAME", regul, "Regularization method";
+
+  /* RGL_TAU keyword. */
+  if (regul == "hyperbolic") {
+    fits_set, fh, "RGL_TAU", opt.tau, "Spatial gradient threshold";
+    mu = opt.mu;
+  }
+
+  /* RGL_GAMMA keyword. */
+  if (regul == "compactness") {
+    fits_set, fh, "RGL_GAMM", opt.gamma/MIRA_DEGREE, "Prior FWHM [deg]";
+    mu = opt.mu;
+  }
+
+  /* RGL_WGT keyword. */
+  if (mu > 0) {
+    fits_set, fh, "RGL_WGT", mu, "Regularization weight";
+  }
+
+  /* FLUX and FLUXERR keywords. */
+  flux = opt.flux;
+  if (is_void(flux)) {
+    flux = 1.0;
+  }
+  fits_set, fh, "FLUX", flux, "Assumed flux level";
+  if (! is_void(opt.fluxerr)) {
+    fits_set, fh, "FLUXERR", opt.fluxerr, "Error bar on the flux";
+  }
+
+  /* PXL_MIN and PXL_MAX keywords. */
+  if (! is_void(opt("min"))) {
+    fits_set, fh, "PXL_MIN", opt("min"), "Minimum allowed pixel value";
+  }
+  if (! is_void(opt("max"))) {
+    fits_set, fh, "PXL_MAX", opt("max"), "Maximum allowed pixel value";
+  }
+
+  /* MAXEVAL and MAXITER keywords. */
+  if (! is_void(opt.maxeval)) {
+    fits_set, fh, "MAXEVAL", opt.maxeval, "Maximum number of evaluations";
+  }
+  if (! is_void(opt.maxiter)) {
+    fits_set, fh, "MAXITER", opt.maxiter, "Maximum number of iteration";
+  }
+
+  /* Other optimizer keywords. */
+  if (! is_void(opt.mem)) {
+    fits_set, fh, "OPT_MEM", opt.mem, "Steps memorized by the optimizer";
+  }
+  if (! is_void(opt.ftol)) {
+    fits_set, fh, "OPT_FTOL", opt.ftol, "Function tolerance for convergence";
+  }
+  if (! is_void(opt.gtol)) {
+    fits_set, fh, "OPT_GTOL", opt.gtol, "Gradient tolerance for convergence";
+  }
+  if (! is_void(opt.sftol)) {
+    fits_set, fh, "LNS_FTOL", opt.sgtol, "Line search function tolerance";
+  }
+  if (! is_void(opt.sgtol)) {
+    fits_set, fh, "LNS_GTOL", opt.sgtol, "Line search gradient tolerance";
+  }
+  if (! is_void(opt.sxtol)) {
+    fits_set, fh, "LNS_XTOL", opt.sxtol, "Line search parameter tolerance";
+  }
+
+  /* Finish the header and, possibly, close the FITS file. */
+  fits_write_header, fh;
+  if (finally_close) {
+    fits_close, fh;
+  }
 }
