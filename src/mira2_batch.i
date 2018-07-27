@@ -540,11 +540,13 @@ func mira_main(argv0, argv)
                   naxis1 = dim1,
                   crpix1 = (dim1/2) + 1,
                   crval1 = 0.0,
+                  ctype1 = "RA---TAN",
                   cdelt1 = pixelsize/MIRA_MILLIARCSECOND,
-                  cunit1="mas",
+                  cunit1 = "mas",
                   naxis2 = dim2,
                   crpix2 = (dim2/2) + 1,
                   crval2 = 0.0,
+                  ctype2 = "DEC--TAN",
                   cdelt2 = pixelsize/MIRA_MILLIARCSECOND,
                   cunit2 = "mas");
     if (opt.initial == "random") {
