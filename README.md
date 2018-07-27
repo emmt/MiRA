@@ -5,8 +5,10 @@ reconstruction from interferometric data.  The software is written in
 [Yorick](http://dhmunro.github.io/yorick-doc/) and expects data file in the
 OIFITS format.
 
-See [`INSTALL.md`](INSTALL.md) for prerequisites and instructions to install
-MiRA.
+A quick way to install MiRA is to use
+[EasyYorick](https://github.com/emmt/EasyYorick) script which takes care of
+downloading, compiling and installing all needed code.  Otherwise, see
+[`INSTALL.md`](INSTALL.md) for prerequisites and instructions to install MiRA.
 
 See [`USAGE.md`](USAGE.md) for a short introduction about using MiRA.
 
