@@ -2,14 +2,22 @@
 
 It is assumed that MiRA is properly installed (see [`INSTALL.md`](INSTALL.md)).
 
-See the man pages of MiRA for a more complete list of all options.
+Type
+
+```sh
+ymira -help
+```
+
+or see the man pages of MiRA for a more complete list of all options.
 
 
 ## Using MiRA from the command line
 
 MiRA can be run from the command line:
 
-    ymira [OPTIONS] INPUT [...] OUTPUT
+```sh
+ymira [OPTIONS] INPUT [...] OUTPUT
+```
 
 where `[OPTIONS]` are optional settings, `INPUT [...]` are any number of OIFITS
 input data files and `OUTPUT` is the name of the output FITS file to save the
@@ -58,31 +66,43 @@ ymira -pixelsize=0.1mas -fov=20mas -flux=1 -min=0 \
 MiRA reconstructs a gray image from the interferometric data.  The wavelengths
 of the selected data can be specified as the end points of the spectral range:
 
-    ... -wavemin=MINVAL -wavemax=MAXVAL
+```sh
+... -wavemin=MINVAL -wavemax=MAXVAL
+```
 
 or as the central wavelength and bandwidth:
 
-    ... -effwave=CENTER -effband=WIDTH
+```sh
+... -effwave=CENTER -effband=WIDTH
+```
 
 The arguments of these options have length units.  For instance:
 
-    ... -wavemin=1.6µm -wavemax=1.8microns
+```sh
+... -wavemin=1.6µm -wavemax=1.8microns
+```
 
 is the same as:
 
-    ... -effwave=1700nm -effband=200nm
+```sh
+... -effwave=1700nm -effband=200nm
+```
 
 If the input data files contain observations for more than one object, the
 target to consider can be specified as:
 
-    ... -target=NAME
+```sh
+... -target=NAME
+```
 
 
 ### Image parameters
 
 An initial image for the reconstruction must be provided as:
 
-    ... -initial=NAME
+```sh
+... -initial=NAME
+```
 
 where `NAME` is the name of the FITS file with the image to start with.
 Another possibility is to have `NAME` set to `Dirac` or `random` to start with
@@ -95,11 +115,15 @@ specified with option `-pixelsize=PIXSIZ` and the image dimensions can be
 chosen with `-imagesize=NUMBER` or `-fov=ANGLE`, where `PIXSIZ` and `ANGLE` are
 in angular units and `NUMBER` is a number of pixels.  For instance:
 
-    ... -pixelsize=0.25mas -fov=100mas
+```sh
+... -pixelsize=0.25mas -fov=100mas
+```
 
 or
 
-    ... -pixelsize=250e-6arcsec -imagesize=400
+```sh
+... -pixelsize=250e-6arcsec -imagesize=400
+```
 
 
 both yield a 400×400 image with a pixel size of 0.25 milliarcsecond.
@@ -122,7 +146,9 @@ The total flux of the sought image, and the lower and upper bounds for pixel
 values can be specified with options `-flux=SUM`, `-min=LOWER` and
 `-max=UPPER` respectively.  For instance:
 
-    ... -flux=1 -min=0
+```sh
+... -flux=1 -min=0
+```
 
 is a must for processing OIFITS data.  In fact, these are the default values for
 these otions.
@@ -138,7 +164,7 @@ The following regularizations are available:
 
 * **Edge-preserving smoothness** is selected with the following options:
 
-  ````
+  ```sh
   -regul=hyperbolic -mu=µ -tau=τ -eta=η
   ````
 
@@ -159,7 +185,7 @@ The following regularizations are available:
 
 * **Quadratic compactness** is selected with the following options:
 
-  ````
+  ````sh
   -regul=compactness -mu=µ -gamma=γ
   ````
 
@@ -196,13 +222,17 @@ of computation.
 
 Launch Yorick and load `"mira.i"` (this should also load Yeti plugin):
 
-    include, "mira2.i";
+```C
+include, "mira2.i";
+```
 
 Load OI-FITS data file (`db` will be your MiRA instance for this data file; in
 the data file, you may select a spectral range with keywords `eff_wave` and
 `eff_band` or with keywords `wavemin` and `wavemax`):
 
-    db = mira_new("data/data1.oifits");
+```C
+db = mira_new("data/data1.oifits");
+```
 
 Configure data instance for image reconstruction parameters (keyword `dim` is
 the number of pixels along the width and height of the restored image; keyword
@@ -210,17 +240,23 @@ the number of pixels along the width and height of the restored image; keyword
 the method to approximate the Fourier transform, can be `"exact"`, `"fft"` or
 `"nfft"`, default is `"exact"`):
 
-    mira_config, db, dims=50, pixelsize=0.5*MIRA_MILLIARCSECOND,
-            xform="nfft";
+```C
+mira_config, db, dims=50, pixelsize=0.5*MIRA_MILLIARCSECOND,
+             xform="nfft";
+```
 
 Choose a suitable regularization method:
 
-    rgl = rgl_new("smoothness");
+```C
+rgl = rgl_new("smoothness");
+```
 
 Attempt an image reconstruction (from scratch):
 
-    img1 = mira_solve(db, maxeval=500, verb=1, xmin=0.0, normalization=1,
-                      regul=rgl, mu=1e6);
+```C
+img1 = mira_solve(db, maxeval=500, verb=1, xmin=0.0, flux=1,
+                  regul=rgl, mu=1e6);
+```
 
 where `img1` is the output image, `db` is the data instance, `maxeval` is the
 maximum number of evaluations of the cost function, `verb` is set to one to
@@ -234,8 +270,10 @@ the stopping criterion of OptimPack1 (which to see).
 
 You can also try a reconstruction given an initial image `img0`:
 
-    img2 = mira_solve(db, img0, maxeval=500, verb=1, xmin=0.0,
-                      normalization=1, regul=rgl, mu=1e6);
+```C
+img2 = mira_solve(db, img0, maxeval=500, verb=1, xmin=0.0,
+                  flux=1, regul=rgl, mu=1e6);
+```
 
 Note that if `img0` is not of size `dim×dim` it will be resampled to that size
 (*i.e.*, assuming the field of view is the same).
@@ -243,11 +281,12 @@ Note that if `img0` is not of size `dim×dim` it will be resampled to that size
 With keyword `zap_data`, you can just build the default image as imposed by
 the regularization:
 
-    img0 = mira_solve(db, maxeval=500, verb=1, xmin=0.0, normalization=1,
-                      regul=rgl, mu=1e6, zap_data=1);
+```C
+img0 = mira_solve(db, maxeval=500, verb=1, xmin=0.0, flux=1,
+                  regul=rgl, mu=1e6, zap_data=1);
+```
 
-
-## Caveats
+### Caveats for using MiRA in Yorick
 
 * *All* units are in SI (*i.e.*, angles are in radians, wavelengths in meters,
   *etc.*).  A very common error in parameter settings is to use completely out
@@ -263,7 +302,7 @@ the regularization:
   for instance: `1e-50*nrm/npix` where `nrm` is the normalization level and
   `npix` the total number of pixels).
 
-* Likewise, `normalization=1` must not be omitted if your data set obeys
+* Likewise, `flux=1` must not be omitted if your data set obeys
   OI-FITS standard (*i.e.*, visibilities are normalized) and has no explicit
   measurement at frequency `(0,0)`.
 
@@ -273,16 +312,16 @@ the regularization:
   reconstruction (possibly after recentering by `mira_recenter`).  For
   instance:
 
-  ```
-    img2 = mira_solve(db, img0, maxeval=500, verb=1, xmin=0.0,
-                      normalization=1, regul=rgl, mu=1e6);
-    img2 = mira_recenter(img2);
-    img2 = mira_solve(db, img2, maxeval=500, verb=1, xmin=0.0,
-                      normalization=1, regul=rgl, mu=1e6);
-    img2 = mira_recenter(img2);
-    img2 = mira_solve(db, img2, maxeval=500, verb=1, xmin=0.0,
-                      normalization=1, regul=rgl, mu=1e6);
-    ...
+  ```C
+  img2 = mira_solve(db, img0, maxeval=500, verb=1, xmin=0.0,
+                    flux=1, regul=rgl, mu=1e6);
+  img2 = mira_recenter(img2);
+  img2 = mira_solve(db, img2, maxeval=500, verb=1, xmin=0.0,
+                    flux=1, regul=rgl, mu=1e6);
+  img2 = mira_recenter(img2);
+  img2 = mira_solve(db, img2, maxeval=500, verb=1, xmin=0.0,
+                    flux=1, regul=rgl, mu=1e6);
+  ...
   ```
 
 * It is usually better to work with a purposely too high regularization level
