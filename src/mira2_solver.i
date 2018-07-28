@@ -65,10 +65,11 @@ local mira_solve;
             value; there is no limit if this option is not set.
      FLUX - value of the sum of the image pixels to impose a constraint on the
             total flux.
-     FLUXERR - standard deviation of the flux (can be 0 to apply a srict
-            constraint, "auto" or nil to set it automatically according to the
-            value of FLUX and to the effective number of measurements, must be
-            strictly positive otherwise).
+     FLUXERR - standard deviation of the flux.  Can be 0 to apply a srict
+            equality constraint for the flux, or "auto" to set it automatically
+            according to the value of FLUX and to the effective number of
+            measurements, must be strictly positive otherwise.  If unspecified,
+            FLUXERR=0 is assumed, i.e. a strict constraint is applied.
      ZAPDATA - is true to completely ignore the data.
      MU    - regularization level; the higher is MU the more the solution is
              influenced by the priors set by the regularization.
@@ -173,14 +174,14 @@ func mira_objective_function(master, flux=, fluxerr=,
   /* Effective number of measurements. */
   ndata = mira_ndata(master);
 
-  /* Flux constraint and its error bar. */
-  if (! scalar_double(flux, 1.0) || flux < 0) {
+  /* Flux constraint and its error bar.  By default, a strict constraint is
+     applied and a normalized image is assumed. */
+  if (! scalar_double(flux, 1) || flux < 0) {
     throw, "invalid value for `flux`";
   }
-  if (is_void(fluxerr) ||
-      (is_scalar(fluxerr) && is_string(fluxerr) && fluxerr == "auto")) {
+  if (is_scalar(fluxerr) && is_string(fluxerr) && fluxerr == "auto") {
     fluxerr = flux/sqrt(ndata);
-  } else if (! scalar_double(fluxerr) || fluxerr < 0) {
+  } else if (! scalar_double(fluxerr, 0) || fluxerr < 0) {
     throw, "invalid value for `fluxerr`";
   }
 
