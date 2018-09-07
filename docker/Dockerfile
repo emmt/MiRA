@@ -18,7 +18,7 @@ RUN echo http://nl.alpinelinux.org/alpine/edge/testing >> /etc/apk/repositories 
     unzip master.zip && rm master.zip && cd ynfft-master/ && \
     ./configure  --cflags='-I/usr/local/include -fopenmp -Ofast -march=native -mfpmath=sse -pedantic -pipe -std=c99' && \
     make && make install && cd /opt && rm -rf ynfft-master && \
-    git clone https://github.com/ferreolS/MiRA.git && cd MiRA/ && \
+    git clone https://github.com/emmt/MiRA.git && cd MiRA/ && \
     git submodule init && git submodule update && \
     git submodule foreach 'git checkout master' && \
     cd lib/yoifits/ && ./configure  && make && make install && \
