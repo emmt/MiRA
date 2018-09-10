@@ -971,7 +971,7 @@ func mira_find_fits_hdu(fh, xtension, start=, extname=, hduname=)
    SEE ALSO: fits_eof, fits_next_hdu.
  */
 {
-  if (is_scalar(xtension) && is_string(hxtension)) {
+  if (is_scalar(xtension) && is_string(xtension)) {
     xtension = strcase(1n, strtrim(xtension, 2));
   } else {
     error, "XTENSION must be a string";
