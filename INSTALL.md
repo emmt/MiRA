@@ -7,7 +7,7 @@ There are 2 possible ways to use MiRA:
 
 * from the command line with the `ymira` command.
 
-* via the Docker images `ferreol/mira` 
+* via the Docker images `ferreol/mira`
 
 Provided you have installed required software (see
 [*Prerequisites*](#prerequisites) below), MiRA software is usable right after
@@ -25,45 +25,52 @@ archive file.
 
 ### Cloning Git repository
 
-MiRA Git repository has several sub-modules.  To retrieve a complete
-repository, you have to clone the master repostory and its sub-modules:
+To clone MiRA Git repository, do:
 
-    git clone https://github.com/emmt/MiRA.git
+```sh
+git clone https://github.com/emmt/MiRA.git
+```
 
 or (depending what work best for you):
 
-    git clone git@github.com:emmt/MiRA.git
-
-then from the MiRA repository (*e.g.*, `cd MiRA`):
-
-    git submodule init
-    git submodule update
-    git submodule foreach 'git checkout master'
+```sh
+git clone git@github.com:emmt/MiRA.git
+```
 
 In order to pull the last versions of the sources, you can do:
 
-    git pull
-    git submodule foreach 'git pull'
-
+```sh
+git pull
+```
 
 ### Getting a source archive
 
 Select a version in https://github.com/emmt/MiRA/releases, download it and
 unpack it.  For instance:
 
-    wget https://github.com/emmt/MiRA/releases/mira-${VERSION}.tar.bz2
-    tar jxvf mira-${VERSION}.tar.bz2
-    cd mira-${VERSION}
-
+```sh
+wget https://github.com/emmt/MiRA/releases/mira-${VERSION}.tar.bz2
+tar jxvf mira-${VERSION}.tar.bz2
+cd mira-${VERSION}
+```
 
 ## Prerequisites
 
-You must have [Yorick](http://dhmunro.github.io/yorick-doc/) (version 2.2.04 or
-superior), [Yeti](https://github.com/emmt/Yeti) (version 6.3.2 or superior) and
-[OptimPackLegacy](https://github.com/emmt/OptimPackLegacy) (version 1.4.0 or
-superior) installed.  For faster operations, you may want to use
-[YNFFT](https://github.com/emmt/ynfft) (version 1.0.3 or superior), a Yorick
-plugin for the *Nonequispaced Fast Fourier Transform*.
+You must have installed the following software:
+
+- [Yorick](http://dhmunro.github.io/yorick-doc/) (version 2.2.04 or superior);
+- [Yeti](https://github.com/emmt/Yeti) (version 6.3.2 or superior);
+- [OptimPackLegacy](https://github.com/emmt/OptimPackLegacy) (version 1.4.0 or
+   superior);
+- [YOIFITS](https://github.com/emmt/YOIFITS) for OI-FITS files;
+- [YLIB](https://github.com/emmt/ylib) for various general purpose utilities;
+- [IPY](https://github.com/emmt/IPY) for tools useful to solve inverse
+  problems.
+
+For faster operations, it is also recommended to install:
+
+- [YNFFT](https://github.com/emmt/ynfft) (version 1.0.3 or superior), a Yorick
+  plugin for the *Nonequispaced Fast Fourier Transform*.
 
 
 ## Installation of MiRA software
@@ -78,24 +85,31 @@ To install MiRA, three parameters are required:
 
 These parameters can be directly specified from the command line:
 
-    make install INCDIR=... BINDIR=... YORICK=...
+```sh
+make install INCDIR=... BINDIR=... YORICK=...
+```
 
 Another possibility is to use the `configure` script before installing:
 
-    ./configure ...
-    make install ...
+```sh
+./configure ...
+make install ...
+```
 
 The configuration script is able to automatically find Yorick executable and,
 by default, set `INCDIR` to be `Y_SITE/i` where `Y_SITE` is the platform
 independent installation directory of Yorick.  With these defaults, it is
 sufficient to do:
 
-    #include "mira.i"
+```c
+#include "mira.i"
+```
 
 to use MiRA in your Yorick code.  To have a description of available options:
 
-    ./configure --help
-
+```sh
+./configure --help
+```
 
 *Remarks:*
 
@@ -118,7 +132,9 @@ Yorick files distributed with MiRA are in this directory.
 
 To use MiRA from Yorick, you just have to do:
 
-    include, "INCDIR/mira.i"
+```c
+include, "INCDIR/mira.i"
+```
 
 where `INCDIR` is the location of the MiRA source files.  If you just unpack
 the archive, `INCDIR` is the `src` directory of the archive.  You may also copy
@@ -140,12 +156,13 @@ have to copy the script `bin/ymira` in `BINDIR` and edit it so that variables
 sources have been copied, the latter to the path of the Yorick interpreter
 executable.  For instance:
 
-    cp bin/ymira "$BINDIR"
-    edit "$BINDIR/ymira"
-    chmod 755 "$BINDIR/ymira"
-
+```sh
+cp bin/ymira "$BINDIR"
+edit "$BINDIR/ymira"
+chmod 755 "$BINDIR/ymira"
+```
 
 
 ###  MiRA  via Docker
 
-MiRA is available as a Docker image that can be run on any system without any further installation. 
+MiRA is available as a Docker image that can be run on any system without any further installation.
