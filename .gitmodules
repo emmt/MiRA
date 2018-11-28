@@ -1,3 +1,0 @@
-[submodule "lib/oifits"]
-	path = lib/yoifits
-	url = https://github.com/emmt/YOIFITS.git
