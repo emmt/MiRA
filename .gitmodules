@@ -1,6 +1,3 @@
-[submodule "lib/ipy"]
-	path = lib/ipy
-	url = https://github.com/emmt/IPY.git
 [submodule "lib/ylib"]
 	path = lib/ylib
 	url = https://github.com/emmt/ylib.git
