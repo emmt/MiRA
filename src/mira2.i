@@ -1,7 +1,7 @@
 /*
  * mira2.i -
  *
- * Implement version 2 of MiRA (Multi-aperture Image Reconstruction Algorithm)
+ * Implements version 2 of MiRA (Multi-aperture Image Reconstruction Algorithm)
  * in Yeti/Yorick.
  *
  *-----------------------------------------------------------------------------
@@ -42,10 +42,22 @@ func mira_absdirname(file)
    SEE ALSO: dirname, filepath, strfind. */
 {
   if ((i = strfind("/", (path = filepath(file)), back=1)(2)) <= 0) {
-    error, "expecting a valid file name or file stream";
+    error, "expecting a valid file name or a file stream";
   }
   return strpart(path, 1:i);
 }
+
+local MIRA_HOME, MIRA_VERSION;
+/* DOCUMENT MIRA_HOME
+         or MIRA_VERSION
+
+     Global variables defined by MiRA with respectively the name of the source
+     directory of MiRA and the version of MiRA.
+
+   SEE ALSO:
+ */
+MIRA_VERSION = "2.2.0";
+MIRA_HOME = mira_absdirname(current_include());
 
 func mira_require(pkgfunc, pkgdir, pkgsrc)
 /* DOCUMENT mira_require, pkgfunc, pkgdir, pkgsrc;
@@ -87,20 +99,8 @@ func mira_require(pkgfunc, pkgdir, pkgsrc)
   }
 }
 
-local MIRA_HOME, MIRA_VERSION;
-/* DOCUMENT MIRA_HOME
-         or MIRA_VERSION
-
-     Global variables defined by MiRA with respectively the name of the source
-     directory of MiRA and the version of MiRA.
-
-   SEE ALSO:
- */
-MIRA_VERSION = "2.0.0a";
-MIRA_HOME = mira_absdirname(current_include());
-
-/* FIXME: It necessary to make sure Yeti and other mandatory plugins are
-   loaded before otherwise their functions may not be defined despite the
+/* FIXME: It is necessary to make sure that Yeti and other mandatory plugins
+   are loaded before otherwise their functions may not be defined despite the
    `autoload` feature.  This issue seems to only occur in batch mode. */
 if (is_func(h_new) != 2) {
   include, "yeti.i", 3;

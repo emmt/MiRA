@@ -1,5 +1,17 @@
 # History of MiRA
 
+## Version 2.2.0 (2018-11-29)
+
+* This version can be installed with
+  [EasyYorick](https://github.com/emmt/EasyYorick).
+
+* [YOIFITS](https://github.com/emmt/YOIFITS),
+  [YLib](https://github.com/emmt/ylib) and [IPY](https://github.com/emmt/IPY)
+  are no-longer sub-modules of MiRA and have to be installed by themselves.
+  Hopefully, with [EasyYorick](https://github.com/emmt/EasyYorick) this is
+  trivial.
+
+
 ## Version 2.1.0 (2018-07-27)
 
 This version introduces a few changes in the available options (see below) and
