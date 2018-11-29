@@ -1,21 +1,17 @@
 .SUFFIXES: .i
-.PHONY: clean default distclean test distrib install
+.PHONY: clean all default distclean test distrib install help
 srcdir = .
 
 # DESTDIR can be overriden by package managers.
 DESTDIR=
 
 #------------------------------------------------------------------------------
-#
 
 MAN_PAGES = ymira.1
 BIN_FILES = ymira
 MIRA_FILES = mira2.i mira2_batch.i mira2_config.i mira2_cost.i mira2_data.i \
     mira2_image.i mira2_solver.i mira2_tests.i mira2_utils.i mira2_xform.i \
     mira2_plugin_central_star.i
-#IPY_FILES = linop.i rgl.i
-#YLIB_FILES = options.i utils.i
-#YOIFITS_FILES = oifits.i
 TEST_FILES = mira-demo.i mira-test1.i mira-test2.i
 DATA_FILES = data1.oifits data2.oifits README
 OTHER_FILES = AUTHOR LICENSE Makefile configure \
@@ -23,17 +19,20 @@ OTHER_FILES = AUTHOR LICENSE Makefile configure \
 DOC_FILES = $(MAN_PAGES)
 
 MIRA_SRC = $(srcdir)/src
-IPY_SRC = $(srcdir)/lib/ipy
-YLIB_SRC = $(srcdir)/lib/ylib
-YOIFITS_SRC = $(srcdir)/lib/yoifits
 
-default:
-	@echo "There is no default target.  Try one of:"
-	@echo "    make clean"
-	@echo "    make distclean"
-	@echo "    make distrib [VERSION=...]"
-	@echo "    make install [INCDIR=...] [YORICK=...] [BINDIR=...]"
-	@echo "    make test"
+default: all
+
+all:
+	@echo "Nothing to do, execute 'make install' to install"
+
+help:
+	@echo "Try one of:"
+	@echo " - 'make' or 'make all' to build"
+	@echo " - 'make clean' to cleanup source tree but keep configuration"
+	@echo " - 'make distclean' to cleanup source tree"
+	@echo " - 'make distrib [VERSION=...]' to build archive"
+	@echo " - 'make install [INCDIR=...] [YORICK=...] [BINDIR=...]' to install"
+	@echo " - 'make test' to run some tests"
 
 clean:
 	rm -f core *~ $(srcdir)/src/*~
@@ -98,48 +97,6 @@ install:
 	          fi; \
 	          cp -p "$$src" "$$dst"; \
 	          chmod 644 "$$dst"; \
-	      done; \
-	      for file in $(IPY_FILES); do \
-	          echo "Installing $$file in $$INCDIR"; \
-	          dst=$$INCDIR/$$file; \
-	          src=$(IPY_SRC)/$$file; \
-	          if ! test -f "$$src"; then \
-	              src=$(srcdir)/src/$$file; \
-	              if ! test -f "$$src"; then \
-	                  echo >&2 "Missing file \"$$file\""; \
-	                  return 1; \
-	              fi; \
-	          fi; \
-	          cp -p "$$src" "$$dst"; \
-	          chmod 644 "$$dst"; \
-	      done; \
-	      for file in $(YLIB_FILES); do \
-	          echo "Installing $$file in $$INCDIR"; \
-	          dst=$$INCDIR/$$file; \
-	          src=$(YLIB_SRC)/$$file; \
-	          if ! test -f "$$src"; then \
-	              src=$(srcdir)/src/$$file; \
-	              if ! test -f "$$src"; then \
-	                  echo >&2 "Missing file \"$$file\""; \
-	                  return 1; \
-	              fi; \
-	          fi; \
-	          cp -p "$$src" "$$dst"; \
-	          chmod 644 "$$dst"; \
-	      done; \
-	      for file in $(YOIFITS_FILES); do \
-	          echo "Installing $$file in $$INCDIR"; \
-	          dst=$$INCDIR/$$file; \
-	          src=$(YOIFITS_SRC)/$$file; \
-	          if ! test -f "$$src"; then \
-	              src=$(srcdir)/src/$$file; \
-	              if ! test -f "$$src"; then \
-	                  echo >&2 "Missing file \"$$file\""; \
-	                  return 1; \
-	              fi; \
-	          fi; \
-	          cp -p "$$src" "$$dst"; \
-		  chmod 644 "$$dst"; \
 	      done; \
 	  fi; \
 	  if test "x$$BINDIR" != "x"; then \
@@ -209,15 +166,6 @@ distrib:
 	      -e 's/^MIRA_VERSION *= *".*/MIRA_VERSIOn = "$(VERSION)";/'; \
 	    touch -r "$(srcdir)/src/$$file" "$$dstdir/$$file"; \
 	  fi; \
-	done; \
-	for file in $(IPY_FILES); do \
-	  cp -p "$(IPY_SRC)/$$file" "$$dstdir/."; \
-	done; \
-	for file in $(YLIB_FILES); do \
-	  cp -p "$(YLIB_SRC)/$$file" "$$dstdir/."; \
-	done; \
-	for file in $(YOIFITS_FILES); do \
-	  cp -p "$(YOIFITS_SRC)/$$file" "$$dstdir/."; \
 	done; \
 	dstdir=$$pkgdir; \
 	mkdir -p "$$dstdir"; \
