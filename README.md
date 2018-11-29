@@ -8,10 +8,11 @@ OIFITS format.
 A quick way to install MiRA is to use
 [EasyYorick](https://github.com/emmt/EasyYorick) script which takes care of
 downloading, compiling and installing all needed code.  Otherwise, see
-[`INSTALL.md`](INSTALL.md) for prerequisites and instructions to install MiRA.
+[*Installation*](doc/INSTALL.md) for prerequisites and instructions to install
+MiRA.
 
-The man pages of MiRA give all options.  See [`USAGE.md`](USAGE.md) for a short
-introduction about using MiRA.
+The man pages of MiRA give all options.  See [*Usage*](doc/USAGE.md) for a
+short introduction about using MiRA.
 
 
 ## References
