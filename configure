@@ -43,9 +43,11 @@ cfg_help () {
 usage: $cfg_progname [-h|--help] [--yorick=PATH_TO_YORICK]
 options:
   --yorick=PATH        Path to Yorick executable [$cfg_yorick].
+  --prefix=PATH        Prefix for installation [$cfg_prefix].
   --incdir=DIR         Destination directory for MiRA code files [Y_SITE/i].
   --bindir=DIR         Destination directory for MiRA executable [$cfg_bindir].
   --mandir=DIR         Destination directory for man pages [$cfg_mandir].
+  --arch=OS-CPU        Architecture [$cfg_arch].
   --debug              Turn debug mode on (for this script).
   -h, --help           Print this help and exit.
 EOF
@@ -57,7 +59,19 @@ else
     cfg_inplace=no
 fi
 
+cfg_os=$(uname -s | tr A-Z a-z)
+if test -z "$cfg_os"; then
+    cfg_os="unknown"
+fi
+cfg_cpu=$(uname -m | tr A-Z a-z)
+if test -z "$cfg_cpu"; then
+    cfg_cpu="unknown"
+else
+    case "$cfg_cpu" in i?86 ) cfg_cpu="ix86";; esac
+fi
+cfg_arch=${cfg_os}-${cfg_cpu}
 cfg_yorick=yorick
+cfg_prefix=
 cfg_incdir=
 cfg_bindir=
 cfg_mandir=
@@ -71,6 +85,15 @@ while test $# -ge 1; do
             ;;
         --debug)
             cfg_debug=yes
+            ;;
+        --prefix=*)
+            cfg_prefix=$(cfg_opt_value "$cfg_arg")
+            case "$cfg_prefix" in
+                /*) ;;
+                *) cfg_prefix=$(pwd -P)/$cfg_prefix;;
+            esac
+            test -z "$cfg_bindir" && cfg_bindir="$cfg_prefix/bin"
+            test -z "$cfg_mandir" && cfg_mandir="$cfg_prefix/share/man"
             ;;
         --yorick=*)
             cfg_yorick=$(cfg_opt_value "$cfg_arg")
@@ -89,8 +112,18 @@ while test $# -ge 1; do
     esac
 done
 
-# Search Yorick in the path:
-if test "x$cfg_yorick" = "xyorick"; then
+case "$cfg_arch" in
+  mswin|mswin-*) cfg_exe_sfx=".exe";;
+  *)             cfg_exe_sfx=""
+esac
+
+# Search Yorick in PREFIX/bin or in PATH.
+if test "$cfg_yorick" = "yorick" \
+        -a ! -z "$cfg_prefix" \
+        -a -x "$cfg_prefix/bin/yorick$cfg_exe_sfx"; then
+    cfg_yorick="$cfg_prefix/bin/yorick$cfg_exe_sfx"
+fi
+if test "$cfg_yorick" = "yorick"; then
     cfg_save_IFS=$IFS
     IFS=":"
     for cfg_dir in $PATH; do
@@ -102,10 +135,10 @@ if test "x$cfg_yorick" = "xyorick"; then
     done
     IFS=$cfg_save_IFS
 fi
-if test "x$cfg_yorick" = "xyorick" \
+if test "$cfg_yorick" = "yorick" \
     -o ! -f "$cfg_yorick" \
     -o ! -x "$cfg_yorick"; then
-    echo >&2 "Yorick excutable not found."
+    echo >&2 "Yorick executable not found."
     echo >&2 "Try to specify the path with option --yorick=..."
     exit 1
 fi
@@ -141,7 +174,7 @@ if test "x$cfg_mandir" = "x"; then
 else
     cfg_mandir_mesg="$cfg_mandir"
 fi
-echo >&2 "MiRA manual pages ---------------> $cfg_mandir_mesg"
+echo >&2 "MiRA manual pages --------------> $cfg_mandir_mesg"
 
 # Create the configration file.
 cfg_dst="./install.cfg"
@@ -156,7 +189,7 @@ INCDIR=$cfg_incdir
 # if empty).
 BINDIR=$cfg_bindir
 
-# MANDIR is the directory where to install MiRA manula pages (nothing is
+# MANDIR is the directory where to install MiRA manual pages (nothing is
 # installed if empty).
 MANDIR=$cfg_mandir
 
