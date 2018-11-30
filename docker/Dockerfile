@@ -18,13 +18,14 @@ RUN echo http://nl.alpinelinux.org/alpine/edge/testing >> /etc/apk/repositories 
     unzip master.zip && rm master.zip && cd ynfft-master/ && \
     ./configure  --cflags='-I/usr/local/include -fopenmp -Ofast -march=native -mfpmath=sse -pedantic -pipe -std=c99' && \
     make && make install && cd /opt && rm -rf ynfft-master && \
+    git clone https://github.com/emmt/YOIFITS.git && \
+    cd YOIFITS && ./configure && make && make install && cd .. && rm -rf YOIFITS && \
+    git clone https://github.com/emmt/ylib.git && \
+    cd ylib && ./configure && make && make install && cd .. && rm -rf ylib && \
+    git clone https://github.com/emmt/IPY.git && \
+    cd IPY && ./configure && make && make install && cd .. && rm -rf IPY && \
     git clone https://github.com/emmt/MiRA.git && cd MiRA/ && \
-    git submodule init && git submodule update && \
-    git submodule foreach 'git checkout master' && \
-    cd lib/yoifits/ && ./configure  && make && make install && \
-    cd ../ylib && ./configure  && make && make install && \
-    cd ../ipy && ./configure  && make && make install && \
-    cd ../.. && ./configure  && make install && \
+    ./configure  && make install && \
     apk del .build-deps  && \
     rm -rf /var/cache/apk/* && rm -rf /usr/local/share/doc
 
