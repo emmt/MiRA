@@ -25,8 +25,8 @@ RUN echo http://nl.alpinelinux.org/alpine/edge/testing >> /etc/apk/repositories 
     git clone https://github.com/emmt/IPY.git && \
     cd IPY && ./configure && make && make install && cd .. && rm -rf IPY && \
     git clone https://github.com/emmt/MiRA.git && cd MiRA/ && \
-    ./configure  && make install && \
+    ./configure --prefix=/usr/local && make install && \
     apk del .build-deps  && \
     rm -rf /var/cache/apk/* && rm -rf /usr/local/share/doc
 
-ENTRYPOINT ["/opt/MiRA/bin/ymira"]
+ENTRYPOINT ["/usr/local/bin/ymira"]
