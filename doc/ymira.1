@@ -92,10 +92,12 @@ Co-log-likelihood approximation to use for phase-only data.  The default is
 \fB\-phasecost\fR=\fBvonmises\fR which is also the recommended value.
 .\"
 .SS Image Settings
-If no initial image is provided as a FITS file (see option \fB\-initial\fR),
-the pixel size (with option \fB\-pixelsize\fR) and the image dimensions (with
-options \fB\-fov\fR or \fB\-dim\fR) must be specified.  If an initial image
-file is given, the initial image may be resized to match these settings.
+
+If no initial image is provided as a FITS file (see options \fB\-initial\fR and
+\fB\-initialhdu\fR), the pixel size (with option \fB\-pixelsize\fR) and the
+image dimensions (with options \fB\-fov\fR or \fB\-dim\fR) must be specified.
+If an initial image file is given, the initial image may be resized to match
+these settings.
 .TP
 \fB\-pixelsize\fR=\fI\,angle\/\fR
 Specify the angular size of pixels.  For example, \fB\-pixelsize=0.1mas\fR.
@@ -193,6 +195,11 @@ is \fBDirac\fR or \fBrandom\fR, the initial image is a centered point-like
 object or a map of random pixels.  Otherwise, \fI\,name\/\fR is the name of a
 FITS file with the initial image.
 .TP
+\fB\-initialhdu\fR=\fI\,name\/\fR
+Specify the name of the FITS extension (FITS keyword HDUNAME) which contains
+the initial image in the OI-Imaging input file.  This option is only allowed
+with in OI-Imaging mode, that is when option \fB\-oi-imaging\fR is specified.
+.TP
 \fB\-seed\fR=\fI\,value\/\fR
 Specify the seed for the random generator.
 .\"
@@ -276,12 +283,12 @@ A plugin may add its own command line options.  See file
 "\fBmira2_plugin_central_star.i\fR" for an example of plugin code.
 
 .TP
-\fB\-settings\fR=\fI\,name\/\fR
-Specify the name of a FITS file with the settings of the algorithm.  Command
-line options have precedence over the settings defined in the file
-\fI\,name\/\fR. The format of this file closely follows that of the output FITS
-file but is subject to change as the OI-Imaging standard
-(https://github.com/emmt/OI-Imaging-JRA) is currently evolving.
+\fB\-oi-imaging\fR
+Specify to run MiRA in OI-Imaging mode.  There must be exactly two positional
+arguments, one input and one output file, both being OI-FITS files following
+OI-Imaging standard (described in https://github.com/emmt/OI-Imaging-JRA).
+Command line options have precedence over the settings defined in the input
+file.
 
 .TP
 \fB\-help\fR

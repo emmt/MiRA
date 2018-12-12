@@ -41,9 +41,6 @@ MIRA_BATCH_HOME = _mira_batch_init(current_include());
 _mira_batch_init = [];
 
 
-/* Make sure "options" package is loaded. */
-mira_require, "opt_init", "ylib", "options.i";
-
 if (! is_func(nfft_new)) {
   /* Attempt to pre-load YNFFT. */
   include, "nfft.i", 3;
@@ -116,6 +113,8 @@ _MIRA_CL_OPTS = _lst\
    "\nInitial image:",
    _lst("initial", [], "NAME", OPT_STRING,
         "FITS file or method for initial image"),
+   _lst("initialhdu", [], "HDUNAME", OPT_STRING,
+        "Name of FITS extension with initial image"),
    _lst("seed", [], "VALUE", OPT_REAL,
         "Seed for the random generator"),
    "\nOutput file:",
@@ -158,8 +157,8 @@ _MIRA_CL_OPTS = _lst\
    _lst("sxtol", [], "REAL", OPT_REAL,
         "Step tolerance for the line search"),
    "\nMiscellaneous:",
-   _lst("settings", [], "NAME", OPT_STRING,
-        "Name of the FITS parameter file"),
+   _lst("oi-imaging", [], [], OPT_FLAG,
+        "OI-Imaging mode"),
    _lst("plugin", [], "NAME", OPT_STRING,
         "Name of plugin"),
    _lst("debug", [], [], OPT_FLAG,
@@ -330,14 +329,47 @@ func _mira_fetch_plugin(&argv, &options)
 func mira_get_fits_use_polar(fh, kwd, use_amp, use_phi)
 {
   value = mira_get_fits_string(fh, kwd);
-  if (is_void(value))  return [];
-  if (value == "NONE") return "none";
-  if (value == "AMP")  return "amp";
-  if (value == "PHI")  return "phi";
-  if (value == "ALL")  return "all";
+  id = identof(value);
+  if (id == Y_VOID) return [];
+  if (is_scalar(id)) {
+    if (id == Y_STRING) {
+      if (value == "NONE") return "none";
+      if (value == "AMP")  return "amp";
+      if (value == "PHI")  return "phi";
+      if (value == "ALL")  return "all";
+    } else if (id == Y_CHAR) {
+      if (value == 'T') return "all";
+      if (value == 'F') return "none";
+    }
+  }
   throw, "invalid value for FITS keyword " + kwd;
 }
 errs2caller, mira_get_fits_use_polar;
+
+func mira_batch_read_initial_image(filename, hdu)
+{
+  fh = fits_open(filename);
+  number = mira_parse(long, hdu);
+  if (is_void(number)) {
+    while (! fits_eof(fh)) {
+      value = fits_get(fh, "HDUNAME");
+      if (! is_void(value) && strcase(1, strtrim(value, 2)) == hdu) {
+        break;
+      }
+    }
+  } else {
+    fits_goto_hdu, fh, number;
+  }
+  if (fits_eof(fh)) {
+    error, "initial hdu not found in \""+filename+"\"";
+  }
+  if (fits_get_xtension(fh) != "IMAGE") {
+    error, "initial hdu is not an IMAGE in \""+filename+"\"";
+  }
+  img = mira_read_image(fh);
+  fits_close, fh;
+  return img;
+}
 
 func mira_main(argv0, argv)
 {
@@ -362,6 +394,7 @@ func mira_main(argv0, argv)
     /* Options "-help", or "-usage", or "-version" have been set. */
     return;
   }
+  h_set, opt, "oi_imaging", h_pop(opt, "oi-imaging");
   h_set, opt, flags = 0n;
   if (is_hash(plugin)) {
     subroutine = plugin.__vops__.parse_options;
@@ -394,10 +427,14 @@ func mira_main(argv0, argv)
     opt_error, ("output file \""+final_filename+"\" already exists");
   }
 
-  /* Read settings from an optional FITS file.  Command line options have
-     precedence. */
-  if (! is_void(opt.settings)) {
-    mira_set_defaults, opt, mira_read_input_params(opt.settings);
+  /* In OI-Imaging mode, the initial settings and the data are given by the
+     input FITS file.  Command line options have precedence. */
+  if (opt.oi_imaging) {
+    if (argc != 2) {
+      opt_error, "option `-oi-imaging` requires exactly 2 positional arguments";
+      return;
+    }
+    mira_set_defaults, opt, mira_read_input_params(argv(1));
   }
 
   /* Default settings. */
@@ -478,8 +515,12 @@ func mira_main(argv0, argv)
 
   /* Initial image. */
   if (is_void(opt.initial)) {
-    opt_error, ("An initial image must be specified, e.g. with " +
-                "`--initial=Dirac|random|FILENAME`");
+    if (! opt.oi-imaging || is_void(opt.initialhdu)) {
+      opt_error, ("An initial image must be specified, e.g. with " +
+                  "`--initial=Dirac|random|FILENAME`");
+    }
+    h_set, opt, initial = mira_batch_read_initial_image(argv(1),
+                                                        opt.initialhdu);
   }
   if (is_string(opt.initial)) {
     if (opt.initial != "random" && opt.initial != "Dirac") {

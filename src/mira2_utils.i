@@ -25,6 +25,27 @@ if (! is_scalar(MIRA_HOME) || ! is_string(MIRA_HOME)) {
 }
 
 /*---------------------------------------------------------------------------*/
+/* PARSE STRING */
+
+func mira_parse(type, str)
+/* DOCUMENT val = mira_parse(type, str);
+
+     Parse human a readable value of given type in string STR.  The returned
+     value is a scalar of the given type of nothing if STR does not contain (up
+     to leading or trailoing spaces) a single well formed value of the
+     requested type.
+
+   SEE ALSO: sread.
+*/
+{
+  val = type();
+  str = string();
+  if (sread(str, val, str) == 1) {
+    return val;
+  }
+}
+
+/*---------------------------------------------------------------------------*/
 /* UNIVERSAL CONSTANTS AND UNITS */
 
 /* Some constants. */

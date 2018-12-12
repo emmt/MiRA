@@ -59,77 +59,78 @@ local MIRA_HOME, MIRA_VERSION;
 MIRA_VERSION = "2.2.0";
 MIRA_HOME = mira_absdirname(current_include());
 
-func mira_require(pkgfunc, pkgdir, pkgsrc)
-/* DOCUMENT mira_require, pkgfunc, pkgdir, pkgsrc;
+func _mira_init
+/* DOCUMENT: _mira_init;
 
-     If PKGFUNC is not the name of an existing (interpreted or builtin)
-     function, this subroutine attempts to load file PKGSRC, possibly in
-     subdirectoy PKGDIR of the sub-packages of MiRA.  An error is raised if
-     PKGFUNC is not the name of an existing function after trying to include
-     file PKGSRC in relevant directories
-
-   SEE ALSO: include, is_func, require.
- */
+      Initialize MiRA.
+*/
 {
-  path = "";
-  pass = 0;
-  while (! symbol_exists(pkgfunc) ||
-         (c = is_func(symbol_def(pkgfunc))) == 0n || c == 3n) {
-    if (strlen(path) > 0) {
-      error, "function "+pkgfunc+" not defined in \""+path+"\"";
-    }
-    if (++pass == 1) {
-      /* Package may be installed next to MiRA source. */
-      path = MIRA_HOME + pkgsrc;
-    } else if (pass == 2) {
-      /* Maybe no installation has been done and package is in the source tree
-         of MiRA. */
-      path = MIRA_HOME + "../lib/" + pkgdir + "/" + pkgsrc;
-    } else if (pass == 3) {
-      /* Package may be installed in a standard location. */
-      path = pkgsrc;
-    } else {
-      error, "source file \""+pkgsrc+"\" not found";
-    }
-    if (open(path, "r", 1)) {
-      include, path, 3;
-    } else {
-      path = "";
-    }
-  }
-}
+  /* Make sure that Yeti and other mandatory plugins are loaded before
+     otherwise their functions may not be defined despite the `autoload`
+     feature.  This issue seems to only occur in batch mode. */
+  path = get_path();
+  set_path, (MIRA_HOME+":"+Y_SITE+"/i:"+Y_SITE+"/contrib:"+Y_SITE+"/i0:"+
+             Y_HOME+"/lib");
 
-/* FIXME: It is necessary to make sure that Yeti and other mandatory plugins
-   are loaded before otherwise their functions may not be defined despite the
-   `autoload` feature.  This issue seems to only occur in batch mode. */
-if (is_func(h_new) != 2) {
-  include, "yeti.i", 3;
   if (is_func(h_new) != 2) {
-    error, ("cannot load mandatory Yeti extension " +
-            "(https://github.com/emmt/Yeti)");
+    include, "yeti.i", 3;
+    if (is_func(h_new) != 2) {
+      error, ("cannot load mandatory Yeti extension " +
+              "(https://github.com/emmt/Yeti)");
+    }
   }
-}
-if (is_func(opl_vmlmb) != 1) {
-  include, "optimpacklegacy.i", 3;
   if (is_func(opl_vmlmb) != 1) {
-    error, ("cannot load mandatory OptimPackLegacy extension " +
-            "(https://github.com/emmt/OptimPackLegacy)");
+    include, "optimpacklegacy.i", 3;
+    if (is_func(opl_vmlmb) != 1) {
+      set_path, path;
+      error, ("cannot load mandatory OptimPackLegacy extension " +
+              "(https://github.com/emmt/OptimPackLegacy)");
+    }
   }
-}
-mira_require, "oifits_new", "yoifits", "oifits.i";
-mira_require, "throw",      "ylib",    "utils.i";
-mira_require, "rgl_new",    "ipy",     "rgl.i";
-mira_require, "linop_new",  "ipy",     "linop.i";
+  if (! is_func(oifits_new)) {
+    include, Y_SITE+"i/oifits.i", 3;
+    if (! is_func(oifits_new)) {
+      set_path, path;
+      error, ("cannot load mandatory YOIFITS extension " +
+              "(https://github.com/emmt/YOIFITS)");
+    }
+  }
+  if (is_func(throw) != 1) {
+    include, "utils.i", 3;
+  }
+  if (is_func(opt_init) != 1) {
+    include, "options.i", 3;
+  }
+  if (is_func(throw) != 1 || is_func(opt_init) != 1) {
+    set_path, path;
+    error, ("cannot load mandatory YLib extension " +
+            "(https://github.com/emmt/ylib)");
+  }
+  if (is_func(rgl_new) != 4) {
+    include, "rgl.i", 3;
+  }
+  if (is_func(linop_new) != 1) {
+    include, "linop.i", 3;
+  }
+  if (is_func(rgl_new) != 4 || is_func(linop_new) != 1) {
+    set_path, path;
+    error, ("cannot load mandatory IPY extension " +
+            "(https://github.com/emmt/IPY)");
+  }
+  set_path, path;
 
-/* Load other parts of MiRA (which should be at the same location of this
-   file). */
-include, MIRA_HOME+"mira2_utils.i", 1;
-include, MIRA_HOME+"mira2_config.i", 1;
-include, MIRA_HOME+"mira2_data.i", 1;
-include, MIRA_HOME+"mira2_xform.i", 1;
-include, MIRA_HOME+"mira2_cost.i", 1;
-include, MIRA_HOME+"mira2_image.i", 1;
-include, MIRA_HOME+"mira2_solver.i", 1;
+  /* Load other parts of MiRA (which should be at the same location of this
+     file). */
+  include, MIRA_HOME+"mira2_utils.i", 1;
+  include, MIRA_HOME+"mira2_config.i", 1;
+  include, MIRA_HOME+"mira2_data.i", 1;
+  include, MIRA_HOME+"mira2_xform.i", 1;
+  include, MIRA_HOME+"mira2_cost.i", 1;
+  include, MIRA_HOME+"mira2_image.i", 1;
+  include, MIRA_HOME+"mira2_solver.i", 1;
+}
+_mira_init;
+
 
 /*
   MiRA structure:
