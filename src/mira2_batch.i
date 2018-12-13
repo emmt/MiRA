@@ -328,11 +328,12 @@ func _mira_fetch_plugin(&argv, &options)
 
 func mira_get_fits_use_polar(fh, kwd, use_amp, use_phi)
 {
-  value = mira_get_fits_string(fh, kwd);
+  value = fits_get(fh, kwd);
   id = identof(value);
   if (id == Y_VOID) return [];
-  if (is_scalar(id)) {
+  if (is_scalar(value)) {
     if (id == Y_STRING) {
+      value = strcase(1n, strtrim(value, 2));
       if (value == "NONE") return "none";
       if (value == "AMP")  return "amp";
       if (value == "PHI")  return "phi";

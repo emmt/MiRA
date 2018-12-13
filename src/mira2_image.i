@@ -907,7 +907,7 @@ errs2caller, mira_get_fits_string;
 func mira_get_fits_logical(fh, kwd) /* DOCUMENTED */
 {
   value = fits_get(fh, kwd);
-  if (is_scalar(value) && identof(value) == char &&
+  if (is_scalar(value) && structof(value) == char &&
       (value == _MIRA_FITS_TRUE || value == _MIRA_FITS_FALSE)) {
     value = (value == _MIRA_FITS_TRUE);
   } else if (! is_void(value)) {
@@ -1032,7 +1032,7 @@ func mira_find_fits_hdu(fh, xtension, start=, extname=, hduname=)
   if (! am_subroutine()) {
     return 0n;
   }
-  msg = "no " + extension;
+  msg = "no " + xtension;
   if (! is_void(extname)) {
     msg += ("with EXTNAME='" + extname + "'");
   }
