@@ -516,7 +516,7 @@ func mira_main(argv0, argv)
 
   /* Initial image. */
   if (is_void(opt.initial)) {
-    if (! opt.oi-imaging || is_void(opt.initialhdu)) {
+    if (! opt.oi_imaging || is_void(opt.initialhdu)) {
       opt_error, ("An initial image must be specified, e.g. with " +
                   "`--initial=Dirac|random|FILENAME`");
     }
