@@ -506,7 +506,7 @@ func mira_main(argv0, argv)
       value = get_angle(opt, "gamma", strictly_positive);
       grow, comment,
         swrite(format="Regularization: \"%s\" with MU=%s and GAMMA=%s",
-               regul_name, mira_format(opt.mu), opt.gamma);
+               regul_name, mira_format(opt.mu), mira_format( opt.gamma));
       h_set, opt, gamma=value;
       regul_post = TRUE;
     } else {
