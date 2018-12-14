@@ -1,9 +1,9 @@
-FROM ferreol/yeti:bare
+FROM ferreol/yeti:latest
 
 MAINTAINER Ferréol Soulez <ferreol.soulez@univ-lyon1.fr>
 
 RUN echo http://nl.alpinelinux.org/alpine/edge/testing >> /etc/apk/repositories && \
-    apk add --update --no-cache --virtual .build-deps  bash git make wget build-base zip  &&\
+    apk add --update --no-cache --virtual .build-deps  bash  make wget build-base zip  &&\
     apk add --update  --no-cache fftw-dev  &&\
     mkdir -p /opt && cd /opt && \
     wget https://github.com/emmt/OptimPackLegacy/archive/master.zip && \
@@ -18,14 +18,10 @@ RUN echo http://nl.alpinelinux.org/alpine/edge/testing >> /etc/apk/repositories 
     unzip master.zip && rm master.zip && cd ynfft-master/ && \
     ./configure  --cflags='-I/usr/local/include -fopenmp -Ofast -march=native -mfpmath=sse -pedantic -pipe -std=c99' && \
     make && make install && cd /opt && rm -rf ynfft-master && \
-    git clone https://github.com/emmt/YOIFITS.git && \
-    cd YOIFITS && ./configure && make && make install && cd .. && rm -rf YOIFITS && \
-    git clone https://github.com/emmt/ylib.git && \
-    cd ylib && ./configure && make && make install && cd .. && rm -rf ylib && \
-    git clone https://github.com/emmt/IPY.git && \
-    cd IPY && ./configure && make && make install && cd .. && rm -rf IPY && \
-    git clone https://github.com/emmt/MiRA.git && cd MiRA/ && \
+    wget -q  https://github.com/emmt/MiRA/archive/master.zip && \ 
+    unzip master.zip && rm master.zip && cd MiRA-master/ && \ 
     ./configure --prefix=/usr/local && make install && \
+    cd /opt && rm -rf /opt/MiRA-master && \
     apk del .build-deps  && \
     rm -rf /var/cache/apk/* && rm -rf /usr/local/share/doc
 

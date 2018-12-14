@@ -232,6 +232,7 @@ func _mira_solve_objfunc(x, &grd, this) /* DOCUMENTED */
   fluxerr = this.fluxerr;
   strict_flux = (flux > 0 && fluxerr == 0);
   loose_flux  = (flux > 0 && fluxerr > 0);
+ 
   if (strict_flux && (xsum = sum(x)) > 0) {
     xscl = flux/double(xsum);
     if (xscl != 1) {
@@ -263,7 +264,7 @@ func _mira_solve_objfunc(x, &grd, this) /* DOCUMENTED */
   }
 
   /* Account for the flux constraint. */
-  if (strict_flux) {
+  if (strict_flux && (xsum !=  0)) {
     grd = xscl*grd - sum(grd*x)/xsum;
   } else if (loose_flux) {
     fluxres = sum(x) - flux;

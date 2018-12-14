@@ -892,11 +892,11 @@ local mira_get_fits_integer, mira_get_fits_real;
 
    SEE ALSO: fits_get.
  */
-func mira_get_fits_string(fh, kwd) /* DOCUMENTED */
+func mira_get_fits_string(fh, kwd, lower=) /* DOCUMENTED */
 {
   value = fits_get(fh, kwd);
   if (is_scalar(value) && structof(value) == string) {
-    value = strcase(1n, strtrim(value, 2));
+    value = strcase((lower ? 0n : 1n), strtrim(value, 2));
   } else if (! is_void(value)) {
     throw, "invalid value for FITS keyword " + kwd;
   }
@@ -907,7 +907,7 @@ errs2caller, mira_get_fits_string;
 func mira_get_fits_logical(fh, kwd) /* DOCUMENTED */
 {
   value = fits_get(fh, kwd);
-  if (is_scalar(value) && identof(value) == char &&
+  if (is_scalar(value) && structof(value) == char &&
       (value == _MIRA_FITS_TRUE || value == _MIRA_FITS_FALSE)) {
     value = (value == _MIRA_FITS_TRUE);
   } else if (! is_void(value)) {
@@ -1015,6 +1015,7 @@ func mira_find_fits_hdu(fh, xtension, start=, extname=, hduname=)
       value = fits_get(fh, "EXTNAME");
       flag = (is_string(value) && strcase(1, strtrim(value, 2)) == extname);
     }
+
     if (flag && ! is_void(hduname)) {
       value = fits_get(fh, "HDUNAME");
       flag = (is_string(value) && strcase(1, strtrim(value, 2)) == hduname);
@@ -1032,7 +1033,7 @@ func mira_find_fits_hdu(fh, xtension, start=, extname=, hduname=)
   if (! am_subroutine()) {
     return 0n;
   }
-  msg = "no " + extension;
+  msg = "no " + xtension;
   if (! is_void(extname)) {
     msg += ("with EXTNAME='" + extname + "'");
   }
@@ -1080,11 +1081,11 @@ func mira_read_input_params(src)
       use_vis          = mira_get_fits_use_polar(fh, "USE_VIS"),
       use_vis2         = mira_get_fits_logical(  fh, "USE_VIS2"),
       use_t3           = mira_get_fits_use_polar(fh, "USE_T3"),
-      initial          = mira_get_fits_string(   fh, "INIT_IMG"),
+      initialhdu       = mira_get_fits_string(   fh, "INIT_IMG"),
       threshold        = mira_get_fits_real(     fh, "SOFT_CUT"),
       recenter         = mira_get_fits_logical(  fh, "RECENTER"),
       bootstrap        = mira_get_fits_integer(  fh, "REPEAT"),
-      regul            = mira_get_fits_string(   fh, "RGL_NAME"),
+      regul            = mira_get_fits_string(   fh, "RGL_NAME", lower=1),
       mu               = mira_get_fits_real(     fh, "RGL_WGT"),
       tau              = mira_get_fits_real(     fh, "RGL_TAU"),
       gamma            = mira_get_fits_real(     fh, "RGL_GAMM"),
