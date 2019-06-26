@@ -627,22 +627,22 @@ func mira_wrap_image(arr, dat)
     }
     i1 = mira_central_index(naxis1);
     i2 = mira_central_index(naxis2);
-    ARCSECOND = MIRA_ARCSECOND;
+    DEGREE = MIRA_DEGREE;
     NANOMETER = MIRA_NANOMETER;
     img = h_new(arr = arr,
                 naxis = naxis,
                 naxis1 = naxis1,
                 crpix1 = double(i1),
-                crval1 = x(i1)/ARCSECOND,
-                cdelt1 = avg(x(dif))/ARCSECOND,
+                crval1 = x(i1)/DEGREE,
+                cdelt1 = avg(x(dif))/DEGREE,
                 ctype1 = "RA---TAN",
-                cunit1 = "arcsec",
+                cunit1 = "deg",
                 naxis2 = naxis2,
                 crpix2 = double(i2),
-                crval2 = y(i2)/ARCSECOND,
-                cdelt2 = avg(y(dif))/ARCSECOND,
+                crval2 = y(i2)/DEGREE,
+                cdelt2 = avg(y(dif))/DEGREE,
                 ctype2 = "DEC--TAN",
-                cunit2 = "arcsec");
+                cunit2 = "deg");
     if (naxis < 3) {
       return h_set(img, wavelength=wave(1));
     }

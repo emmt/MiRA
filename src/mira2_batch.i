@@ -583,14 +583,14 @@ func mira_main(argv0, argv)
                   crpix1 = (dim1/2) + 1,
                   crval1 = 0.0,
                   ctype1 = "RA---TAN",
-                  cdelt1 = pixelsize/MIRA_MILLIARCSECOND,
-                  cunit1 = "mas",
+                  cdelt1 = pixelsize/MIRA_DEGREE,
+                  cunit1 = "deg",
                   naxis2 = dim2,
                   crpix2 = (dim2/2) + 1,
                   crval2 = 0.0,
                   ctype2 = "DEC--TAN",
-                  cdelt2 = pixelsize/MIRA_MILLIARCSECOND,
-                  cunit2 = "mas");
+                  cdelt2 = pixelsize/MIRA_DEGREE,
+                  cunit2 = "deg");
     if (opt.initial == "random") {
       if (! is_void(opt.seed)) {
         if (opt.seed <= 0.0 || opt.seed >= 1.0) {
@@ -649,7 +649,7 @@ func mira_main(argv0, argv)
     }
     dims = [2, dim1, dim2];
   }
-  cunit = "mas";
+  cunit = "deg";
   cdelt = mira_convert_units(siunit, cunit)*pixelsize;
   crpix1 = (dim1/2) + 1;
   crpix2 = (dim2/2) + 1;
