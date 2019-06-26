@@ -203,6 +203,7 @@ func _mira_select_data(master)
   wavemin = master.wavemin;
   wavemax = master.wavemax;
   h_set, master, first = [], stage = 0,
+    img_wavemin = 0.0, img_wavemax = 0.0, img_wave = 0.0,
     coords = h_new(mode = 0, u = [], v = [], wave = [], band = []);
 
   /* Iterate over OI-FITS data blocks for selection. */
@@ -276,8 +277,12 @@ func _mira_select_data(master)
 
   /* Estimate the wavelength, set stage and return. */
   if (numberof(master.coords.wave) > 0) {
-    h_set, master, img_wave = (min(master.coords.wave) +
-                               max(master.coords.wave))/2.0;
+    img_wavemin = min(master.coords.wave);
+    img_wavemax = max(master.coords.wave);
+    h_set, master,
+      img_wavemin = img_wavemin,
+      img_wavemax = img_wavemax,
+      img_wave = (img_wavemin + img_wavemax)/2.0;
   }
   return h_set(master, stage = 1);
 }

@@ -743,6 +743,16 @@ func mira_main(argv0, argv)
     opt_error, "Bad value for option `-maxeval`";
   }
 
+  /* Print some information. */
+  mira_update, master;
+  inform,
+    "reconstructing image of \"%s\" for wavelengths in [%.3fµm,%.3fµm]\n",
+    (is_void(master.target) ? "unknown" : master.target),
+    master.img_wavemin/MIRA_MICRON,
+    master.img_wavemax/MIRA_MICRON;
+  inform, "maximum pixel size: %g mas\n",
+    mira_maximum_pixel_size(master)/MIRA_MILLIARCSECOND;
+
   /* Run image reconstruction stages. */
   local initial_arr, final_arr;
   eq_nocopy, initial_arr, image.arr;
