@@ -142,7 +142,7 @@ func mira_solve(master, x, &penalty, xmin=, xmax=,
   opl_vmlmb, _mira_solve_objfunc, x, penalty, extra=fg,
     xmin=xmin, xmax=xmax, mem=mem,
     verb=verb, viewer=viewer, printer=printer,
-    maxiter=maxiter, maxeval=maxeval, output=,
+    maxiter=maxiter, maxeval=maxeval, output=output,
     frtol=ftol, fatol=0.0, //gatol=0.0, grtol=gtol,
     sftol=sftol, sgtol=sftol, sxtol=sftol;
 
@@ -232,7 +232,7 @@ func _mira_solve_objfunc(x, &grd, this) /* DOCUMENTED */
   fluxerr = this.fluxerr;
   strict_flux = (flux > 0 && fluxerr == 0);
   loose_flux  = (flux > 0 && fluxerr > 0);
- 
+
   if (strict_flux && (xsum = sum(x)) > 0) {
     xscl = flux/double(xsum);
     if (xscl != 1) {
