@@ -49,25 +49,26 @@ func mira_parse(type, str)
 /* UNIVERSAL CONSTANTS AND UNITS */
 
 /* Some constants. */
-local MIRA_INF, MIRA_NAN;
+local MIRA_INF, MIRA_NAN, MIRA_HUGE;
 local MIRA_PI, MIRA_METER, MIRA_MICRON, MIRA_MICROMETER;
 local MIRA_DEGREE, MIRA_DEG, MIRA_ARCSECOND, MIRA_ARCSEC;
 local MIRA_MILLIARCSECOND, MIRA_MILLIARCSEC, MIRA_MAS;
 /* DOCUMENT Mathematical constants and physical units defined in MiRA.
 
-     +-----------------------------------------------------------+
-     | Constants                       Description               |
-     +-----------------------------------------------------------+
-     | MIRA_PI                         3.1415...                 |
-     | MIRA_DEG, MIRA_DEGREE           degree to radian          |
-     | MIRA_ARCSEC, MIRA_ARCSECOND     arcsecond in SI units     |
-     | MIRA_MAS, MIRA_MILLIARCSEC,     millarcsecond in SI units |
-     | MIRA_MILLIARCSECOND                                       |
-     | MIRA_MICRON, MIRA_MICROMETER    micrometer in SI units    |
-     | MIRA_NANOMETER                  nanometer in SI units     |
-     | MIRA_INF                        Inf                       |
-     | MIRA_NAN                        quiet NaN                 |
-     +-----------------------------------------------------------+
+     +--------------------------------------------------------------+
+     | Constants                       Description                  |
+     +--------------------------------------------------------------+
+     | MIRA_PI                         3.1415...                    |
+     | MIRA_DEG, MIRA_DEGREE           degree to radian             |
+     | MIRA_ARCSEC, MIRA_ARCSECOND     arcsecond in SI units        |
+     | MIRA_MAS, MIRA_MILLIARCSEC,     millarcsecond in SI units    |
+     | MIRA_MILLIARCSECOND                                          |
+     | MIRA_MICRON, MIRA_MICROMETER    micrometer in SI units       |
+     | MIRA_NANOMETER                  nanometer in SI units        |
+     | MIRA_INF                        Inf                          |
+     | MIRA_NAN                        quiet NaN                    |
+     | MIRA_HUGE                       largest floating-point value |
+     +--------------------------------------------------------------+
 
    SEE ALSO: mira, mira_length, mira_angle.
  */
@@ -86,6 +87,7 @@ MIRA_PARSEC = (648000/MIRA_PI)*MIRA_ASTRONOMICAL_UNIT;
 
 MIRA_INF = ieee_generate(double, 1); // positive infinite
 MIRA_NAN = ieee_generate(double, 2); // quiet NAN
+MIRA_HUGE = machine_constant("DBL_MAX"); // largest floating-point value
 
 local _MIRA_LENGTH_UNITS;
 func mira_length(&var, def)

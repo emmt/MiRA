@@ -256,7 +256,7 @@ func _mira_select_data(master)
     if (wavemin > 0.0) {
       select &= (wave >= wavemin)(-,);
     }
-    if (wavemax < MIRA_INF) {
+    if (wavemax < MIRA_HUGE) {
       select &= (wave <= wavemax)(-,);
     }
     select = where(select);
