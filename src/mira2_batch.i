@@ -794,6 +794,13 @@ func mira_main(argv0, argv)
       bitpix=opt.bitpix, hduname="IMAGE-OI INITIAL IMAGE",
       comment="Initial image used by MiRA";
   }
+  
+  /* Maybe add plug-in specific extensions. */
+  plugin =  mira_plugin(master);
+  if (is_hash(plugin)) {
+    subroutine = plugin.__vops__.add_extensions;
+    subroutine, data, fh;
+  }
   if (opt.save_visibilities) {
     inform, "Saving model complex visibilities...";
     mira_update, master, final_arr;
