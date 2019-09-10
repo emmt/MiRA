@@ -269,27 +269,9 @@ func _mira_get_use_allnone(tab, key, bits, def)
 }
 errs2caller, _mira_get_use_allnone;
 
-func _mira_fetch_plugin(&argv, &options)
+
+func _mira_load_plugin(name)
 {
-  n = numberof(argv);
-  if (n < 1) {
-    return;
-  }
-  test = strglob("--", argv);
-  imax = anyof(test) ? where(test)(1) - 1 : n;
-  if (imax < 1) {
-    return;
-  }
-  sel = strgrep("^--?plugin=(.*)", argv, sub=1, n=1);
-  test = (sel(2,) > 0);
-  if (noneof(test)) {
-    return;
-  }
-  i = where(test)(1);
-  if (i > imax) {
-    return;
-  }
-  name = strpart(argv(i), sel(,i));
   if (strlen(name) < 1) {
     throw, "Missing plugin name";
   }
@@ -322,7 +304,34 @@ func _mira_fetch_plugin(&argv, &options)
   if (! is_hash(plugin) || ! h_has(plugin, "__vops__")) {
     throw, ("Invalid initialization of plugin \"" + name + "\"");
   }
+  return plugin;
+}
+
+func _mira_fetch_plugin(&argv, &options)
+{
+  n = numberof(argv);
+  if (n < 1) {
+    return;
+  }
+  test = strglob("--", argv);
+  imax = anyof(test) ? where(test)(1) - 1 : n;
+  if (imax < 1) {
+    return;
+  }
+  sel = strgrep("^--?plugin=(.*)", argv, sub=1, n=1);
+  test = (sel(2,) > 0);
+  if (noneof(test)) {
+    return;
+  }
+  i = where(test)(1);
+  if (i > imax) {
+    return;
+  }
+  name = strpart(argv(i), sel(,i));
+
+  plugin = _mira_load_plugin(name);
   options = _cat(plugin.__vops__.options, options);
+
   return plugin;
 }
 
@@ -391,16 +400,19 @@ func mira_main(argv0, argv)
   plugin = _mira_fetch_plugin(argv, options);
   options = opt_init(_MIRA_CL_USAGE, _MIRA_CL_BRIEF, options);
   opt = opt_parse(options, argv);
+  
+
+  if (is_hash(plugin)){
+    h_set, opt, plugin_obj = plugin;
+  }
+  
   if (is_void(opt)) {
     /* Options "-help", or "-usage", or "-version" have been set. */
     return;
   }
   h_set, opt, "oi_imaging", h_pop(opt, "oi-imaging");
   h_set, opt, flags = 0n;
-  if (is_hash(plugin)) {
-    subroutine = plugin.__vops__.parse_options;
-    subroutine, plugin, opt;
-  }
+  
   if (opt.regul == "help") {
     write, format="\n%s\n", "Available regularizations:";
     write, format="\n  -regul=%s -tau=...\n  %s\n  %s\n",
@@ -428,6 +440,7 @@ func mira_main(argv0, argv)
     opt_error, ("output file \""+final_filename+"\" already exists");
   }
 
+    
   /* In OI-Imaging mode, the initial settings and the data are given by the
      input FITS file.  Command line options have precedence. */
   if (opt.oi_imaging) {
@@ -438,6 +451,13 @@ func mira_main(argv0, argv)
     mira_set_defaults, opt, mira_read_input_params(argv(1));
   }
 
+  if (is_hash(opt.plugin_obj)) {
+    subroutine = opt.plugin_obj.__vops__.parse_options;
+    subroutine, opt.plugin_obj, opt;
+  }
+  
+
+  
   /* Default settings. */
   mira_set_defaults, opt,
     h_new("min", 0.0, flux=1.0, fluxerr=0.0, xform=_mira_batch_xform,
@@ -583,14 +603,14 @@ func mira_main(argv0, argv)
                   crpix1 = (dim1/2) + 1,
                   crval1 = 0.0,
                   ctype1 = "RA---TAN",
-                  cdelt1 = pixelsize/MIRA_DEGREE,
-                  cunit1 = "deg",
+                  cdelt1 = pixelsize/MIRA_MILLIARCSECOND,
+                  cunit1 = "mas",
                   naxis2 = dim2,
                   crpix2 = (dim2/2) + 1,
                   crval2 = 0.0,
                   ctype2 = "DEC--TAN",
-                  cdelt2 = pixelsize/MIRA_DEGREE,
-                  cunit2 = "deg");
+                  cdelt2 = pixelsize/MIRA_MILLIARCSECOND,
+                  cunit2 = "mas");
     if (opt.initial == "random") {
       if (! is_void(opt.seed)) {
         if (opt.seed <= 0.0 || opt.seed >= 1.0) {
@@ -649,7 +669,7 @@ func mira_main(argv0, argv)
     }
     dims = [2, dim1, dim2];
   }
-  cunit = "deg";
+  cunit = "mas";
   cdelt = mira_convert_units(siunit, cunit)*pixelsize;
   crpix1 = (dim1/2) + 1;
   crpix2 = (dim2/2) + 1;
@@ -691,7 +711,7 @@ func mira_main(argv0, argv)
 
   /* Read input data. */
   master = mira_new(argv(1:-1),
-                    plugin = plugin,
+                    plugin = opt.plugin_obj,
                     target = opt.target,
                     wavemin = opt.wavemin,
                     wavemax = opt.wavemax,
@@ -742,17 +762,7 @@ func mira_main(argv0, argv)
   if (! is_void(opt.maxeval) && opt.maxeval < 0) {
     opt_error, "Bad value for option `-maxeval`";
   }
-
-  /* Print some information. */
-  mira_update, master;
-  inform,
-    "reconstructing image of \"%s\" for wavelengths in [%.3fµm,%.3fµm]\n",
-    (is_void(master.target) ? "unknown" : master.target),
-    master.img_wavemin/MIRA_MICRON,
-    master.img_wavemax/MIRA_MICRON;
-  inform, "maximum pixel size: %g mas\n",
-    mira_maximum_pixel_size(master)/MIRA_MILLIARCSECOND;
-
+  
   /* Run image reconstruction stages. */
   local initial_arr, final_arr;
   eq_nocopy, initial_arr, image.arr;
@@ -796,9 +806,9 @@ func mira_main(argv0, argv)
   }
   
   /* Maybe add plug-in specific extensions. */
-  plugin =  mira_plugin(master);
-  if (is_hash(plugin)) {
-    subroutine = plugin.__vops__.add_extensions;
+  plugin_obj =  mira_plugin(master);
+  if (is_hash(plugin_obj)) {
+    subroutine = plugin_obj.__vops__.add_extensions;
     subroutine, data, fh;
   }
   if (opt.save_visibilities) {

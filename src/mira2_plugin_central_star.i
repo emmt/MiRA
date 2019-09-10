@@ -30,7 +30,8 @@ func mira_plugin_central_star_init(nil) {
   return mira_new_plugin(options = _CENTRAL_STAR_OPTS,
                          parse_options = central_star_parse_options,
                          tweak_visibilities = central_star_tweak_visibilities,
-                         add_keywords = central_star_add_keywords);
+                         add_keywords = central_star_add_keywords,
+                         read_keywords = central_star_read_keywords);
 }
 
 func central_star_parse_options(plugin, opt)
@@ -74,4 +75,10 @@ func central_star_add_keywords(master, fh)
   plugin = mira_plugin(master);
   fits_set, fh, "CENSTAR", plugin.flux,
     "Relative brightness of the central star";
+}
+
+func central_star_add_keywords(tab, fh)
+{
+  h_set, tab,  flux = mira_get_fits_real(   fh, "CENSTAR");
+  return tab;
 }

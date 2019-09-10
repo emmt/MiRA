@@ -733,7 +733,7 @@ func _mira_model_coords(master)
 
 func mira_new_plugin(nil, options=, parse_options=,
                      tweak_visibilities=, tweak_gradient=,
-                     add_keywords=, add_extensions=)
+                     add_keywords=, add_extensions=,read_keywords=)
 /* DOCUMENT plugin = mira_new_plugin(...)
 
      Create a new MiRA plugin.  All settings are passed by keywords.
@@ -764,6 +764,9 @@ func mira_new_plugin(nil, options=, parse_options=,
          specified, the default is do do nothing.
 
      ADD_KEYWORDS: Function called to add keywords in the primary HDU of the
+         input OI-IMAGING FITS file.
+
+     READ_KEYWORDS: Function called to read keywords in the primary HDU of the
          output FITS file.  The function is called with 2 arguments `master`,
          the MiRA instance, and `fh` a FITS handle.  If not specified, the
          default is do do nothing.
@@ -798,6 +801,9 @@ func mira_new_plugin(nil, options=, parse_options=,
     add_keywords = (is_void(add_keywords) ?
                     symlink_to_name("_mira_plugin_add_keywords") :
                     add_keywords),
+    read_keywords = (is_void(read_keywords) ?
+                    symlink_to_name("_mira_plugin_read_keywords") :
+                    read_keywords),
     add_extensions = (is_void(add_extensions) ?
                       symlink_to_name("_mira_plugin_add_extensions") :
                       add_extensions);
@@ -809,6 +815,7 @@ func _mira_plugin_tweak_visibilities(master, vis) { return vis; }
 func _mira_plugin_tweak_gradient(master, grd) { return grd; }
 func _mira_plugin_add_extensions(master, fh) { /* do nothing */ }
 func _mira_plugin_add_keywords(master, fh) { /* do nothing */ }
+func _mira_plugin_read_keywords(master, fh) { /* do nothing */ }
 
 func mira_plugin(master)
 {

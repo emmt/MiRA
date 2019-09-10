@@ -1085,7 +1085,8 @@ func mira_read_input_params(src)
       gtol             = mira_get_fits_real(     fh, "OPT_GTOL"),
       sftol            = mira_get_fits_real(     fh, "LNS_FTOL"),
       sgtol            = mira_get_fits_real(     fh, "LNS_GTOL"),
-      sxtol            = mira_get_fits_real(     fh, "LNS_XTOL");
+      sxtol            = mira_get_fits_real(     fh, "LNS_XTOL"),
+      plugin           = mira_get_fits_string(   fh, "PLUGIN", lower=1);
     if (! is_void(tab.use_vis2)) {
       h_set, tab, use_vis2 = (tab.use_vis2 ? "all" : "none");
     }
@@ -1102,6 +1103,12 @@ func mira_read_input_params(src)
     }
     if (! is_void(tab.initial)) {
       h_set, tab, initial = mira_read_image(fh, hduname=tab.initial);
+    }
+    
+    if (! is_void(tab.plugin)) {
+      h_set, tab, plugin_obj= _mira_load_plugin(tab.plugin);
+      subroutine = tab.plugin_obj.__vops__.read_keywords;
+      subroutine, tab, fh;
     }
   }
   if (finally_close) {
@@ -1270,11 +1277,12 @@ func mira_write_input_params(dest, master, opt)
   }
 
   /* Maybe add plug-in specific keywords. */
-  plugin =  mira_plugin(master);
-  if (is_hash(plugin)) {
-    inform,"Saving plugin";
-    subroutine = plugin.__vops__.add_keywords;
-    subroutine, master, fh;
+  plugin_obj =  mira_plugin(master);
+  if (is_hash(plugin_obj)) {
+     inform,"Saving plugin";
+     fits_set, fh, "PLUGIN",  opt.plugin,  "plugin name";
+     subroutine = plugin_obj.__vops__.add_keywords;
+     subroutine, master, fh;
   }
   /* Finish the header and, possibly, close the FITS file. */
   fits_write_header, fh;
