@@ -110,7 +110,7 @@ func mira_solve(master, x, &penalty, xmin=, xmax=,
 
   /* Update internal cache (if needed). */
   mira_update, master;
-
+  
   /* Default solution. */
   dims = mira_image_size(master);
   if (is_void(x)) {

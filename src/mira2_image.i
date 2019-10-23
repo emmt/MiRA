@@ -728,6 +728,8 @@ func mira_save_image(img, dest, overwrite=, bitpix=, data=, hook=,
   /* Check input image. */
   local img_arr;
   if (is_array(img)) {
+  
+    inform, " Saving image..."
     eq_nocopy, img_arr, img;
     img = mira_wrap_image(unref(img), data);
   } else if (is_hash(img)) {
@@ -767,13 +769,6 @@ func mira_save_image(img, dest, overwrite=, bitpix=, data=, hook=,
       "number of elements along axis";
   }
   fits_set, fh, "EXTEND", 'T', "this file may contain FITS extensions";
-
-  /* Maybe add plug-in specific keywords. */
-  plugin = is_hash(data) ? mira_plugin(data) : [];
-  if (is_hash(plugin)) {
-    subroutine = plugin.__vops__.add_keywords;
-    subroutine, data, fh;
-  }
 
   /* Save axis information. Manage to have the image correctly displayed with
      most viewers (East toward left and North toward top).  */
@@ -847,19 +842,6 @@ func mira_save_image(img, dest, overwrite=, bitpix=, data=, hook=,
   fits_write_array, fh, img.arr;
   fits_pad_hdu, fh;
 
-  /* Maybe add plug-in specific extensions. */
-  if (is_hash(plugin)) {
-    subroutine = plugin.__vops__.add_extensions;
-    subroutine, data, fh;
-  }
-
-  /* Maybe save mode complex visibilities. */
-  if (save_visibilities && is_hash(data)) {
-    /* Update the model complex visibilities and save them. */
-    inform, "Saving model complex visibilities...";
-    mira_update, data, img_arr;
-    mira_save_visibilities, data, fh;
-  }
 
   return fh;
 }
@@ -1103,7 +1085,8 @@ func mira_read_input_params(src)
       gtol             = mira_get_fits_real(     fh, "OPT_GTOL"),
       sftol            = mira_get_fits_real(     fh, "LNS_FTOL"),
       sgtol            = mira_get_fits_real(     fh, "LNS_GTOL"),
-      sxtol            = mira_get_fits_real(     fh, "LNS_XTOL");
+      sxtol            = mira_get_fits_real(     fh, "LNS_XTOL"),
+      plugin           = mira_get_fits_string(   fh, "PLUGIN", lower=1);
     if (! is_void(tab.use_vis2)) {
       h_set, tab, use_vis2 = (tab.use_vis2 ? "all" : "none");
     }
@@ -1120,6 +1103,12 @@ func mira_read_input_params(src)
     }
     if (! is_void(tab.initial)) {
       h_set, tab, initial = mira_read_image(fh, hduname=tab.initial);
+    }
+    
+    if (! is_void(tab.plugin)) {
+      h_set, tab, plugin_obj= _mira_load_plugin(tab.plugin);
+      subroutine = tab.plugin_obj.__vops__.read_keywords;
+      subroutine, tab, fh;
     }
   }
   if (finally_close) {
@@ -1287,6 +1276,14 @@ func mira_write_input_params(dest, master, opt)
     fits_set, fh, "LNS_XTOL", opt.sxtol, "Line search parameter tolerance";
   }
 
+  /* Maybe add plug-in specific keywords. */
+  plugin_obj =  mira_plugin(master);
+  if (is_hash(plugin_obj)) {
+     inform,"Saving plugin";
+     fits_set, fh, "PLUGIN",  opt.plugin,  "plugin name";
+     subroutine = plugin_obj.__vops__.add_keywords;
+     subroutine, master, fh;
+  }
   /* Finish the header and, possibly, close the FITS file. */
   fits_write_header, fh;
   if (finally_close) {
