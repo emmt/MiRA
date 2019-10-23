@@ -246,7 +246,7 @@ func _mira_define_xform(master)
        transform. */
 
     /* Make sure NFFT plugin is installed and loaded. */
-    if (! is_func(nfft_new)) {
+    if (is_func(nfft_new) != 2) {
       include, "nfft.i", 3;
       if (! is_func(nfft_new)) {
         inform, ("YNFFT plugin is not installed, "+
