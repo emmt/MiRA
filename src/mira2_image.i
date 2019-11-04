@@ -1035,14 +1035,14 @@ errs2caller, mira_find_fits_hdu;
 /* READ/WRITE ALGORITHM PARAMATERS */
 
 func mira_read_input_params(src, plugin=)
-/* DOCUMENT tab = mira_read_input_params(src, plugin);
+/* DOCUMENT tab = mira_read_input_params(src, plugin=...);
 
       yields a hash table with the input parameters found in FITS extension
       "IMAGE-OI INPUT PARAM".  Argument SRC can be a FITS file name or a FITS
       handle.  The returned table may be empty if no such extension is found or
       if it does not contain any known parameters.
 
-      If keyword plugin is specified, the given plugin is invoked to read its
+      If keyword PLUGIN is specified, the given plugin is invoked to read its
       specific keywords.
 
    SEE ALSO: mira_write_input_params.
@@ -1108,15 +1108,17 @@ func mira_read_input_params(src, plugin=)
     if (! is_void(tab.initial)) {
       h_set, tab, initial = mira_read_image(fh, hduname=tab.initial);
     }
-    /* support overriding plugin */
-    plugin_obj=plugin
 
     if (! is_void(tab.plugin)) {
-      plugin_obj= _mira_load_plugin(tab.plugin);
+      plugin_obj = _mira_load_plugin(tab.plugin);
+    } else {
+      /* support overriding plugin */
+      plugin_obj = plugin
     }
+    
     /* Maybe read plug-in specific keywords. */
     if (is_hash(plugin_obj)) {
-      inform,"Reading plugin keywords";
+      inform, "Reading plugin keywords";
       subroutine = plugin_obj.__vops__.read_keywords;
       subroutine, tab, fh;
     }
@@ -1289,7 +1291,7 @@ func mira_write_input_params(dest, master, opt)
   /* Maybe add plug-in specific keywords. */
   plugin_obj = mira_plugin(master);
   if (is_hash(plugin_obj)) {
-    inform,"Adding plugin keywords";
+    inform, "Adding plugin keywords";
     fits_set, fh, "PLUGIN",  opt.plugin,  "plugin name";
     subroutine = plugin_obj.__vops__.add_keywords;
     subroutine, master, fh;
