@@ -1034,13 +1034,16 @@ errs2caller, mira_find_fits_hdu;
 /*---------------------------------------------------------------------------*/
 /* READ/WRITE ALGORITHM PARAMATERS */
 
-func mira_read_input_params(src)
-/* DOCUMENT tab = mira_read_input_params(src);
+func mira_read_input_params(src, plugin=)
+/* DOCUMENT tab = mira_read_input_params(src, plugin=...);
 
       yields a hash table with the input parameters found in FITS extension
       "IMAGE-OI INPUT PARAM".  Argument SRC can be a FITS file name or a FITS
       handle.  The returned table may be empty if no such extension is found or
       if it does not contain any known parameters.
+
+      If keyword PLUGIN is specified, the given plugin is invoked to read its
+      specific keywords.
 
    SEE ALSO: mira_write_input_params.
  */
@@ -1087,6 +1090,7 @@ func mira_read_input_params(src)
       sgtol            = mira_get_fits_real(     fh, "LNS_GTOL"),
       sxtol            = mira_get_fits_real(     fh, "LNS_XTOL"),
       plugin           = mira_get_fits_string(   fh, "PLUGIN", lower=1);
+
     if (! is_void(tab.use_vis2)) {
       h_set, tab, use_vis2 = (tab.use_vis2 ? "all" : "none");
     }
@@ -1104,10 +1108,18 @@ func mira_read_input_params(src)
     if (! is_void(tab.initial)) {
       h_set, tab, initial = mira_read_image(fh, hduname=tab.initial);
     }
-    
+
     if (! is_void(tab.plugin)) {
-      h_set, tab, plugin_obj= _mira_load_plugin(tab.plugin);
-      subroutine = tab.plugin_obj.__vops__.read_keywords;
+      plugin_obj = _mira_load_plugin(tab.plugin);
+    } else {
+      /* support overriding plugin */
+      plugin_obj = plugin
+    }
+    
+    /* Maybe read plug-in specific keywords. */
+    if (is_hash(plugin_obj)) {
+      inform, "Reading plugin keywords";
+      subroutine = plugin_obj.__vops__.read_keywords;
       subroutine, tab, fh;
     }
   }
@@ -1277,12 +1289,12 @@ func mira_write_input_params(dest, master, opt)
   }
 
   /* Maybe add plug-in specific keywords. */
-  plugin_obj =  mira_plugin(master);
+  plugin_obj = mira_plugin(master);
   if (is_hash(plugin_obj)) {
-     inform,"Saving plugin";
-     fits_set, fh, "PLUGIN",  opt.plugin,  "plugin name";
-     subroutine = plugin_obj.__vops__.add_keywords;
-     subroutine, master, fh;
+    inform, "Adding plugin keywords";
+    fits_set, fh, "PLUGIN",  opt.plugin,  "plugin name";
+    subroutine = plugin_obj.__vops__.add_keywords;
+    subroutine, master, fh;
   }
   /* Finish the header and, possibly, close the FITS file. */
   fits_write_header, fh;

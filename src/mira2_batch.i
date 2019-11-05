@@ -448,7 +448,8 @@ func mira_main(argv0, argv)
       opt_error, "option `-oi-imaging` requires exactly 2 positional arguments";
       return;
     }
-    mira_set_defaults, opt, mira_read_input_params(argv(1));
+    /* may load plugin and define opt.plugin_obj */
+    mira_set_defaults, opt, mira_read_input_params(argv(1), plugin=opt.plugin_obj);
   }
 
   if (is_hash(opt.plugin_obj)) {
