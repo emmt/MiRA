@@ -40,7 +40,6 @@ func _mira_batch_init(path)
 MIRA_BATCH_HOME = _mira_batch_init(current_include());
 _mira_batch_init = [];
 
-
 if (! is_func(nfft_new)) {
   /* Attempt to pre-load YNFFT. */
   include, "nfft.i", 3;
@@ -400,19 +399,19 @@ func mira_main(argv0, argv)
   plugin = _mira_fetch_plugin(argv, options);
   options = opt_init(_MIRA_CL_USAGE, _MIRA_CL_BRIEF, options);
   opt = opt_parse(options, argv);
-  
+
 
   if (is_hash(plugin)){
     h_set, opt, plugin_obj = plugin;
   }
-  
+
   if (is_void(opt)) {
     /* Options "-help", or "-usage", or "-version" have been set. */
     return;
   }
   h_set, opt, "oi_imaging", h_pop(opt, "oi-imaging");
   h_set, opt, flags = 0n;
-  
+
   if (opt.regul == "help") {
     write, format="\n%s\n", "Available regularizations:";
     write, format="\n  -regul=%s -tau=...\n  %s\n  %s\n",
@@ -440,7 +439,6 @@ func mira_main(argv0, argv)
     opt_error, ("output file \""+final_filename+"\" already exists");
   }
 
-    
   /* In OI-Imaging mode, the initial settings and the data are given by the
      input FITS file.  Command line options have precedence. */
   if (opt.oi_imaging) {
@@ -449,16 +447,15 @@ func mira_main(argv0, argv)
       return;
     }
     /* may load plugin and define opt.plugin_obj */
-    mira_set_defaults, opt, mira_read_input_params(argv(1), plugin=opt.plugin_obj);
+    mira_set_defaults, opt,
+      mira_read_input_params(argv(1), plugin=opt.plugin_obj);
   }
 
   if (is_hash(opt.plugin_obj)) {
     subroutine = opt.plugin_obj.__vops__.parse_options;
     subroutine, opt.plugin_obj, opt;
   }
-  
 
-  
   /* Default settings. */
   mira_set_defaults, opt,
     h_new("min", 0.0, flux=1.0, fluxerr=0.0, xform=_mira_batch_xform,
@@ -469,7 +466,7 @@ func mira_main(argv0, argv)
   flags |= _mira_get_use_polar(opt, "use_vis",
                                MIRA_FIT_VISAMP, MIRA_FIT_VISPHI,
                                (MIRA_FIT_VISAMP|MIRA_FIT_VISPHI));
-  flags |= _mira_get_use_allnone(opt, "vis2", MIRA_FIT_VIS2, MIRA_FIT_VIS2);
+  flags |= _mira_get_use_allnone(opt, "use_vis2", MIRA_FIT_VIS2, MIRA_FIT_VIS2);
   flags |= _mira_get_use_polar(opt, "use_t3",
                                MIRA_FIT_T3AMP, MIRA_FIT_T3PHI,
                                (MIRA_FIT_T3AMP|MIRA_FIT_T3PHI));
@@ -763,7 +760,7 @@ func mira_main(argv0, argv)
   if (! is_void(opt.maxeval) && opt.maxeval < 0) {
     opt_error, "Bad value for option `-maxeval`";
   }
-  
+
   /* Run image reconstruction stages. */
   local initial_arr, final_arr;
   eq_nocopy, initial_arr, image.arr;
@@ -805,7 +802,7 @@ func mira_main(argv0, argv)
       bitpix=opt.bitpix, hduname="IMAGE-OI INITIAL IMAGE",
       comment="Initial image used by MiRA";
   }
-  
+
   /* Maybe add plug-in specific extensions. */
   plugin_obj =  mira_plugin(master);
   if (is_hash(plugin_obj)) {
