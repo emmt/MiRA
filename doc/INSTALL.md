@@ -30,7 +30,7 @@ which should install MiRA and its dependencies
 [OptimPackLegacy](https://github.com/emmt/OptimPackLegacy),
 [YOIFITS](https://github.com/emmt/YOIFITS),
 [YLib](https://github.com/emmt/ylib) and
-- [IPY](https://github.com/emmt/IPY)) if not yet installed.  It is recommended
+[IPY](https://github.com/emmt/IPY)) if not yet installed.  It is recommended
 to also install [YNFFT](https://github.com/emmt/ynfft), a Yorick plugin for the
 *Nonequispaced Fast Fourier Transform*.  This is done by adding `ynfft` to the
 above list of dependencies, or by executing:
