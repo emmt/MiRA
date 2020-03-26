@@ -21,7 +21,7 @@ fully supported.  This is the easiest and recommended way to install MiRA.
 Assuming you have installed EasyYorick, you just have to execute:
 
 ```sh
-ypkg install yorick yeti optimpacklegacy yoifits ipy ylib ymira
+ypkg install yorick yeti optimpacklegacy yoifits ipy ylib mira
 ```
 
 which should install MiRA and its dependencies
