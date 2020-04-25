@@ -125,6 +125,8 @@ _MIRA_CL_OPTS = _lst\
         "Bits per pixel"),
    _lst("save_initial", [], [], OPT_FLAG,
         "Save initial image as a secondary HDU in the result"),
+   _lst("save_dirty_beam", [], [], OPT_FLAG,
+        "Save the dirty beam in the output file"),
    "\nReconstruction strategy:",
    _lst("bootstrap", [], "COUNT", OPT_INTEGER,
         "Number of bootstrapping iterations"),
@@ -799,8 +801,23 @@ func mira_main(argv0, argv)
   mira_write_input_params, fh, master, opt;
   if (opt.save_initial) {
     mira_save_image, h_set(image, arr = initial_arr), fh,
-      bitpix=opt.bitpix, hduname="IMAGE-OI INITIAL IMAGE",
+      bitpix=opt.bitpix, extname="IMAGE-OI INITIAL IMAGE",
       comment="Initial image used by MiRA";
+  }
+  if (opt.save_dirty_beam) {
+    inform, "Saving dirty beams...";
+    mira_save_image,
+      h_set(image, arr = mira_compute_dirty_beam(master, "exact")),
+      fh, bitpix=opt.bitpix, extname="IMAGE-OI DIRTY BEAM EXACT",
+      comment="Dirty beam computed by MiRA using exact equations";
+    if (opt.debug) {
+      /* Also use the other method. */
+      mira_save_image,
+        h_set(image, arr = mira_compute_dirty_beam(master, "xform")),
+        fh, bitpix=opt.bitpix, extname="IMAGE-OI DIRTY BEAM XFORM",
+        comment=("Dirty beam computed by MiRA using current pixel to " +
+                 "complex visibilities transform");
+    }
   }
 
   /* Maybe add plug-in specific extensions. */

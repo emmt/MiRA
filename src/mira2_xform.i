@@ -187,7 +187,7 @@ func _mira_define_xform(master)
    *     exp(-i⋅2⋅π⋅(x⋅u + y⋅v)/λ)⋅s(γ⋅Δλ⋅(x⋅u + y⋅v)/λ²)
    *
    * where `x` is the relative right ascension (RA), `y` is the relative
-   * declination (DEC), `(u,v)` are the baselines divided, `λ` is the
+   * declination (DEC), `(u,v)` is the baseline coordinates, `λ` is the
    * wavelength, `Δλ` is the effective spectral bandwidth, `γ≈1` is a
    * correction factor and `s` is the smearing function (specified by the
    * `smearingfactor` and the `smearingfunction` options).  The complex
@@ -198,7 +198,7 @@ func _mira_define_xform(master)
    *
    * The nonuniform Fourier transform is separable in RA/DEC.  Exploiting this
    * can lead to a much smaller number of coefficients if spectral bandwidth
-   * smearing is ignored.
+   * smearing is ignored or if its also separable.
    */
 
   if (xform == "separable") {
