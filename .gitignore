@@ -18,13 +18,15 @@ config.log
 config.status
 CLEANUP_NEEDED
 build/
+confidential*/
+data/
 patch/
 releases/
 old/
 work/
 .deps
 .libs
-test*.fits
+test*
 
 # LaTeX auxiliary files:
 *.aux
