@@ -127,6 +127,8 @@ _MIRA_CL_OPTS = _lst\
         "Save initial image as a secondary HDU in the result"),
    _lst("save_dirty_beam", [], [], OPT_FLAG,
         "Save the dirty beam in the output file"),
+   _lst("save_dirty_map", [], [], OPT_FLAG,
+        "Save the dirty map in the output file"),
    "\nReconstruction strategy:",
    _lst("bootstrap", [], "COUNT", OPT_INTEGER,
         "Number of bootstrapping iterations"),
@@ -800,23 +802,44 @@ func mira_main(argv0, argv)
   h_set, opt, init_img = (opt.save_initial ? "IMAGE-OI INITIAL IMAGE" : []);
   mira_write_input_params, fh, master, opt;
   if (opt.save_initial) {
-    mira_save_image, h_set(image, arr = initial_arr), fh,
-      bitpix=opt.bitpix, extname="IMAGE-OI INITIAL IMAGE",
+    mira_save_image, h_set(image, arr = initial_arr),
+      fh, bitpix=opt.bitpix, extname="IMAGE-OI INITIAL IMAGE",
       comment="Initial image used by MiRA";
   }
   if (opt.save_dirty_beam) {
-    inform, "Saving dirty beams...";
-    mira_save_image,
-      h_set(image, arr = mira_compute_dirty_beam(master, "exact")),
-      fh, bitpix=opt.bitpix, extname="IMAGE-OI DIRTY BEAM EXACT",
-      comment="Dirty beam computed by MiRA using exact equations";
+    inform, "Saving dirty beam...";
+    dirty_beam = mira_compute_dirty_beam(master, method="xform");
+    mira_save_image, h_set(image, arr = dirty_beam),
+      fh, bitpix=opt.bitpix, extname="IMAGE-OI DIRTY BEAM",
+      comment=("Dirty beam computed by MiRA using current pixels to " +
+               "complex visibilities transform");
     if (opt.debug) {
       /* Also use the other method. */
-      mira_save_image,
-        h_set(image, arr = mira_compute_dirty_beam(master, "xform")),
-        fh, bitpix=opt.bitpix, extname="IMAGE-OI DIRTY BEAM XFORM",
-        comment=("Dirty beam computed by MiRA using current pixel to " +
+      dirty_beam_alt =  mira_compute_dirty_beam(master, method="exact");
+      mira_save_image, h_set(image, arr = dirty_beam_alt),
+        fh, bitpix=opt.bitpix, extname="IMAGE-OI DIRTY BEAM EXACT",
+        comment=("Dirty beam computed by MiRA using exact pixels to" +
                  "complex visibilities transform");
+    }
+  }
+  if (opt.save_dirty_map) {
+    dirty_map = mira_compute_dirty_map(master, method="xform");
+    if (noneof(dirty_map)) {
+      warn, "There are no complex visibility data";
+    } else {
+      inform, "Saving dirty map...";
+      mira_save_image, h_set(image, arr = dirty_map),
+        fh, bitpix=opt.bitpix, extname="IMAGE-OI DIRTY MAP",
+        comment=("Dirty map computed by MiRA using current pixels to " +
+                 "complex visibilities transform");
+      if (opt.debug) {
+        /* Also use the other method. */
+        dirty_map_alt = mira_compute_dirty_map(master, method="exact");
+        mira_save_image, h_set(image, arr = dirty_map_alt),
+          fh, bitpix=opt.bitpix, extname="IMAGE-OI DIRTY MAP EXACT",
+          comment=("Dirty map computed by MiRA using exact pixels to" +
+                   "complex visibilities transform");
+      }
     }
   }
 
