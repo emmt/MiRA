@@ -17,6 +17,9 @@
   PSF is the *dirty beam*.  Use option `-save_residual_map` to compute and save
   the residual map in the output file.
 
+* Data selection option `-use_vis2` has been fixed (thanks to Julia Stadler for
+  reporting this).
+
 
 ## Version 2.2.0 (2018-11-29)
 
