@@ -141,7 +141,7 @@ func mira_compute_dirty_beam(master, method=)
      keyword METHOD is "exact", the equations are applied with no other
      approximations.
 
-   SEE ALSO: mira_config, mira_compute_dirty_map,
+   SEE ALSO: mira_config, mira_compute_dirty_map, mira_compute_residual_map,
      mira_apply_adjoint_of_exact_xform.
 */
 {
@@ -174,7 +174,7 @@ func mira_compute_dirty_map(master, method=, tol=)
      keyword METHOD is "exact", the equations are applied with no other
      approximations.
 
-   SEE ALSO: mira_config, mira_compute_dirty_beam,
+   SEE ALSO: mira_config, mira_compute_dirty_beam, mira_compute_residual_map,
      mira_apply_adjoint_of_exact_xform.
 */
 {
@@ -195,6 +195,46 @@ func mira_compute_dirty_map(master, method=, tol=)
     img = mira_apply_adjoint_of_exact_xform(master, vis);
   } else {
     error, "invalid method \""+method+"\" for the dirty map";
+  }
+
+  return img;
+}
+
+func mira_compute_residual_map(master, img, method=, tol=)
+/* DOCUMENT img = mira_compute_residual_map(master);
+         or img = mira_compute_residual_map(master, img);
+
+     yields the "residual map", that the inverse Fourier transform of the
+     complex visibility data stored by MASTER minus the model complex
+     visibilities resulting from image IMG.  If image IMG is not supplied, the
+     last image model set by `mira_update` is assumed.
+
+     If keyword METHOD is not specified or is "xform", the actual pixel to
+     complex visibilities transform is used to compute the dirty beam.  If
+     keyword METHOD is "exact", the equations are applied with no other
+     approximations.
+
+   SEE ALSO: mira_config, mira_update, mira_compute_dirty_beam,
+     mira_compute_dirty_map, mira_apply_adjoint_of_exact_xform.
+*/
+{
+  /* Compute the weighted average of the measured complex visibilities. */
+  vis = mira_compute_mean_visibilities(master, tol=tol);
+
+  /* Subtract the model complex visibilities.  FIXME: it does not make sense to
+     use another transform for that. */
+  vis -= (is_void(img) ? mira_model_vis(master) : master.xform(img));
+
+  /* Apply the adjoint of the pixels to complex visibilities transform to the
+     measured complex visibilities.  FIXME: Add zero-th frequency. */
+  if (is_void(method) || method == "xform") {
+    /* Apply the adjoint of the pixel to visibilities transform. */
+    img = master.xform(vis, 1n);
+  } else if (method == "exact") {
+    /* Apply adjoint of exact transform. */
+    img = mira_apply_adjoint_of_exact_xform(master, vis);
+  } else {
+    error, "invalid method \""+method+"\" for the residual map";
   }
 
   return img;

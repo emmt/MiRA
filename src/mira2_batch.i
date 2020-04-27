@@ -129,6 +129,8 @@ _MIRA_CL_OPTS = _lst\
         "Save the dirty beam in the output file"),
    _lst("save_dirty_map", [], [], OPT_FLAG,
         "Save the dirty map in the output file"),
+   _lst("save_residual_map", [], [], OPT_FLAG,
+        "Save the residual map in the output file"),
    "\nReconstruction strategy:",
    _lst("bootstrap", [], "COUNT", OPT_INTEGER,
         "Number of bootstrapping iterations"),
@@ -840,6 +842,22 @@ func mira_main(argv0, argv)
           comment=("Dirty map computed by MiRA using exact pixels to" +
                    "complex visibilities transform");
       }
+    }
+  }
+  if (opt.save_residual_map) {
+    residual_map = mira_compute_residual_map(master, final_arr, method="xform");
+    inform, "Saving residual map...";
+    mira_save_image, h_set(image, arr = residual_map),
+      fh, bitpix=opt.bitpix, extname="IMAGE-OI RESIDUAL MAP",
+      comment=("Residual map computed by MiRA using current pixels to " +
+               "complex visibilities transform");
+    if (opt.debug) {
+      /* Also use the other method. */
+      residual_map_alt = mira_compute_residual_map(master, final_arr, method="exact");
+      mira_save_image, h_set(image, arr = residual_map_alt),
+        fh, bitpix=opt.bitpix, extname="IMAGE-OI RESIDUAL MAP EXACT",
+        comment=("Residual map computed by MiRA using exact pixels to" +
+                 "complex visibilities transform");
     }
   }
 
