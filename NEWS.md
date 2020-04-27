@@ -1,5 +1,23 @@
 # History of MiRA
 
+## Version 2.3.0 (2020-04-27)
+
+* MiRA can compute the *dirty beam*, that is the equivalent Point Spread
+  Function (PSF), corresponding to the (u,v) coverage of the selected data.
+  Use option `-save_dirty_beam` to compute and save the dirty beam in the output
+  file.
+
+* MiRA can compute the *dirty map* of the measured complex visibilities, that
+  is the *image* given by an instrument whose PSF is the *dirty beam*.  Use
+  option `-save_dirty_map` to compute and save the dirty map in the output
+  file.
+
+* MiRA can compute a *residual map*, that is the *image* of the residual
+  complex visibilities (measured minus model ones) given by an instrument whose
+  PSF is the *dirty beam*.  Use option `-save_residual_map` to compute and save
+  the residual map in the output file.
+
+
 ## Version 2.2.0 (2018-11-29)
 
 * This version can be installed with
