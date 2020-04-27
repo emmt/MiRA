@@ -300,7 +300,6 @@ func mira_pixel_size(master) /* DOCUMENTED */
   return master.pixelsize;
 }
 
-
 local mira_image_x, mira_image_x, mira_image_wave;
 /* DOCUMENT mira_image_x(master);
          or mira_image_x(master);

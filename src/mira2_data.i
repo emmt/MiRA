@@ -24,6 +24,48 @@ if (! is_scalar(MIRA_HOME) || ! is_string(MIRA_HOME)) {
   error, "include \"mira2.i\" first";
 }
 
+func mira_vis2_data(  master) { return mira_get_data(master, "vis2"  ); }
+func mira_vis_data(   master) { return mira_get_data(master, "vis"   ); }
+func mira_visamp_data(master) { return mira_get_data(master, "visamp"); }
+func mira_visphi_data(master) { return mira_get_data(master, "visphi"); }
+func mira_t3_data(    master) { return mira_get_data(master, "t3"    ); }
+func mira_t3amp_data( master) { return mira_get_data(master, "t3amp" ); }
+func mira_t3phi_data( master) { return mira_get_data(master, "t3phi" ); }
+func mira_get_data(master, class)
+/* DOCUMENT db = mira_get_data(master, class);
+         or db = mira_vis2_data(master);
+         or db = mira_vis_data(master);
+         or db = mira_visamp_data(master);
+         or db = mira_visphi_data(master);
+         or db = mira_t3_data(master);
+         or db = mira_t3amp_data(master);
+         or db = mira_t3phi_data(master);
+
+      The first function yields the data-block collecting all data of a given
+      kind in MASTER.  CLASS is one of "vis2", "vis", "visamp", "visphi", "t3",
+      "t3amp" or "t3phi".  An empty result is returned if no such data exists
+      in MASTER.
+
+      The other functions are equivalent to calling the first one for a
+      specific class.
+
+      As a side effect of calling any of these functions, `mira_update(master)`
+      is called to update internal information.
+
+   SEE ALSO: mira_config, mira_update, mira_add_oidata.
+ */
+{
+  /* Make sure everything up to date. */
+  mira_update, master;
+
+  /* Search the specific class of data. */
+  for (db = _mira_first(master); db != nil; db = _mira_next(master, db)) {
+    if (db.ops.class == class) {
+      return db;
+    }
+  }
+}
+
 /*---------------------------------------------------------------------------*/
 /* ADDING OI-FITS DATA TO AN INSTANCE */
 
