@@ -9,10 +9,23 @@ DESTDIR=
 
 MAN_PAGES = ymira.1
 BIN_FILES = ymira
-MIRA_FILES = mira2.i mira2_batch.i mira2_config.i mira2_cost.i mira2_data.i \
-    mira2_image.i mira2_solver.i mira2_tests.i mira2_utils.i mira2_xform.i \
-    mira2_plugin_central_star.i
-TEST_FILES = mira-demo.i mira-test1.i mira-test2.i
+MIRA_FILES = \
+    mira2.i \
+    mira2_batch.i \
+    mira2_config.i \
+    mira2_cost.i \
+    mira2_data.i \
+    mira2_dirty.i \
+    mira2_image.i \
+    mira2_plugin_central_star.i \
+    mira2_solver.i \
+    mira2_tests.i \
+    mira2_utils.i \
+    mira2_xform.i
+TEST_FILES = \
+    mira-demo.i \
+    mira-test1.i \
+    mira-test2.i
 DATA_FILES = data1.oifits data2.oifits README
 OTHER_FILES = AUTHOR LICENSE Makefile configure \
     README.md INSTALL.md USAGE.md NEWS.md
