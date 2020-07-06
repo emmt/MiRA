@@ -258,7 +258,7 @@ func mira_resample_axis(arr, crpix1, crval1, cdelt1,
 
      Resample array ARR along one of its axis.  Resampling is performed by
      finite difference of the integration of a piecewise linear approximation.
-     This is suitable to preserve positivity and for downsmapling or
+     This is suitable to preserve positivity and for downsampling or
      upsampling.
 
      Arguments CRPIX1, CRVAL1 and CDELT1 are respectively the index of the
@@ -728,7 +728,7 @@ func mira_save_image(img, dest, overwrite=, bitpix=, data=, hook=,
   /* Check input image. */
   local img_arr;
   if (is_array(img)) {
-  
+
     inform, " Saving image..."
     eq_nocopy, img_arr, img;
     img = mira_wrap_image(unref(img), data);
@@ -1115,7 +1115,7 @@ func mira_read_input_params(src, plugin=)
       /* support overriding plugin */
       plugin_obj = plugin
     }
-    
+
     /* Maybe read plug-in specific keywords. */
     if (is_hash(plugin_obj)) {
       inform, "Reading plugin keywords";
