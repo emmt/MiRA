@@ -74,7 +74,7 @@ local mira_solve;
      MU    - regularization level; the higher is MU the more the solution is
              influenced by the priors set by the regularization.
      REGUL - regularization method (see rgl_new).
-     CUBIC - is true to use cubic interpolation if initail image needs to be
+     CUBIC - is true to use cubic interpolation if initial image needs to be
             resized.
      MAXITER - maximum number of iterations, unlimited if not set.
      MAXEVAL - maximum number of evaluations of the objective function,
