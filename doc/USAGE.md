@@ -179,7 +179,7 @@ The following regularizations are available:
 
   Using a very small edge threshold `τ`, compared to the norm of the local
   gradients, mimics the effects of *total variation* (TV) regularizations.
-  Conversely, using a very small edge threshold yields a regularization
+  Conversely, using a high edge threshold `τ` yields a regularization
   comparable to *quadratic smoothness*.
 
 
