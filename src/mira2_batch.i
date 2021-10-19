@@ -768,14 +768,14 @@ func mira_main(argv0, argv)
   }
 
   /* Run image reconstruction stages. */
-  local initial_arr, final_arr;
+  local initial_arr, final_arr, misc;
   eq_nocopy, initial_arr, image.arr;
   current_arr = image.arr; /* copy */
   for (k = 1; k <= n; ++k) {
     if (! is_void(opt.threshold) && opt.threshold > 0) {
       current_arr = mira_soft_threshold(current_arr, opt.threshold, opt.flux);
     }
-    current_arr = mira_solve(master, current_arr,
+    current_arr = mira_solve(master, current_arr, misc,
                              maxeval = opt.maxeval,
                              maxiter = opt.maxiter,
                              verb = opt.verb,
@@ -796,13 +796,18 @@ func mira_main(argv0, argv)
     }
   }
   eq_nocopy, final_arr, current_arr;
+  h_set, misc,
+      flux = sum(final_arr),
+      last_img = "IMAGE-OI FINAL IMAGE";
+
 
   /* Save the result. */
   fh = mira_save_image(h_set(image, arr = final_arr), final_filename,
                        overwrite=opt.overwrite, bitpix=opt.bitpix,
-                       hduname="IMAGE-OI FINAL IMAGE", history=history);
+                       hduname=misc.last_img, history=history);
   h_set, opt, init_img = (opt.save_initial ? "IMAGE-OI INITIAL IMAGE" : []);
   mira_write_input_params, fh, master, opt;
+  mira_write_output_params, fh, misc;
   if (opt.save_initial) {
     mira_save_image, h_set(image, arr = initial_arr),
       fh, bitpix=opt.bitpix, extname="IMAGE-OI INITIAL IMAGE",

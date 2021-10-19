@@ -8,7 +8,7 @@
  * This file is part of MiRA, a "Multi-aperture Image Reconstruction
  * Algorithm", <https://github.com/emmt/MiRA>.
  *
- * Copyright (C) 2001-2018, Éric Thiébaut <eric.thiebaut@univ-lyon1.fr>
+ * Copyright (C) 2001-2021, Éric Thiébaut <eric.thiebaut@univ-lyon1.fr>
  *
  * MiRA is free software; you can redistribute it and/or modify it under the
  * terms of the GNU General Public License version 2 as published by the Free
@@ -27,7 +27,7 @@ if (! is_scalar(MIRA_HOME) || ! is_string(MIRA_HOME)) {
 local mira_solve;
 /* DOCUMENT img = mira_solve(data, key1=value1, key2=value2, ...);
          or img = mira_solve(data, img_init, key1=value1, key2=value2, ...);
-         or img = mira_solve(data, img_init, penalty, key1=value1, ...);
+         or img = mira_solve(data, img_init, misc, key1=value1, ...);
 
      Builds an image from the interferometric data stored into instance DATA
      (see mira_new) which must have been properly initialized for
@@ -45,18 +45,17 @@ local mira_solve;
      (which is suitable for OI-FITS data, otherwise the actual value should be
      equal to the total flux in the image).
 
-     Optional argument PENALTY is a simple symbol name to store the values of
-     the penalty terms at the final solution as a vector of 5 values:
+     Optional argument MISC is a simple symbol name to store the following
+     informations:
 
-         [NDATA, FDATA, MU, FPRIOR, FTOT, GPNORM]
-
-     where NDATA is the number of measurements, FDATA is the data penalty per
-     measurement, MU and FPRIOR are the regularization weight and penalty, FTOT
-     and GPNORM are the value of the objective fucntion and the Euclidean norm
-     of its (projected) gradient.  FTOT is given by:
-
-         FTOT = NDATA*FDATA + MU*FPRIOR
-
+         misc.ndata  = number of measurements
+         misc.fdata  = data penalty per measurement
+         misc.mu     = regularization weight
+         misc.fprior = prior penalty
+         misc.ftot   = total penalty (ndata*fdata + mu*fprior)
+         misc.gpnorm = Euclidean norm of projected gradient
+         misc.nevals = number of evaluations of the objective function
+         misc.niters = number of iterations of the algorithm
 
    KEYWORDS:
      XMIN - minimum allowed value in the image; can be a scalar or a pixel-wise
@@ -96,7 +95,7 @@ local mira_solve;
    SEE ALSO:
      mira_new, mira_config.
  */
-func mira_solve(master, x, &penalty, xmin=, xmax=,
+func mira_solve(master, x, &misc, xmin=, xmax=,
                 flux=, fluxerr=, zapdata=, regul=, mu=, cubic=,
                 /* options for OptimPackLegacy */
                 mem=, verb=, maxiter=, maxeval=, output=,
@@ -129,17 +128,14 @@ func mira_solve(master, x, &penalty, xmin=, xmax=,
   }
 
   printer = _mira_solve_printer;
-  viewer = [];
-
-  //viewer = _mira_solve_viewer;
-  //if (verb) viewer, , extra;
+  viewer = _mira_solve_viewer;
 
   // FIXME: fix bug in op_mnb:
   if (structof(x) != double || (is_void(xmin) && is_void(xmax))) {
     x += 0.0; // force copy and conversion
   }
 
-  opl_vmlmb, _mira_solve_objfunc, x, penalty, extra=fg,
+  opl_vmlmb, _mira_solve_objfunc, x, extra=fg,
     xmin=xmin, xmax=xmax, mem=mem,
     verb=verb, viewer=viewer, printer=printer,
     maxiter=maxiter, maxeval=maxeval, output=output,
@@ -151,9 +147,14 @@ func mira_solve(master, x, &penalty, xmin=, xmax=,
      solution. */
   eq_nocopy, x, fg.best_x;
   gpnorm =  mira_projected_gradient_norm(x, fg.best_g, xmin=xmin, xmax=xmax);
-  penalty = [fg.ndata, (fg.ndata > 0 ? fg.best_fdata/fg.ndata : 0.0),
-             max(fg.mu, 0.0), (fg.mu > 0.0 ? fg.best_fprior/fg.mu : 0.0),
-             fg.best_f, gpnorm];
+  misc = h_new(ndata  = fg.ndata,
+               fdata  = (fg.ndata > 0 ? fg.best_fdata/fg.ndata : 0.0),
+               mu     = max(fg.mu, 0.0),
+               fprior = (fg.mu > 0.0 ? fg.best_fprior/fg.mu : 0.0),
+               ftot   = fg.best_f,
+               gpnorm = gpnorm,
+               nevals = fg.best_nevals,
+               niters = fg.best_niters);
   return x;
 }
 
@@ -205,7 +206,8 @@ func mira_objective_function(master, flux=, fluxerr=,
   /* Build a functor. */
   fg = h_new(flux = flux, fluxerr = fluxerr, master = master,
              ndata = (zapdata ? 0 : ndata),
-             mu = mu, regul = regul);
+             mu = mu, regul = regul,
+             niters = 0, nevals = 0);
   h_evaluator, fg, "_mira_evaluate_objfunc";
   return fg;
 }
@@ -275,15 +277,27 @@ func _mira_solve_objfunc(x, &grd, this) /* DOCUMENTED */
     }
   }
 
+  /* Number of evaluations of the objective function. */
+  h_set, this, nevals = this.nevals + 1;
+
   /* Compute total penalty and update best solution so far. */
   ftot = fdata + fprior;
   if (! h_has(this, best_f=) || this.best_f > ftot) {
     best_x = x; // make a copy
     best_g = grd; // make a copy
     h_set, this, best_f = ftot, best_fdata = fdata,
-      best_fprior = fprior, best_g = best_g, best_x = best_x;
+      best_fprior = fprior, best_g = best_g, best_x = best_x,
+      best_nevals = this.nevals,
+      best_niters = this.niters + 1;
   }
   return ftot;
+}
+
+/* The following function is just used to store the number of objective
+   function evaluations and the number of algorithm iterations. */
+func _mira_solve_viewer(x, this, ws)
+{
+  h_set, this, niters = this.niters + 1;
 }
 
 func _mira_solve_printer(output, iter, eval, cpu, fx, gnorm, steplen, x, extra)

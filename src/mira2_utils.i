@@ -8,7 +8,7 @@
  * This file is part of MiRA, a "Multi-aperture Image Reconstruction
  * Algorithm", <https://github.com/emmt/MiRA>.
  *
- * Copyright (C) 2001-2018, Éric Thiébaut <eric.thiebaut@univ-lyon1.fr>
+ * Copyright (C) 2001-2021, Éric Thiébaut <eric.thiebaut@univ-lyon1.fr>
  *
  * MiRA is free software; you can redistribute it and/or modify it under the
  * terms of the GNU General Public License version 2 as published by the Free
@@ -397,6 +397,14 @@ func mira_define_table(args)
   return obj;
 }
 wrap_args, mira_define_table;
+
+func mira_default(x, def) { return is_void(x) ? def : x;}
+/* DOCUMENT mira_default(x, def);
+
+     yields X if non-void, DEF otherwise.
+
+   SEE ALSO: is_void.
+ */
 
 func mira_set_defaults(tab, def)
 /* DOCUMENT mira_set_defaults, tab, def;

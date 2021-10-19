@@ -8,7 +8,7 @@
  * This file is part of MiRA, a "Multi-aperture Image Reconstruction
  * Algorithm", <https://github.com/emmt/MiRA>.
  *
- * Copyright (C) 2001-2018, Éric Thiébaut <eric.thiebaut@univ-lyon1.fr>
+ * Copyright (C) 2001-2021, Éric Thiébaut <eric.thiebaut@univ-lyon1.fr>
  *
  * MiRA is free software; you can redistribute it and/or modify it under the
  * terms of the GNU General Public License version 2 as published by the Free
@@ -1132,14 +1132,14 @@ func mira_read_input_params(src, plugin=)
 func mira_write_input_params(dest, master, opt)
 /* DOCUMENT mira_write_input_params, dest, master, opt;
 
-     writes a FITS binary table with the imput parameters used for an image
+     writes a FITS binary table with the input parameters used for an image
      reconstruction with MiRA algorithm.  The extension name of the table is
      "IMAGE-OI INPUT PARAM" and it contains all parameters for running the
      algorithm.  Argument DEST is the destination which can be a FITS handle
      or a FITS file name.  Arguments MASTER and OPT are the main MiRA instance
      and the command line options.
 
-   SEE ALSO: mira_read_input_params.
+   SEE ALSO: mira_read_input_params, mira_write_ouput_params.
  */
 {
   /* Get FITS handle and start a new binary table. */
@@ -1154,7 +1154,7 @@ func mira_write_input_params(dest, master, opt)
   fits_new_bintable, fh;
   fits_set, fh, "EXTNAME", "IMAGE-OI INPUT PARAM";
 
-  /* INP_IMG keyword. */
+  /* INIT_IMG keyword. */
   if (! is_void(opt.init_img)) {
     fits_set, fh, "INIT_IMG", opt.init_img,
       "HDUNAME of initial image";
@@ -1296,6 +1296,82 @@ func mira_write_input_params(dest, master, opt)
     subroutine = plugin_obj.__vops__.add_keywords;
     subroutine, master, fh;
   }
+  /* Finish the header and, possibly, close the FITS file. */
+  fits_write_header, fh;
+  if (finally_close) {
+    fits_close, fh;
+  }
+}
+
+func mira_write_output_params(dest, misc)
+/* DOCUMENT mira_write_output_params, dest, misc;
+
+     writes a FITS binary table with the output parameters used for an image
+     reconstruction with MiRA algorithm.  The extension name of the table is
+     "IMAGE-OI OUTPUT PARAM" and it contains all output parameters of the
+     algorithm.  Argument DEST is the destination which can be a FITS handle or
+     a FITS file name.  Arguments MISC is a hash table with the output
+     parameters.
+
+   SEE ALSO: mira_write_input_params.
+ */
+{
+  /* Get FITS handle and start a new binary table. */
+  local fh;
+  if (is_string(dest)) {
+    fh = fits_open(dest, "w");
+    finally_close = 1n;
+  } else {
+    eq_nocopy, fh, dest;
+    finally_close = 0n;
+  }
+  fits_new_bintable, fh;
+  fits_set, fh, "EXTNAME", "IMAGE-OI OUTPUT PARAM";
+
+  /* LAST_IMG keyword. */
+  if (! is_void(misc.last_img)) {
+    fits_set, fh, "LAST_IMG", misc.last_img,
+      "HDUNAME of final image";
+  }
+
+  /* NITER keyword. */
+  if (! is_void(misc.niters)) {
+    fits_set, fh, "NITER", misc.niters,
+      "Total number of algorithm iterations";
+  }
+
+  /* NEVAL keyword. */
+  if (! is_void(misc.nevals)) {
+    fits_set, fh, "NEVAL", misc.nevals,
+      "Total number of objective function evaluations";
+  }
+
+  /* NDATA keyword. */
+  if (! is_void(misc.ndata)) {
+    fits_set, fh, "NDATA", misc.ndata,
+      "Total number of independent measurements";
+  }
+
+  /* CHISQ keyword. */
+  if (! is_void(misc.fdata)) {
+    fits_set, fh, "CHISQ", misc.fdata, "Reduced chi-squared";
+  }
+
+  /* RGL_WGT keyword. */
+  if (! is_void(misc.mu)) {
+    fits_set, fh, "RGL_WGT", misc.mu, "Regularization weight";
+  }
+
+  /* FPRIOR keyword. */
+  if (! is_void(misc.fprior)) {
+    fits_set, fh, "FPRIOR", misc.fprior, "Regularization penalty";
+  }
+
+  /* FLUX keyword. */
+  if (! is_void(misc.fprior)) {
+    fits_set, fh, "FLUX", misc.flux, "Total image flux";
+  }
+
   /* Finish the header and, possibly, close the FITS file. */
   fits_write_header, fh;
   if (finally_close) {
