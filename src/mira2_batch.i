@@ -8,7 +8,7 @@
  * This file is part of MiRA, a "Multi-aperture Image Reconstruction
  * Algorithm", <https://github.com/emmt/MiRA>.
  *
- * Copyright (C) 2001-2018, Éric Thiébaut <eric.thiebaut@univ-lyon1.fr>
+ * Copyright (C) 2001-2021, Éric Thiébaut <eric.thiebaut@univ-lyon1.fr>
  *
  * MiRA is free software; you can redistribute it and/or modify it under the
  * terms of the GNU General Public License version 2 as published by the Free
@@ -496,10 +496,10 @@ func mira_main(argv0, argv)
     opt_error, "Invalid value for `--bitpix`";
   }
 
-  /* Initial comment. */
-  comment = ("Image reconstructed by MiRA algorithm" +
+  /* Initial history. */
+  history = ("Image reconstructed by MiRA algorithm" +
              " <https://github.com/emmt/MiRA>");
-  grow, comment, "Arguments: "+arguments;
+  grow, history, "Arguments: "+arguments;
 
   /* Setup the regularization. */
   regul_post = FALSE;
@@ -518,7 +518,7 @@ func mira_main(argv0, argv)
         opt_error, "Values of `-eta` must be > 0.0";
       }
       rgl_config, regul, tau=opt.tau, eta=opt.eta; //, loss=regul_loss;
-      grow, comment,
+      grow, history,
         swrite(format="Regularization: \"%s\" with MU=%s, TAU=%g, ETA=%s",
                regul_name, mira_format(opt.mu), opt.tau, mira_format(opt.eta));
     } else if (regul_name == "compactness") {
@@ -528,7 +528,7 @@ func mira_main(argv0, argv)
                     "\"compactness\" regularization");
       }
       value = get_angle(opt, "gamma", strictly_positive);
-      grow, comment,
+      grow, history,
         swrite(format="Regularization: \"%s\" with MU=%s and GAMMA=%s",
                regul_name, mira_format(opt.mu), mira_format( opt.gamma));
       h_set, opt, gamma=value;
@@ -800,7 +800,7 @@ func mira_main(argv0, argv)
   /* Save the result. */
   fh = mira_save_image(h_set(image, arr = final_arr), final_filename,
                        overwrite=opt.overwrite, bitpix=opt.bitpix,
-                       hduname="IMAGE-OI FINAL IMAGE", comment=comment);
+                       hduname="IMAGE-OI FINAL IMAGE", history=history);
   h_set, opt, init_img = (opt.save_initial ? "IMAGE-OI INITIAL IMAGE" : []);
   mira_write_input_params, fh, master, opt;
   if (opt.save_initial) {
