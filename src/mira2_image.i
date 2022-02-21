@@ -1154,6 +1154,11 @@ func mira_write_input_params(dest, master, opt)
   fits_new_bintable, fh;
   fits_set, fh, "EXTNAME", "IMAGE-OI INPUT PARAM";
 
+  /* TARGET keyword. */
+  if (! is_void(master.target)) {
+    fits_set, fh, "TARGET", master.target, "Name of target object";
+  }
+
   /* INIT_IMG keyword. */
   if (! is_void(opt.init_img)) {
     fits_set, fh, "INIT_IMG", opt.init_img,
