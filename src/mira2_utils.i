@@ -631,6 +631,28 @@ func mira_do_nothing(..) { ; }
      does nothing whatever the arguments, returns nothing.
  */
 
+/*---------------------------------------------------------------------------*/
+/* COMPARISONS */
+
+func mira_less_than(a, b)
+/* DOCUMENT mira_less_than(a, b);
+
+     yields whether `a < b` holds assuming false if any of `a` or `b` is
+     undefined (void).
+*/
+{
+    return !is_void(a) && !is_void(b) && a < b;
+}
+
+func mira_less_or_equal(a, b)
+/* DOCUMENT mira_less_than(a, b);
+
+     yields whether `a ≤ b` holds assuming false if any of `a` or `b` is
+     undefined (void).
+*/
+{
+    return !is_void(a) && !is_void(b) && a <= b;
+}
 
 /*---------------------------------------------------------------------------*/
 /* SAFE  1/X AND ATAN(Y,X) */
