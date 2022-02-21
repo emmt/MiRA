@@ -797,6 +797,8 @@ func mira_main(argv0, argv)
   }
   eq_nocopy, final_arr, current_arr;
   h_set, misc,
+      maxeval = opt.maxeval,
+      maxiter = opt.maxiter,
       flux = sum(final_arr),
       last_img = "IMAGE-OI FINAL IMAGE";
 

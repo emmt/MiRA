@@ -1334,6 +1334,12 @@ func mira_write_output_params(dest, misc)
       "HDUNAME of final image";
   }
 
+  /* CONVERGENCE keyword. */
+  early_stopping = (mira_less_or_equal(misc.maxiter, misc.niters) ||
+                    mira_less_or_equal(misc.maxeval, misc.nevals));
+  fits_set, fh, "CONVERGENCE", (early_stopping ? 'F' : 'T'),
+      "Algorithm has converged";
+
   /* NITER keyword. */
   if (! is_void(misc.niters)) {
     fits_set, fh, "NITER", misc.niters,
