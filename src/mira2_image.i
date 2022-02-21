@@ -1328,6 +1328,13 @@ func mira_write_output_params(dest, misc)
   fits_new_bintable, fh;
   fits_set, fh, "EXTNAME", "IMAGE-OI OUTPUT PARAM";
 
+  /* PROCSOFT keyword. */
+  procsoft = "MiRA";
+  if (!is_void(MIRA_VERSION)) {
+      procsoft += " v" + MIRA_VERSION;
+  }
+  fits_set, fh, "PROCSOFT", procsoft, "Data reduction software and version";
+
   /* LAST_IMG keyword. */
   if (! is_void(misc.last_img)) {
     fits_set, fh, "LAST_IMG", misc.last_img,
