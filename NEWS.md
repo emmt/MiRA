@@ -1,5 +1,9 @@
 # History of MiRA
 
+## Version 2.3.1 (2022-02-21)
+
+* MiRA save `CONVERGENCE` keyword in HDU with output parameters.
+
 ## Version 2.3.0 (2020-04-27)
 
 * MiRA can compute the *dirty beam*, that is the equivalent Point Spread
