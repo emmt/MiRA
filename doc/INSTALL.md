@@ -2,7 +2,7 @@
 
 There are different possible ways to use MiRA:
 
-* with Yorick interpreter or in your Yorick code with `#include "mira.i"` (or
+* with Yorick interpreter or in your Yorick code with `#include "mira2.i"` (or
   similar);
 
 * from the command line with the `ymira` command.
@@ -18,10 +18,33 @@ MiRA.
 
 Installation of MiRA by [EasyYorick](https://github.com/emmt/EasyYorick) is
 fully supported.  This is the easiest and recommended way to install MiRA.
+
+To install EasyYorick, you can do:
+
+```sh
+prefix=choose_some_directory
+mkdir -p "$prefix/src"
+cd "$prefix/src"
+git clone https://github.com/emmt/EasyYorick.git ypkg
+cd ypkg
+./configure --prefix="$prefix"
+make install
+```
+
+where `$prefix` is some writable directory where to install the software:
+executables will go into `$prefix/bin`, sources will go to `$prefix/src`, etc.
+For example, you may choose something like `prefix=$HOME/apps`.  Once
+`EasyYorick` is installed, the command `ypk` is available in`$prefix/bin/ypkg`.
+You may add `$prefix/bin` to your environment variable `PATH`:
+
+```
+export PATH="$prefix/bin:$PATH"
+```
+
 Assuming you have installed EasyYorick, you just have to execute:
 
 ```sh
-ypkg install yorick yeti optimpacklegacy yoifits ipy ylib mira
+ypkg install yorick yeti optimpacklegacy yoifits ylib ipy mira
 ```
 
 which should install MiRA and its dependencies
@@ -39,10 +62,30 @@ above list of dependencies, or by executing:
 ypkg install ynfft
 ```
 
-To upgrade to the last master version:
+You may need to install the NFFT library (and header files) before the `ynfft`
+Yorick extension; on Ubuntu-like systems, this is done by:
 
 ```sh
-ypkg upgrade ymira
+apt install libnfft3-dev
+```
+
+MiRA command is available at `$prefix/bin/ymira`.  You may type:
+
+```sh
+ymira --help
+```
+
+for a short help and to check that the command `ymira` is available.  To read
+the manual page, type:
+
+```sh
+man "$prefix/src/mira/doc/ymira.1
+```
+
+To upgrade to the lastest MiRA version:
+
+```sh
+ypkg upgrade mira
 ```
 
 
