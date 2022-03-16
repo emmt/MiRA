@@ -75,8 +75,8 @@ MiRA command is available at `$prefix/bin/ymira`.  You may type:
 ymira --help
 ```
 
-for a short help and to check that the command `ymira` is available.  To read
-the manual page, type:
+for a short help and to check that the command `ymira` is properly installed.
+To read the manual page, type:
 
 ```sh
 man "$prefix/src/mira/doc/ymira.1
