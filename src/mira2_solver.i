@@ -162,7 +162,14 @@ func mira_objective_function(master, flux=, fluxerr=,
                              zapdata=, regul=, mu=)
 /* DOCUMENT fg = mira_objective_function(master, ...);
 
-     yields the objective function used by MiRA to retrieve an image.
+     Get the objective function used by MiRA to retrieve an image. The
+     returned object can be called as a function:
+
+         local gx;
+         fx = fg(x, gx);
+
+     where `x` is the image, `gx` is a variable to store the gradient of the
+     objective function at `x` and `fx` is the value objective function at `x`.
 
    SEE ALSO: mira_solve.
  */
@@ -304,14 +311,14 @@ func _mira_solve_printer(output, iter, eval, cpu, fx, gnorm, steplen, x, extra)
 {
   if (eval == 1) {
     write, output, format="# %s\n# %s\n",
-      "ITER  EVAL   CPU (ms)        FUNC               <FDATA>     FPRIOR    GNORM   STEPLEN",
-      "-------------------------------------------------------------------------------------";
+      "ITER  EVAL     CPU (ms)        FUNC               <FDATA>     FPRIOR    GNORM   STEPLEN",
+      "---------------------------------------------------------------------------------------";
   }
   fdata = (extra.ndata > 0 ? extra.best_fdata/extra.ndata : 0.0);
   fprior = (extra.mu > 0 ? extra.best_fprior/extra.mu : 0.0);
   write, output,
-    format=" %5d %5d %10.3f  %+-24.15e%-11.3e%-11.3e%-9.1e%-9.1e\n",
-    iter, eval, cpu, fx, fdata, fprior, gnorm, step;
+    format=" %5d %5d %12.3f  %+-24.15e%-11.3e%-11.3e%-9.1e%-9.1e\n",
+    iter, eval, cpu*1e3, fx, fdata, fprior, gnorm, step;
 }
 
 func mira_projected_gradient_norm(x, gx, xmin=, xmax=)
