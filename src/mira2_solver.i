@@ -120,8 +120,8 @@ func mira_solve(master, x, &misc, xmin=, xmax=,
   }
 
   /* Build functor to evaluate the objective function. */
-  fg = mira_objective_function(master, flux=flux, fluxerr=fluxerr,
-                               zapdata=zapdata, mu=mu, regul=regul);
+  fg = mira_objfunc(master, flux=flux, fluxerr=fluxerr,
+                    zapdata=zapdata, mu=mu, regul=regul);
   if (verb && fg.flux != 0) {
     inform, "using normalization constraint with FLUX=%g and FLUXERR=%g\n",
       fg.flux, fg.fluxerr;
@@ -135,7 +135,7 @@ func mira_solve(master, x, &misc, xmin=, xmax=,
     x += 0.0; // force copy and conversion
   }
 
-  opl_vmlmb, _mira_solve_objfunc, x, extra=fg,
+  opl_vmlmb, fg, x,
     xmin=xmin, xmax=xmax, mem=mem,
     verb=verb, viewer=viewer, printer=printer,
     maxiter=maxiter, maxeval=maxeval, output=output,
@@ -158,9 +158,8 @@ func mira_solve(master, x, &misc, xmin=, xmax=,
   return x;
 }
 
-func mira_objective_function(master, flux=, fluxerr=,
-                             zapdata=, regul=, mu=)
-/* DOCUMENT fg = mira_objective_function(master, ...);
+func mira_objfunc(master, flux=, fluxerr=, zapdata=, regul=, mu=)
+/* DOCUMENT fg = mira_objfunc(master, ...);
 
      Get the objective function used by MiRA to retrieve an image. The
      returned object can be called as a function:
@@ -215,30 +214,22 @@ func mira_objective_function(master, flux=, fluxerr=,
              ndata = (zapdata ? 0 : ndata),
              mu = mu, regul = regul,
              niters = 0, nevals = 0);
-  h_evaluator, fg, "_mira_evaluate_objfunc";
+  h_evaluator, fg, "_mira_eval_objfunc";
   return fg;
 }
 
-local _mira_solve_objfunc, _mira_evaluate_objfunc;
-/* DOCUMENT fx = _mira_evaluate_objfunc(this, x, gx);
-         or fx = _mira_solve_objfunc(x, gx, this);
+func _mira_eval_objfunc(fg, x, &grd)
+/* DOCUMENT fx = _mira_eval_objfunc(fg, x, gx);
 
-      Private functions to evaluate the objective function and its gradient
-      at X.
+      Private functions to evaluate the objective function F and its gradient
+      at X.  FG is the object implementing the objective function.
 
-   SEE ALSO: mira_objective_function.
+   SEE ALSO: mira_objfunc.
 */
-
-func _mira_evaluate_objfunc(this, x, &grd) /* DOCUMENTED */
-{
-  return _mira_solve_objfunc(x, grd, this);
-}
-
-func _mira_solve_objfunc(x, &grd, this) /* DOCUMENTED */
 {
   /* Normalization constraint. */
-  flux = this.flux;
-  fluxerr = this.fluxerr;
+  flux = fg.flux;
+  fluxerr = fg.fluxerr;
   strict_flux = (flux > 0 && fluxerr == 0);
   loose_flux  = (flux > 0 && fluxerr > 0);
 
@@ -250,24 +241,24 @@ func _mira_solve_objfunc(x, &grd, this) /* DOCUMENTED */
   }
 
   /* Data penalty. */
-  if (this.ndata > 0) {
-    fdata = mira_cost_and_gradient(this.master, x, grd);
+  if (fg.ndata > 0) {
+    fdata = mira_cost_and_gradient(fg.master, x, grd);
   } else {
     fdata = 0.0;
   }
 
   /* Prior penalty. */
-  if (this.mu > 0) {
-    rgl_update, this.regul, x;
-    fprior = rgl_get_penalty(this.regul, x);
-    if (this.ndata > 0) {
-      grd += rgl_get_gradient(this.regul, x);
+  if (fg.mu > 0) {
+    rgl_update, fg.regul, x;
+    fprior = rgl_get_penalty(fg.regul, x);
+    if (fg.ndata > 0) {
+      grd += rgl_get_gradient(fg.regul, x);
     } else {
-      eq_nocopy, grd, rgl_get_gradient(this.regul, x);
+      eq_nocopy, grd, rgl_get_gradient(fg.regul, x);
     }
   } else {
     fprior = 0.0;
-    if (this.ndata <= 0) {
+    if (fg.ndata <= 0) {
       grd = array(double, dimsof(x));
     }
   }
@@ -285,37 +276,37 @@ func _mira_solve_objfunc(x, &grd, this) /* DOCUMENTED */
   }
 
   /* Number of evaluations of the objective function. */
-  h_set, this, nevals = this.nevals + 1;
+  h_set, fg, nevals = fg.nevals + 1;
 
   /* Compute total penalty and update best solution so far. */
   ftot = fdata + fprior;
-  if (! h_has(this, best_f=) || this.best_f > ftot) {
+  if (! h_has(fg, best_f=) || fg.best_f > ftot) {
     best_x = x; // make a copy
     best_g = grd; // make a copy
-    h_set, this, best_f = ftot, best_fdata = fdata,
+    h_set, fg, best_f = ftot, best_fdata = fdata,
       best_fprior = fprior, best_g = best_g, best_x = best_x,
-      best_nevals = this.nevals,
-      best_niters = this.niters + 1;
+      best_nevals = fg.nevals,
+      best_niters = fg.niters + 1;
   }
   return ftot;
 }
 
 /* The following function is just used to store the number of objective
    function evaluations and the number of algorithm iterations. */
-func _mira_solve_viewer(x, this, ws)
+func _mira_solve_viewer(x, fg, ws)
 {
-  h_set, this, niters = this.niters + 1;
+  h_set, fg, niters = fg.niters + 1;
 }
 
-func _mira_solve_printer(output, iter, eval, cpu, fx, gnorm, steplen, x, extra)
+func _mira_solve_printer(output, iter, eval, cpu, fx, gnorm, steplen, x, fg)
 {
   if (eval == 1) {
     write, output, format="# %s\n# %s\n",
       "ITER  EVAL     CPU (ms)        FUNC               <FDATA>     FPRIOR    GNORM   STEPLEN",
       "---------------------------------------------------------------------------------------";
   }
-  fdata = (extra.ndata > 0 ? extra.best_fdata/extra.ndata : 0.0);
-  fprior = (extra.mu > 0 ? extra.best_fprior/extra.mu : 0.0);
+  fdata = (fg.ndata > 0 ? fg.best_fdata/fg.ndata : 0.0);
+  fprior = (fg.mu > 0 ? fg.best_fprior/fg.mu : 0.0);
   write, output,
     format=" %5d %5d %12.3f  %+-24.15e%-11.3e%-11.3e%-9.1e%-9.1e\n",
     iter, eval, cpu*1e3, fx, fdata, fprior, gnorm, step;
