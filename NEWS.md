@@ -1,5 +1,13 @@
 # History of MiRA
 
+## Version 2.4.0 (2022-03-29)
+
+* MiRA use [`VMLMB`](https://github.com/emmt/VMLMB) by default and if it is
+  installed for solving the constrained problem.  This package provides a pure
+  Yorick implementation of the `VMLMB` algorithm which has a number of
+  enhencements compared to the one in
+  [`OptimPackLegacy`](https://github.com/emmt/https://github.com/emmt/).
+
 ## Version 2.3.1 (2022-02-21)
 
 * MiRA save `CONVERGENCE` keyword in HDU with output parameters.

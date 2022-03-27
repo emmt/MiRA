@@ -86,26 +86,31 @@ local mira_solve;
             of corrections and gradient differences memorized by the variable
             metric algorithm; by default, MEM=7 (see op_vmlmb).
      FTOL - relative function tolerance for the stopping criterion of the
-            optimizer; default value is: FTOL = 1e-15 (see op_vmlmb).
+            optimizer (opl_vmlmb/optm_vmlmb); default value is: FTOL = 1e-15.
      GTOL - relative gradient tolerance for the stopping criterion of the
-            optimizer; default value is: GTOL = 0.0 (see op_vmlmb).
+            optimizer (opl_vmlmb/optm_vmlmb); default value is: GTOL = 0.0.
+     XTOL - relative tolerance in the variables for the stopping criterion of
+            the optimizer (optm_vmlmb); default value is: XTOL = 1e-5.
      SFTOL, SGTOL, SXTOL - control the stopping criterion of the
-            line-search method in the optimizer (see op_vmlmb).
+            line-search method in the optimizer (opl_vmlmb/optm_vmlmb).
 
    SEE ALSO:
      mira_new, mira_config.
  */
 func mira_solve(master, x, &misc, xmin=, xmax=,
                 flux=, fluxerr=, zapdata=, regul=, mu=, cubic=,
-                /* options for OptimPackLegacy */
+                /* options for VMLMB */
+                useoptimpacklegacy=, blmvm=,
                 mem=, verb=, maxiter=, maxeval=, output=,
-                ftol=, gtol=, sftol=, sgtol=, sxtol=,
+                ftol=, gtol=, xtol=, sftol=, sgtol=, sxtol=,
                 gpnormconv=)
 {
   /* Set default values for optimizer. */
   if (is_void(ftol)) ftol =  1e-15;
   if (is_void(gtol)) gtol = 0.0;
+  if (is_void(xtol)) xtol = 1e-5;
   if (is_void(mem)) mem = 7;
+  //if (is_void(useoptimpacklegacy)) useoptimpacklegacy = 1n;
 
   /* Update internal cache (if needed). */
   mira_update, master;
@@ -127,20 +132,34 @@ func mira_solve(master, x, &misc, xmin=, xmax=,
       fg.flux, fg.fluxerr;
   }
 
-  printer = _mira_solve_printer;
-  viewer = _mira_solve_viewer;
-
   // FIXME: fix bug in op_mnb:
   if (structof(x) != double || (is_void(xmin) && is_void(xmax))) {
     x += 0.0; // force copy and conversion
   }
 
-  opl_vmlmb, fg, x,
-    xmin=xmin, xmax=xmax, mem=mem,
-    verb=verb, viewer=viewer, printer=printer,
-    maxiter=maxiter, maxeval=maxeval, output=output,
-    frtol=ftol, fatol=0.0, //gatol=0.0, grtol=gtol,
-    sftol=sftol, sgtol=sftol, sxtol=sftol;
+  if (is_func(optm_vmlmb) && !useoptimpacklegacy) {
+      inform, "using `%s` (maxeval=%d, maxiter=%d)\n", "optm_vmlmb",
+          (is_void(maxeval) ? -1 : maxeval),
+          (is_void(maxiter) ? -1 : maxiter);
+      local fx, gx, status;
+      optm_vmlmb, fg, x, fx, gx, status, lower=xmin, upper=xmax, mem=mem,
+          fmin=0, // lnsrch=, delta=, epsilon=, lambda=,
+          ftol=[0.0,ftol], gtol=gtol, xtol=xtol, blmvm=blmvm,
+          maxiter=maxiter, maxeval=maxeval, verb=verb, cputime=1n,
+          observer=_mira_optm_observer,
+          printer=_mira_optm_printer, output=output,
+          throwerrors=1n;
+  } else {
+      inform, "using `%s` (maxeval=%d, maxiter=%d)\n", "opl_vmlmb",
+          (is_void(maxeval) ? -1 : maxeval),
+          (is_void(maxiter) ? -1 : maxiter);
+      opl_vmlmb, fg, x,
+          xmin=xmin, xmax=xmax, mem=mem,
+          verb=verb, viewer=_mira_opl_viewer, printer=_mira_opl_printer,
+          maxiter=maxiter, maxeval=maxeval, output=output,
+          frtol=ftol, fatol=0.0, //gatol=0.0, grtol=gtol,
+          sftol=sftol, sgtol=sftol, sxtol=sftol;
+  }
 
   /* Retrieve the best solution so far (which is already normalized) and the
      various termes of the objective function and its gradient at the
@@ -291,14 +310,34 @@ func _mira_eval_objfunc(fg, x, &grd)
   return ftot;
 }
 
-/* The following function is just used to store the number of objective
-   function evaluations and the number of algorithm iterations. */
-func _mira_solve_viewer(x, fg, ws)
+// Use the "viewer" of `opl_vmlmb` to track the number of iterations.
+func _mira_opl_viewer(x, fg, ws)
 {
   h_set, fg, niters = fg.niters + 1;
 }
 
-func _mira_solve_printer(output, iter, eval, cpu, fx, gnorm, steplen, x, fg)
+// Use the "observer" of `optm_vmlmb` to track the number of iterations.
+func _mira_optm_observer(iters, evals, rejects, t, x, f, g, gpnorm, alpha, fg)
+{
+    h_set, fg, niters = iters;
+}
+
+func _mira_optm_printer(output, iters, evals, rejects, t, x, f, g, gpnorm,
+                        alpha, fg)
+{
+  if (evals == 1) {
+    write, output, format="# %s\n# %s\n",
+      "ITER  EVAL     CPU (ms)        FUNC               <FDATA>     FPRIOR    GNORM   STEPLEN",
+      "---------------------------------------------------------------------------------------";
+  }
+  fdata = (fg.ndata > 0 ? fg.best_fdata/fg.ndata : 0.0);
+  fprior = (fg.mu > 0 ? fg.best_fprior/fg.mu : 0.0);
+  write, output,
+    format=" %5d %5d %12.3f  %+-24.15e%-11.3e%-11.3e%-9.1e%-9.1e\n",
+    iters, evals, t*1e3, f, fdata, fprior, gnorm, alpha;
+}
+
+func _mira_opl_printer(output, iter, eval, cpu, f, gnorm, steplen, x, fg)
 {
   if (eval == 1) {
     write, output, format="# %s\n# %s\n",
@@ -309,7 +348,7 @@ func _mira_solve_printer(output, iter, eval, cpu, fx, gnorm, steplen, x, fg)
   fprior = (fg.mu > 0 ? fg.best_fprior/fg.mu : 0.0);
   write, output,
     format=" %5d %5d %12.3f  %+-24.15e%-11.3e%-11.3e%-9.1e%-9.1e\n",
-    iter, eval, cpu*1e3, fx, fdata, fprior, gnorm, step;
+    iter, eval, cpu*1e3, f, fdata, fprior, gnorm, step;
 }
 
 func mira_projected_gradient_norm(x, gx, xmin=, xmax=)
