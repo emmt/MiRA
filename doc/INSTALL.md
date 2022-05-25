@@ -1,19 +1,5 @@
 # Installation of MiRA
 
-There are different possible ways to use MiRA:
-
-* with Yorick interpreter or in your Yorick code with `#include "mira2.i"` (or
-  similar);
-
-* from the command line with the `ymira` command.
-
-* via the Docker image `ferreol/mira`.
-
-Below we explain how to install MiRA with
-[EasyYorick](https://github.com/emmt/EasyYorick) and how to manually install
-MiRA.
-
-
 ## Installation with EasyYorick
 
 Installation of MiRA by [EasyYorick](https://github.com/emmt/EasyYorick) is
