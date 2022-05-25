@@ -246,4 +246,4 @@ chmod 755 "$BINDIR/ymira"
 ###  MiRA  via Docker
 
 MiRA is available as a Docker image that can be run on any system without any
-further installation.
+further installation (see [Usage](https://github.com/emmt/MiRA/blob/master/doc/USAGE.md#using-mira-from-the-command-line-via-docker) ).
