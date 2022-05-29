@@ -322,7 +322,7 @@ func _mira_optm_observer(iters, evals, rejects, t, x, f, g, gpnorm, alpha, fg)
     h_set, fg, niters = iters;
 }
 
-func _mira_optm_printer(output, iters, evals, rejects, t, x, f, g, gpnorm,
+func _mira_optm_printer(output, iters, evals, rejects, t, x, f, g, gnorm,
                         alpha, fg)
 {
   if (evals == 1) {
