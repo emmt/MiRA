@@ -317,12 +317,12 @@ func _mira_opl_viewer(x, fg, ws)
 }
 
 // Use the "observer" of `optm_vmlmb` to track the number of iterations.
-func _mira_optm_observer(iters, evals, rejects, t, x, f, g, gpnorm, alpha, fg)
+func _mira_optm_observer(iters, evals, rejects, t, x, f, g, gnorm, alpha, fg)
 {
     h_set, fg, niters = iters;
 }
 
-func _mira_optm_printer(output, iters, evals, rejects, t, x, f, g, gpnorm,
+func _mira_optm_printer(output, iters, evals, rejects, t, x, f, g, gnorm,
                         alpha, fg)
 {
   if (evals == 1) {
