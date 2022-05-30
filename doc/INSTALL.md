@@ -27,25 +27,26 @@ You may add `$prefix/bin` to your environment variable `PATH`:
 export PATH="$prefix/bin:$PATH"
 ```
 
-Assuming you have installed EasyYorick, you just have to execute:
+Assuming you have installed [EasyYorick](https://github.com/emmt/EasyYorick)[EasyYorick](https://github.com/emmt/EasyYorick),
+you just have to execute:
 
 ```sh
-ypkg install yorick yeti optimpacklegacy yoifits ylib ipy mira
+ypkg install yorick yeti vmlmb yoifits ylib ipy mira
 ```
 
 which should install MiRA and its dependencies
 ([Yorick](http://dhmunro.github.io/yorick-doc/),
-[Yeti](https://github.com/emmt/Yeti),
-[OptimPackLegacy](https://github.com/emmt/OptimPackLegacy),
+[Yeti](https://github.com/emmt/Yeti), [VMLMB](https://github.com/emmt/VMLMB),
 [YOIFITS](https://github.com/emmt/YOIFITS),
-[YLib](https://github.com/emmt/ylib) and
-[IPY](https://github.com/emmt/IPY)) if not yet installed.  It is recommended
-to also install [YNFFT](https://github.com/emmt/ynfft), a Yorick plugin for the
-*Nonequispaced Fast Fourier Transform*.  This is done by adding `ynfft` to the
-above list of dependencies, or by executing:
+[YLib](https://github.com/emmt/ylib) and [IPY](https://github.com/emmt/IPY)) if
+not yet installed.  It is recommended to also install
+[YNFFT](https://github.com/emmt/ynfft), a Yorick plugin for the *Nonequispaced
+Fast Fourier Transform* and [yor-vops](https://github.com/emmt/yor-vops), a
+plugin for faster basic linear algebra computations.  This is done by adding
+`ynfft` and `yor-vops` to the above list of dependencies, or by executing:
 
 ```sh
-ypkg install ynfft
+ypkg install yor-vops ynfft
 ```
 
 You may need to install the NFFT library (and header files) before the `ynfft`
