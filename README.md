@@ -2,7 +2,7 @@
 
 MiRA (Multi-aperture Image Reconstruction Algorithm) is an algorithm for image
 reconstruction from interferometric data.  The software is written in
-[Yorick](http://dhmunro.github.io/yorick-doc/) and expects data file in the
+[Yorick](https://github.com/LLNL/yorick/) and expects data file in the
 OIFITS format.
 
 A quick way to install MiRA is to use

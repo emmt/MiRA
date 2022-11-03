@@ -35,7 +35,7 @@ ypkg install yorick yeti vmlmb yoifits ylib ipy mira
 ```
 
 which should install MiRA and its dependencies
-([Yorick](http://dhmunro.github.io/yorick-doc/),
+([Yorick](https://github.com/LLNL/yorick/),
 [Yeti](https://github.com/emmt/Yeti), [VMLMB](https://github.com/emmt/VMLMB),
 [YOIFITS](https://github.com/emmt/YOIFITS),
 [YLib](https://github.com/emmt/ylib) and [IPY](https://github.com/emmt/IPY)) if
@@ -125,7 +125,7 @@ archive file.
 
 You must have installed the following software:
 
-- [Yorick](http://dhmunro.github.io/yorick-doc/) (version 2.2.04 or superior);
+- [Yorick](https://github.com/LLNL/yorick/) (version 2.2.04 or superior);
 - [Yeti](https://github.com/emmt/Yeti) (version 6.3.2 or superior);
 - [OptimPackLegacy](https://github.com/emmt/OptimPackLegacy) (version 1.4.0 or
    superior);
