@@ -1,6 +1,6 @@
 # History of MiRA
 
-## Version 2.4.0 (2022-03-29)
+## Version 2.4.0 (2022-11-10)
 
 * MiRA use [`VMLMB`](https://github.com/emmt/VMLMB) by default and if it is
   installed for solving the constrained problem.  This package provides a pure
