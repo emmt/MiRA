@@ -1375,6 +1375,11 @@ func mira_write_output_params(dest, misc)
     fits_set, fh, "CHISQ", misc.fdata, "Reduced chi-squared";
   }
 
+  /* GPNORM keyword. */
+  if (! is_void(misc.gpnorm)) {
+    fits_set, fh, "GPNORM", misc.gpnorm, "Euclidean norm of projected gradient";
+  }
+
   /* RGL_WGT keyword. */
   if (! is_void(misc.mu)) {
     fits_set, fh, "RGL_WGT", misc.mu, "Regularization weight";
