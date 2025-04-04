@@ -1,5 +1,9 @@
 # History of MiRA
 
+## Version 2.4.2 (2024-04-04)
+
+* Add `GPNORM` keyword, this is needed by [PYRA](https://github.com/jdrevon/PYRA).
+
 ## Version 2.4.1 (2023-12-13)
 
 * Add option `xtol` to set the relative tolerance in variable change for
