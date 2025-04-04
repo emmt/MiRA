@@ -12,6 +12,16 @@ install MiRA.
 The man pages of MiRA give all options. See [*Usage*](doc/USAGE.md) for a short
 introduction about using MiRA.
 
+## Links
+
+MiRA is used in a number of projects:
+
+* [OImaging](https://www.jmmc.fr/english/tools/data-analysis/oimaging/) provides a GUI to
+  assist in image reconstruction form optical interferometric data. MiRA is one of the
+  image reconstruction software available in OImaging.
+
+* [PYRA](https://github.com/jdrevon/PYRA) is a Python script by Julien Drevon to
+  automatically sample and tune the parameters of MiRA.
 
 ## References
 
