@@ -25,13 +25,19 @@ MiRA is used in a number of projects:
 
 ## References
 
-* Thiébaut, É.: *"MiRA: an effective imaging algorithm for optical interferometry"* in
-  SPIE Proc. Astronomical Telescopes and Instrumentation **7013**, 70131I-1-70131I-12
-  (2008) [DOI](http://dx.doi.org/10.1117/12.788822).
+* É. Thiébaut: *"MiRA: an effective imaging algorithm for optical interferometry"* in SPIE
+  Proc. Astronomical Telescopes and Instrumentation **7013**, 70131I-1-70131I-12 (2008)
+  [DOI](http://dx.doi.org/10.1117/12.788822).
 
-* Thiébaut, É. & Giovannelli, J.-F.: *"Image Reconstruction in Optical Interferometry"* in
+* É. Thiébaut & J.-F. Giovannelli: *"Image Reconstruction in Optical Interferometry"* in
   IEEE Signal Processing Magazine **27**, pp. 97-109 (2010)
   [DOI](http://dx.doi.org/10.1109/MSP.2009.934870).
 
-* Thiébaut, É.: *"Image reconstruction with optical interferometers"* in New Astronomy
+* É. Thiébaut: *"Image reconstruction with optical interferometers"* in New Astronomy
   Reviews **53**, pp. 312-328 (2009) [DOI](http://dx.doi.org/10.1016/j.newar.2010.07.011).
+
+* É. Thiébaut & J. Young: *"Principles of image reconstruction in optical interferometry:
+  tutorial"*, Journal of the Optical Society of America A **34**, pp. 904-923 (2017)
+  [DOI](http://dx.doi.org/10.1364/JOSAA.34.000904)
+  [HAL](https://hal.archives-ouvertes.fr/hal-01577899)
+  [Arxiv](http://arxiv.org/abs/1708.08390).
