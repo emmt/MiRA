@@ -373,12 +373,21 @@ func mira_gaussian_smearing(t)
 /* DOCUMENT mira_gaussian_smearing(t);
 
      This function approximates the cardinal sine function by a Gaussian which
-     has the same full width at half-maximum (FHWM) as the sinc function.  The
-     approximation error in smaller than 2% (relative to the peak) on the
+     has the same full width at half-maximum (FHWM) as the sinc function. The
+     approximation error is smaller than 2% (relative to the peak) on the
      interval t ∈ [-0.682,+0.682].
 
+     Argument `t` shall be computed as:
+
+          t = (γ*Δλ/λ²)⋅(x⋅u + y⋅v)
+
+     with `x` the relative right ascension (RA), `y` the relative declination
+     (DEC), `(u,v)` the projected baselines, `λ` the effective wavelength, `Δλ`
+     the effective spectral bandwidth, and `γ` a bandwidth smearing factor such
+     that `γ*Δλ` is the FWHM of the spectral transfer function in intensity.
+
      Constants MIRA_GAUSS_FWHM and MIRA_SINC_FWHM are set with the respective
-     FHWM of a normal distribution and of the sinc fucntion.
+     FHWM of a normal distribution and of the sinc function.
 
    SEE ALSO: sinc.
  */
@@ -409,8 +418,8 @@ func _mira_cos_sin(&re, &im, phi)
      otherwise.
 */
 {
-  /* Note: use `unref` to reduce the memory requirements (only works if
-     arguments are temporary expressions). */
+  /* Note: use `unref` to reduce the memory requirements if arguments are
+     temporary expressions. */
   re = cos(phi);
   im = sin(unref(phi));
 }

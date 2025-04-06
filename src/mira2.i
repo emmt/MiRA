@@ -119,8 +119,7 @@ func _mira_init
   }
   set_path, path;
 
-  /* Load other parts of MiRA (which should be at the same location of this
-     file). */
+  /* Load other parts of MiRA (which should be at the same location as this file). */
   include, MIRA_HOME+"mira2_utils.i", 1;
   include, MIRA_HOME+"mira2_config.i", 1;
   include, MIRA_HOME+"mira2_data.i", 1;

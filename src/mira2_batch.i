@@ -400,7 +400,7 @@ func mira_main(argv0, argv)
   strictly_positive = _mira_is_strictly_positive;
 
   /* Pre-parse options.  A plugin may insert its own options *before* the list
-     of standard options so that a new list can be created without perturbating
+     of standard options so that a new list can be created without perturbing
      the standard one. */
   arguments = mira_concatenate_arguments(argv);
   options = _MIRA_CL_OPTS; /* to start a new list of options */
@@ -827,7 +827,7 @@ func mira_main(argv0, argv)
                "complex visibilities transform");
     if (opt.debug) {
       /* Also use the other method. */
-      dirty_beam_alt =  mira_compute_dirty_beam(master, method="exact");
+      dirty_beam_alt = mira_compute_dirty_beam(master, method="exact");
       mira_save_image, h_set(image, arr = dirty_beam_alt),
         fh, bitpix=opt.bitpix, extname="IMAGE-OI DIRTY BEAM EXACT",
         comment=("Dirty beam computed by MiRA using exact pixels to" +
@@ -885,7 +885,7 @@ func mira_main(argv0, argv)
   fits_close, fh;
 
   if (opt.view && batch()) {
-    /* Just make a substancial pause? */
+    /* Just make a substantial pause? */
     write, format="\n%s\n", "Close the graphic window to finish.";
     while (window_exists(_mira_window)) {
       pause, 100;
