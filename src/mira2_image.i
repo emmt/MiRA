@@ -768,7 +768,9 @@ func mira_save_image(img, dest, overwrite=, bitpix=, data=, hook=,
     fits_set, fh, "NAXIS"+sfx, h_get(img, "naxis"+sfx),
       "number of elements along axis";
   }
-  fits_set, fh, "EXTEND", 'T', "this file may contain FITS extensions";
+  if (hdu == 1) {
+    fits_set, fh, "EXTEND", 'T', "this file may contain FITS extensions";
+  }
 
   /* Save axis information. Manage to have the image correctly displayed with
      most viewers (East toward left and North toward top).  */
