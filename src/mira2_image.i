@@ -28,7 +28,7 @@ func mira_soft_threshold(img, lvl, nrm)
 /* DOCUMENT mira_soft_threshold(img, lvl);
          or mira_soft_threshold(img, lvl, nrm);
 
-     Perform soft-threshlding of image IMG. Argument LVL is the threshold level
+     Perform soft-thresholding of image IMG. Argument LVL is the threshold level
      specified in terms of the fraction of the non-zero pixels.  For instance,
      LVL = 0.05 means that the threshold will be such that 5% of the less
      bright pixels (in absolute value) will be set to zero.
@@ -340,7 +340,7 @@ func mira_recenter(x, quiet=)
      Argument X must have at least 2 dimensions, the first 2 dimensions of X
      are considered to be the angular direction.  Extra dimensions are ignored
      for the recentering (they can represent other coordinates for instance
-     the wavelength or the time).  Along a dimensions of lenght N, the center
+     the wavelength or the time).  Along a dimensions of length N, the center
      is at (N - N/2)-th pixel -- with integer division -- which corresponds to
      the model of the Fourier transform assumed by MiRA.
 
@@ -774,7 +774,7 @@ func mira_save_image(img, dest, overwrite=, bitpix=, data=, hook=,
      most viewers (East toward left and North toward top).  */
   if ((img.ctype1 == "RA---TAN" && img.cdelt1 > 0.0) ||
       (img.ctype2 == "DEC--TAN" && img.cdelt2 < 0.0)) {
-    /* Modify orientation paramaters. */
+    /* Modify orientation parameters. */
     local flip1, flip2;
     cdelt1 = img.cdelt1;
     crpix1 = img.crpix1;
@@ -947,7 +947,7 @@ func mira_find_fits_hdu(fh, xtension, start=, extname=, hduname=)
      boolean value indicating whether the HDU has been found is returned.
 
      If no matching HDU is found, the FITS current HDU remains unchanged;
-     otherwise, the FITS current HDU is the one matchng all the criteria.
+     otherwise, the FITS current HDU is the one matching all the criteria.
 
 
    SEE ALSO: fits_eof, fits_next_hdu.
