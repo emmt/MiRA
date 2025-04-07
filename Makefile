@@ -2,7 +2,7 @@
 .PHONY: clean all default distclean test distrib install help
 srcdir = .
 
-# DESTDIR can be overriden by package managers.
+# DESTDIR can be overridden by package managers.
 DESTDIR=
 
 #------------------------------------------------------------------------------
@@ -17,6 +17,7 @@ MIRA_FILES = \
     mira2_data.i \
     mira2_dirty.i \
     mira2_image.i \
+    mira2_models.i \
     mira2_plugin_central_star.i \
     mira2_solver.i \
     mira2_tests.i \
@@ -24,6 +25,7 @@ MIRA_FILES = \
     mira2_xform.i
 TEST_FILES = \
     mira-demo.i \
+    mira-test-models.i \
     mira-test1.i \
     mira-test2.i
 DATA_FILES = data1.oifits data2.oifits README
@@ -53,7 +55,7 @@ clean:
 distclean: clean
 	rm -f $(CONFIG)
 
-TEST_FLAGS=-pixelsize=0.1mas -fov=20mas -regul=hyperbolic -mu=3e3 -tau=5e-5 -ftol=0 -gtol=0 -maxeval=1000 -overwrite -save_visibilities -save_initial -flux=1 -min=0 -verb=10
+TEST_FLAGS=-pixelsize=0.1mas -fov=20mas -regul=hyperbolic -mu=3e3 -tau=5e-5 -ftol=0 -gtol=0 -maxeval=1000 -overwrite -save_data_model -save_initial -flux=1 -min=0 -verb=10
 
 test1.fits: $(srcdir)/src
 	$(srcdir)/bin/ymira $(TEST_FLAGS) -initial=Dirac -bootstrap=1 -recenter \

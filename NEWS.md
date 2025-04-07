@@ -4,6 +4,12 @@ This page describes the most important changes in `MiRA`. The format is based on
 Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic
 Versioning](https://semver.org/spec).
 
+## Unreleased
+
+### Fixed
+
+- File `mira2_models.i` was not installed.
+
 ## Version 2.5.0 (2024-04-07)
 
 ### Added
