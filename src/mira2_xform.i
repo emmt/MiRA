@@ -40,7 +40,7 @@ func _mira_define_xform(master)
    `master`.  This routine must be called after data selection (by
    `_mira_select_data`) and after changing any options related to the model.
    Attribute `master.stage` is 1 on entry and is set to 3 on exit.  When
-   called as a fucntion, `master` is returned.
+   called as a function, `master` is returned.
 
    The operator, say `xform`, is an object (actually a hash table with its own
    evaluator) which can be used as follows:

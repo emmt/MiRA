@@ -50,7 +50,7 @@ palette, "heat.gp";
 /* RECONSTRUCTION WITH PHASE CLOSURE */
 
 /*  seed  rotated  final penalty
- *   0.1  yes      4.94723e3 (viusaly the best)
+ *   0.1  yes      4.94723e3 (visually the best)
  *   0.2  bad      6.95202e3
  *   0.3  bad      6.96364e3
  *   0.4  yes      4.96052e3
@@ -108,4 +108,3 @@ if (ROTATE) {
   rdline, prompt="hit [Return] to turn the image";
   img4 = mira_solve(mh1, img4(::-1,::-1), maxeval=70, verb=1, xmin=0.0, normalization=1, regul=rgl, mu=3e3, zap_phase=1, view=3, title="Reconstruction with no phase data");
  }
-

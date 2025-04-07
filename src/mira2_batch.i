@@ -695,7 +695,7 @@ func mira_main(argv0, argv)
                               cunit1=cunit,  cunit2=cunit);
   h_set, opt, initial = image;
 
-  /* Parse wavelenght settings. */
+  /* Parse wavelength settings. */
   wavemin = get_length(opt, "wavemin", strictly_positive);
   wavemax = get_length(opt, "wavemax", strictly_positive);
   effwave = get_length(opt, "effwave", strictly_positive);
