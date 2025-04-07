@@ -3,6 +3,8 @@
  * A standalone version of the models assumed in MiRA.
  */
 
+require, "mira2.i";
+
 local mira_build_separable_pix2vis, _mira_apply_separable_pix2vis;
 /* DOCUMENT A = mira_build_separable_pix2vis(x, y, ufreq, vfreq);
         or  A = mira_build_separable_pix2vis(x, y, u, v, wave);
@@ -11,13 +13,15 @@ local mira_build_separable_pix2vis, _mira_apply_separable_pix2vis;
      coefficients of the transform are stored in a compact form assuming that the
      transform is separable.
 
-     Arguments `x` and `y` are the sky angular coordinates respectively along the 1st and
-     2nd dimensions of the image model. Arguments `u` and `v` are the coordinates of the
-     projected baselines for each model complex visibility. Argument `wave` specifies the
-     wavelength(s) for the given baselines.
+     Arguments `x`, the relative right ascension (RA), and `y`, the relative declination
+     (DEC), are the sky angular coordinates respectively along the 1st and 2nd dimensions
+     of the image model. `x` and `y` must be 1-dimensional arrays (vectors).
 
-     If `wave` is not specified, `u` and `v` are assumed to specify the spatial
-     frequencies.
+     `u` and `v` are the coordinates of the projected baselines, they must have the same
+     dimensions. `wave` specifies the wavelength(s) and must be conformable with the
+     dimensions of `u` and `v`.
+
+     `ufreq = u/wave` and `vfreq = v/wave` are the spatial frequencies.
 
      The object is used as: `A(arr, adj)` or apply the transform (or its adjoint if `adj`
      is true) to array `arr`.
@@ -95,21 +99,34 @@ func mira_build_nonseparable_pix2vis(x, y, u, v, wave, band, smearingfunction=, 
     H1im = h_pop(B, "H1im")(,-,..); // insert a 2nd dimension
     H2re = h_pop(B, "H2re")( -,..); // insert a 1st dimension
     H2im = h_pop(B, "H2im")( -,..); // insert a 1st dimension
-    H = _mira_fake_complex(H1re*H2re - H1im*H2im,  // real(H)
-                           H1re*H2im + H1im*H2re); // imag(H)
-    if (! is_void(smearingfunction)) {
+    Hre = H1re*H2re - H1im*H2im; // real(H)
+    Him = H1re*H2im + H1im*H2re; // imag(H)
+    if (! (is_void(smearingfunction) || smearingfunction == "none" ||
+           smearingfunction == mira_no_smearing)) {
         r = band/(wave*wave);
         if (! is_void(smearingfactor)) r *= smearingfactor;
+        if (! is_func(smearingfunction)) {
+            if (smearingfunction == "sinc" || smearingfunction == "uniform") {
+                smearingfunction = sinc;
+            } else if (smearingfunction == "gaussian" || smearingfunction == "Gaussian") {
+                smearingfunction = mira_gaussian_smearing;
+            } else {
+                error, "invalid `smearingfunction`";
+            }
+        }
         r = smearingfunction((r*u)(-,-,..)*x + (r*v)(-,-,..)*y(-,));
-        H(1,..) *= r;
-        H(2,..) *= r;
+        Hre *= r;
+        Him *= r;
     }
+    H = array(double, numberof(x), numberof(y), 2, dimsof(u, v, wave));
+    H(,,1,..) = Hre;
+    H(,,2,..) = Him;
     return h_functor("_mira_apply_nonseparable_pix2vis", H);
 }
 
 func _mira_apply_nonseparable_pix2vis(A, arr, adj)
 {
-  return mvmult(A.H, arr, adj);
+  return mvmult(A.H, arr, !adj); // the "transpose" of H is stored
 }
 
 local mira_build_nfft_pix2vis, _mira_apply_nfft_pix2vis;
@@ -227,12 +244,23 @@ func mira_pix2vis(img, u, v, wave=, band=, pixel_size=, smearingfunction=, smear
     if (structof(img) == complex) {
         error, "expecting a non-complex argument";
     }
-    x = mira_image_coordinates(dims(2), pixelsize);
-    y = mira_image_coordinates(dims(3), pixelsize);
+    x = mira_sky_coordinates(dims(2), pixelsize);
+    y = mira_sky_coordinates(dims(3), pixelsize);
 
     // Multiply the image by the smearing if any.
     local z;
-    if (! is_void(smearingfunction)) {
+    if (! is_func(smearingfunction)) {
+        if (is_void(smearingfunction) || smearingfunction == "none") {
+            smearingfunction = mira_no_smearing;
+        } else if (smearingfunction == "sinc" || smearingfunction == "uniform") {
+            smearingfunction = sinc;
+        } else if (smearingfunction == "gaussian" || smearingfunction == "Gaussian") {
+            smearingfunction = mira_gaussian_smearing;
+        } else {
+            error, "invalid `smearingfunction`";
+        }
+    }
+    if (smearingfunction != mira_no_smearing) {
         r = band/(wave*wave);
         if (! is_void(smearingfactor)) r *= smearingfactor;
         z = img*smearingfunction((r*u)(-,-,..)*x + (r*v)(-,-,..)*y(-,));
@@ -260,7 +288,7 @@ func mira_as_complex(re, im)
 {
     local z;
     dims = dimsof(re, im);
-    tmp = array(double, 2, );
+    tmp = array(double, 2, dims);
     tmp(1,..) = unref(re);
     tmp(2,..) = unref(im);
     reshape, z, &tmp, complex, dims;
@@ -277,25 +305,4 @@ func mira_as_vector(x)
     if (is_vector(x)) return x;
     if (typeof(x) == "range") return indgen(x);
     error, "expecting a vector or a range";
-}
-
-func mira_image_coordinates(n, s)
-/* DOCUMENT mira_image_coordinates(n, s);
-
-     yields a vector of `n` coordinates with step `s` and centered according to
-     conventions in `fftshift` and `nfft`.
-
-   SEE ALSO: fftshift, nfft.
- */
-{
-    return double(s)*indgen(-(n/2):n-1-(n/2))
-}
-
-// FIXME: Exact copy of `_mira_fake_complex`.
-func _mira_fake_complex(re, im)
-{
-    z = array(double, 2, dimsof(re, im));
-    z(1,..) = re;
-    z(2,..) = im;
-    return z;
 }
