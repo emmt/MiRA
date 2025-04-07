@@ -4,12 +4,14 @@ This page describes the most important changes in `MiRA`. The format is based on
 Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic
 Versioning](https://semver.org/spec).
 
-## Unreleased
+## Version 2.5.0 (2024-04-07)
 
 ### Added
 
-- Option `--save_model_data` to save input data along with their models model in the
-  output file. This also makes `MiRA` compliant with [OI-Interface](https://github.com/JMMC-OpenDev/OI-Imaging-JRA).
+- New option `-save_model_data` to save input data along with their models model in the
+  output file. This also makes `MiRA` compliant with
+  [OI-Interface](https://github.com/JMMC-OpenDev/OI-Imaging-JRA). Option `-oi-imaging`
+  implies `-save_model_data`.
 
 ### Removed
 
