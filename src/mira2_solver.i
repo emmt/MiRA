@@ -46,7 +46,7 @@ local mira_solve;
      equal to the total flux in the image).
 
      Optional argument MISC is a simple symbol name to store the following
-     informations:
+     information:
 
          misc.ndata  = number of measurements
          misc.fdata  = data penalty per measurement
@@ -64,7 +64,7 @@ local mira_solve;
             value; there is no limit if this option is not set.
      FLUX - value of the sum of the image pixels to impose a constraint on the
             total flux.
-     FLUXERR - standard deviation of the flux.  Can be 0 to apply a srict
+     FLUXERR - standard deviation of the flux.  Can be 0 to apply a strict
             equality constraint for the flux, or "auto" to set it automatically
             according to the value of FLUX and to the effective number of
             measurements, must be strictly positive otherwise.  If unspecified,
@@ -78,9 +78,9 @@ local mira_solve;
      MAXITER - maximum number of iterations, unlimited if not set.
      MAXEVAL - maximum number of evaluations of the objective function,
             unlimited if not set.
-     OUTPUT - output stream/file for iteration informations; default is
+     OUTPUT - output stream/file for iteration information; default is
             standard text output (see keyword VERB).
-     VERB - verbose level: informations get printed out every VERB iterations
+     VERB - verbose level: information get printed out every VERB iterations
             and at convergence.
      MEM  - control the memory usage by the optimizer; the value is the number
             of corrections and gradient differences memorized by the variable
