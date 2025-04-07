@@ -56,7 +56,7 @@ local MIRA_HOME, MIRA_VERSION;
 
    SEE ALSO:
  */
-MIRA_VERSION = "2.5.0";
+MIRA_VERSION = "2.5.1";
 MIRA_HOME = mira_absdirname(current_include());
 
 func _mira_init

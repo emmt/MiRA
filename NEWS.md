@@ -6,8 +6,6 @@ Versioning](https://semver.org/spec).
 
 ## Version 2.5.1 (2024-04-07)
 
-## Unreleased
-
 ### Fixed
 
 - File `mira2_models.i` was not installed.
@@ -15,6 +13,12 @@ Versioning](https://semver.org/spec).
 - FITS keyword `EXTEND` shall only be set in the primary HDU.
 
 - FITS keywords `PCOUNT=0` and `GCOUNT=1` must be defined in image extensions.
+
+- As the result of theses fixes, produced FITS files shall be compliant with FITS
+  standard. In particular with the
+  [FITSVERIFY](https://heasarc.gsfc.nasa.gov/docs/software/ftools/fitsverify/) tool. This
+  however requires that the very last `fits.i` file from the master branch of
+  [Yorick](https://github.com/LLNL/yorick) be used.
 
 ## Version 2.5.0 (2024-04-07)
 
