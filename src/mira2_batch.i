@@ -117,6 +117,8 @@ _MIRA_CL_OPTS = _lst\
    _lst("seed", [], "VALUE", OPT_REAL,
         "Seed for the random generator"),
    "\nOutput file:",
+   _lst("save_data_model", [], [], OPT_FLAG,
+        "Save input data along with their models"),
    _lst("save_visibilities", [], [], OPT_FLAG,
         "Save model complex visibilities"),
    _lst("overwrite", [], [], OPT_FLAG,
@@ -418,6 +420,11 @@ func mira_main(argv0, argv)
     return;
   }
   h_set, opt, "oi_imaging", h_pop(opt, "oi-imaging");
+  if (opt.oi_imaging) {
+    /* Option `-save_data_model` is automatically activated in OI-Imaging
+       mode. */
+    h_set, opt, save_data_model = 1n;
+  }
   h_set, opt, flags = 0n;
 
   if (opt.regul == "help") {
@@ -881,6 +888,11 @@ func mira_main(argv0, argv)
     inform, "Saving model complex visibilities...";
     mira_update, master, final_arr;
     mira_save_visibilities, master, fh;
+  }
+  if (opt.save_data_model) {
+    inform, "Saving data and their models for every OI-FITS data-block...";
+    mira_update, master;
+    mira_save_data_model, master, final_arr, fh;
   }
   fits_close, fh;
 

@@ -270,6 +270,9 @@ that is 32-bit floating point values.
 \fB\-save\_initial\fR
 Save initial image as a secondary HDU in the output file.
 .TP
+\fB\-save\_data\_model\fR
+Save input data along with their models in the output file.
+.TP
 \fB\-save\_visibilities\fR
 Save model complex visibilities in the output file.
 .TP
@@ -296,12 +299,11 @@ A plugin may add its own command line options.  See file
 
 .TP
 \fB\-oi-imaging\fR
-Specify to run MiRA in OI-Imaging mode.  There must be exactly two positional
-arguments, one input and one output file, both being OI-FITS files following
-OI-Imaging standard (described in https://github.com/emmt/OI-Imaging-JRA).
-Command line options have precedence over the settings defined in the input
-file.
-
+Specify to run MiRA in OI-Imaging mode. There must be exactly two positional arguments,
+one input and one output file, both being OI-FITS files following OI-Imaging standard
+(described in https://github.com/JMMC-OpenDev/OI-Imaging-JRA). Command line options have
+precedence over the settings defined in the input file. This option implies
+\fB\-save\_model\_data\fR.
 .TP
 \fB\-help\fR
 Print out this help.

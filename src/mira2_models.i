@@ -310,3 +310,65 @@ func mira_as_vector(x)
     if (typeof(x) == "range") return indgen(x);
     error, "expecting a vector or a range";
 }
+
+func mira_save_data_model(master, img, fh)
+{
+    /* Retrieve the object storing the OI-FITS data. */
+    oidata = master.oidata;
+
+    /* Add the columns with the model of the data. */
+    local x; eq_nocopy, x, master.img_x;
+    local y; eq_nocopy, y, master.img_y;
+    local u, u1, u2, v, v1, v2, wave, band;
+    rad2deg = 180.0/MIRA_PI;
+    for (db = oifits_first(oidata); db; db = oifits_next(oidata, db)) {
+        type = oifits_get_type(db);
+        if (type != OIFITS_TYPE_VIS && type != OIFITS_TYPE_VIS2 && type != OIFITS_TYPE_T3) {
+            /* Nothing to do. */
+            continue;
+        }
+        eq_nocopy, wave, oifits_get_eff_wave(oidata, db);
+        eq_nocopy, band, oifits_get_eff_band(oidata, db);
+        if (type == OIFITS_TYPE_VIS || type == OIFITS_TYPE_VIS2) {
+            eq_nocopy, u, oifits_get_ucoord(oidata, db);
+            eq_nocopy, v, oifits_get_vcoord(oidata, db);
+            z = mira_pix2vis(img, u, v, wave=wave, band=band,  x=x, y=y,
+                             smearingfunction=master.smearingfunction,
+                             smearingfactor=master.smearingfactor);
+        } else {
+            eq_nocopy, u1, oifits_get_u1coord(oidata, db);
+            eq_nocopy, v1, oifits_get_v1coord(oidata, db);
+            eq_nocopy, u2, oifits_get_u2coord(oidata, db);
+            eq_nocopy, v2, oifits_get_v2coord(oidata, db);
+            z = mira_pix2vis(img, u1, v1, wave=wave, band=band, x=x, y=y,
+                             smearingfunction=master.smearingfunction,
+                             smearingfactor=master.smearingfactor);
+            z = mira_pix2vis(img, u2, v2, wave=wave, band=band,  x=x, y=y,
+                             smearingfunction=master.smearingfunction,
+                             smearingfactor=master.smearingfactor) * unref(z);
+            z = mira_pix2vis(img, -(u1 + u2), -(v1 + v2), wave=wave, band=band, x=x, y=y,
+                             smearingfunction=master.smearingfunction,
+                             smearingfactor=master.smearingfactor) * unref(z);
+        }
+        if (type == OIFITS_TYPE_VIS2) {
+            h_delete, db, "model_vis2err";
+            h_set, db, model_vis2data = abs2(z);
+            z = []; // free memory
+        } else if (type == OIFITS_TYPE_VIS || type == OIFITS_TYPE_T3) {
+            pfx = (type == OIFITS_TYPE_VIS ? "model_vis" : "model_t3");
+            h_delete, db, pfx+"amperr", pfx+"phierr";
+            amp = abs(z);
+            phi = array(double, dimsof(z));
+            i = where(amp);
+            if (is_array(i)) {
+                z = z(i);
+                phi(i) = rad2deg*atan(z.im, z.re);
+            }
+            h_set, db, pfx+"amp", amp, pfx+"phi", phi;
+            i = amp = phi = z = []; // free memory
+        }
+    }
+
+    /* Save the data and their models in the output file. */
+    oifits_save, oidata, fh;
+}

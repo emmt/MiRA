@@ -128,6 +128,7 @@ func _mira_init
   include, MIRA_HOME+"mira2_image.i", 1;
   include, MIRA_HOME+"mira2_solver.i", 1;
   include, MIRA_HOME+"mira2_dirty.i", 1;
+  include, MIRA_HOME+"mira2_models.i", 1;
 }
 _mira_init;
 
