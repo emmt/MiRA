@@ -426,6 +426,9 @@ func mira_main(argv0, argv)
     h_set, opt, save_data_model = 1n;
   }
   h_set, opt, flags = 0n;
+  if (opt.save_visibilities) {
+    warn, "Option `-save_visibilities` will be deprecated. Consider using `-save_data_model` instead";
+  }
 
   if (opt.regul == "help") {
     write, format="\n%s\n", "Available regularizations:";

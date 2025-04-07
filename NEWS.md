@@ -11,6 +11,10 @@ Versioning](https://semver.org/spec).
 - Option `--save_model_data` to save input data along with their models model in the
   output file. This also makes `MiRA` compliant with [OI-Interface](https://github.com/JMMC-OpenDev/OI-Imaging-JRA).
 
+### Removed
+
+- Option `-save_visibilities` is marked as deprecated.
+
 ## Version 2.4.2 (2024-04-04)
 
 ### Added
