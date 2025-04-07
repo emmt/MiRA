@@ -770,6 +770,9 @@ func mira_save_image(img, dest, overwrite=, bitpix=, data=, hook=,
   }
   if (hdu == 1) {
     fits_set, fh, "EXTEND", 'T', "this file may contain FITS extensions";
+  } else {
+    fits_set, fh, "PCOUNT", 0, "always 0 for image extensions";
+    fits_set, fh, "GCOUNT", 1, "always 1 for image extensions";
   }
 
   /* Save axis information. Manage to have the image correctly displayed with

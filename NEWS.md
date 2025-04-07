@@ -14,6 +14,8 @@ Versioning](https://semver.org/spec).
 
 - FITS keyword `EXTEND` shall only be set in the primary HDU.
 
+- FITS keywords `PCOUNT=0` and `GCOUNT=1` must be defined in image extensions.
+
 ## Version 2.5.0 (2024-04-07)
 
 ### Added
