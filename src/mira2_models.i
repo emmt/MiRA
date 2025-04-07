@@ -219,7 +219,7 @@ func _mira_apply_nfft_pix2vis(A, arr, adj)
 }
 
 local mira_pix2vis;
-/* DOCUMENT vis = mira_pix2vis(img, u, v, wave=, band=, pixelsize=,
+/* DOCUMENT vis = mira_pix2vis(img, u, v, wave=, band=, x=, y=, pixelsize=,
                                smearingfactor=, smearingfunction=);
 
      Apply the pixels to visibilities transform to image `img` for projected baselines of
@@ -229,13 +229,14 @@ local mira_pix2vis;
      Mandatory keywords `wave` and `band` specify the wavelength(s) and the spectral
      bandwidth(s).
 
-     Mandatory keyword `pixelsize` gives the size of the pixels.
+     Keywords `x` and `y` specify image coordinates. If not specified, they are computed
+     from the dimensions of `img` and the value of keyword `pixelsize`.
 
      Optional keywords `smearingfunction` and `smearingfactor` are to specify the function
      and the multiplier for the bandwidth smearing.
 
  */
-func mira_pix2vis(img, u, v, wave=, band=, pixel_size=, smearingfunction=, smearingfactor=)
+func mira_pix2vis(img, u, v, x=, y=, wave=, band=, pixelsize=, smearingfunction=, smearingfactor=)
 {
     dims = dimsof(img);
     if (numberof(dims) != 3) {
@@ -244,8 +245,8 @@ func mira_pix2vis(img, u, v, wave=, band=, pixel_size=, smearingfunction=, smear
     if (structof(img) == complex) {
         error, "expecting a non-complex argument";
     }
-    x = mira_sky_coordinates(dims(2), pixelsize);
-    y = mira_sky_coordinates(dims(3), pixelsize);
+    if (is_void(x)) x = mira_sky_coordinates(dims(2), pixelsize);
+    if (is_void(y)) y = mira_sky_coordinates(dims(3), pixelsize);
 
     // Multiply the image by the smearing if any.
     local z;
@@ -260,28 +261,31 @@ func mira_pix2vis(img, u, v, wave=, band=, pixel_size=, smearingfunction=, smear
             error, "invalid `smearingfunction`";
         }
     }
-    if (smearingfunction != mira_no_smearing) {
-        r = band/(wave*wave);
-        if (! is_void(smearingfactor)) r *= smearingfactor;
-        z = img*smearingfunction((r*u)(-,-,..)*x + (r*v)(-,-,..)*y(-,));
-    } else {
-        eq_nocopy, z, img;
-    }
 
-    // Real-complex multiplication by H1.
+    // Account for bandwidth smearing, multiply by complex exponential
+    // and sum along 1st dimension.
     q = -2*pi/wave;
     a1 = (q*u)(-,..)*x;
     H1re = cos(a1);
     H1im = sin(a1);
-    re = H1re(+,..)*z(+,..);
-    im = H1im(+,..)*z(+,..);
+    if (smearingfunction != mira_no_smearing) {
+        r = band/(wave*wave);
+        if (! is_void(smearingfactor)) r *= smearingfactor;
+        z = img*smearingfunction((r*u)(-,-,..)*x + (r*v)(-,-,..)*y(-,));
+        re = ((H1re(,-,..))*z)(sum,..);
+        im = ((H1im(,-,..))*z)(sum,..);
+    } else {
+        eq_nocopy, z, img;
+        re = z(+,)*H1re(+,..);
+        im = z(+,)*H1im(+,..);
+    }
 
-    // Complex-complex multiplication by H2.
+    // multiply by complex exponential and sum along 2nd dimension.
     a2 = (q*v)(-,..)*y;
     H2re = cos(a2);
     H2im = sin(a2);
-    return mira_as_complex(H2re(+,..)*re(+,..) - H2im(+,..)*im(+,..),
-                           H2re(+,..)*im(+,..) + H2im(+,..)*re(+,..));
+    return mira_as_complex((re*H2re)(sum,..) - (im*H2im)(sum,..),
+                           (im*H2re)(sum,..) + (re*H2im)(sum,..));
 }
 
 func mira_as_complex(re, im)

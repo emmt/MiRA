@@ -51,12 +51,19 @@ func mira_test_models(file, pixelsize=, dims=, img=)
     mira_array_info, "  - Re(V) alt. model, separable   ", z4(1,*);
     mira_array_info, "  - Im(V) alt. model, separable   ", z4(2,*);
     mira_array_info, "  - abs. diff.                    ", abs(z4 - z1);
+    z5 = mira_pix2vis(img, u, v, wave=wave, band=band, x=x, y=y,
+                      smearingfunction=master.smearingfunction,
+                      smearingfactor=master.smearingfactor);
+    if (anyof(dimsof(z5) != [1,m])) error, "invalid dimensions (pix2vis, separable)";
+    mira_array_info, "  - Re(V) direct model (pix2vis)  ", z5.re;
+    mira_array_info, "  - Im(V) direct model (pix2vis ) ", z5.im;
+    mira_array_info, "  - abs. diff.                    ", abs(z5.re - z1(1,..), z5.im - z1(2,..));
     H = mira_build_nonseparable_pix2vis(x, y, u, v, wave);
-    z5 = H(img);
-    if (anyof(dimsof(z5) != [2,2,m])) error, "invalid dimensions (separable)";
-    mira_array_info, "  - Re(V) alt. model, nonseparable", z5(1,*);
-    mira_array_info, "  - Im(V) alt. model, nonseparable", z5(2,*);
-    mira_array_info, "  - abs. diff.                    ", abs(z5 - z1);
+    z6 = H(img);
+    if (anyof(dimsof(z6) != [2,2,m])) error, "invalid dimensions (separable)";
+    mira_array_info, "  - Re(V) alt. model, nonseparable", z6(1,*);
+    mira_array_info, "  - Im(V) alt. model, nonseparable", z6(2,*);
+    mira_array_info, "  - abs. diff.                    ", abs(z6 - z1);
 
     write, format="- %s:\n", "pixels -> visibilities with bandwidth smearing";
     mira_config, master, xform = "nonseparable", smearingfunction="sinc";
@@ -71,4 +78,11 @@ func mira_test_models(file, pixelsize=, dims=, img=)
     mira_array_info, "  - Re(V) alt. model, nonseparable", z8(1,*);
     mira_array_info, "  - Im(V) alt. model, nonseparable", z8(2,*);
     mira_array_info, "  - abs. diff.                    ", abs(z8 - z7);
+    z9 = mira_pix2vis(img, u, v, wave=wave, band=band, x=x, y=y,
+                      smearingfunction=master.smearingfunction,
+                      smearingfactor=master.smearingfactor);
+    if (anyof(dimsof(z9) != [1,m])) error, "invalid dimensions (pix2vis, nonseparable)";
+    mira_array_info, "  - Re(V) direct model (pix2vis)  ", z9.re;
+    mira_array_info, "  - Im(V) direct model (pix2vis ) ", z9.im;
+    mira_array_info, "  - abs. diff.                    ", abs(z9.re - z7(1,..), z9.im - z7(2,..));
 }
