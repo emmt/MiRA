@@ -457,6 +457,22 @@ func mira_same_dimensions(adims, bdims)
   return (numberof(adims) == numberof(bdims) && allof(adims == bdims));
 }
 
+func mira_common_dimensions(a, ..)
+/* DOCUMENT mira_common_dimensions(a, b, ...);
+     returns the dimensions of arrays `a`, `b`, etc. which must all have the same dimensions.
+
+   SEE ALSO dimsof.
+*/
+{
+  dims = dimsof(a);
+  while (more_args()) {
+    if (! mira_same_dimensions(dims, dimsof(next_arg()))) {
+      error, "arguments must all have the same dimensions";
+    }
+  }
+  return dims;
+}
+
 local mira_cast_real_as_complex;
 func mira_cast_complex_as_real(z)
 /* DOCUMENT z = mira_cast_real_as_complex(x);

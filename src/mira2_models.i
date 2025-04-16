@@ -19,12 +19,15 @@ local mira_build_separable_pix2vis, _mira_apply_separable_pix2vis;
 
      `u` and `v` are the coordinates of the projected baselines, they must have the same
      dimensions. `wave` specifies the wavelength(s) and must be conformable with the
-     dimensions of `u` and `v`.
+     dimensions of `u` and `v`; you may call `mira_fix_spectral_dimensions` for that.
 
      `ufreq = u/wave` and `vfreq = v/wave` are the spatial frequencies.
 
      The object is used as: `A(arr, adj)` or apply the transform (or its adjoint if `adj`
      is true) to array `arr`.
+
+  SEE ALSO
+     mira_fix_spectral_dimensions.
  */
 func mira_build_separable_pix2vis(x, y, u, v, wave)
 {
@@ -82,13 +85,17 @@ local mira_build_nonseparable_pix2vis, _mira_apply_nonseparable_pix2vis;
      Arguments `x` and `y` are the sky angular coordinates respectively along the 1st and
      2nd dimensions of the image model. Arguments `u` and `v` are the baseline coordinates
      for each model complex visibility. Arguments `wave` and `band` specify the
-     wavelength(s) and spectral bandwidth(s) for the given baselines.
+     wavelength(s) and spectral bandwidth(s) for the given baselines. They have to be
+     conformable with `u` and `v`; you may call `mira_fix_spectral_dimensions` for that.
 
      Keywords `smearingfunction` and `smearingfactor` are to specify the function and the
      multiplier for the bandwidth smearing.
 
      The object is used as: `A(arr, adj)` or apply the transform (or its adjoint if `adj`
      is true) to array `arr`.
+
+  SEE ALSO
+     mira_fix_spectral_dimensions.
  */
 func mira_build_nonseparable_pix2vis(x, y, u, v, wave, band, smearingfunction=, smearingfactor=)
 {
@@ -138,13 +145,17 @@ local mira_build_nfft_pix2vis, _mira_apply_nfft_pix2vis;
      Arguments `x` and `y` are the sky angular coordinates respectively along the 1st and
      2nd dimensions of the image model. Arguments `u` and `v` are the baseline coordinates
      for each model complex visibility. Argument `wave` specifies the wavelength(s) for
-     the given baselines.
+     the given baselines. It must be conformable with `u` and `v`; you may call
+     `mira_fix_spectral_dimensions` for that.
 
      Keywords `nthreads` and `flags` are to specify the number of threads to compute the
      FFT and FFTW flags.
 
      The object is used as: `A(arr, adj)` or apply the transform (or its adjoint if `adj`
      is true) to array `arr`.
+
+  SEE ALSO
+     mira_fix_spectral_dimensions.
  */
 func mira_build_nfft_pix2vis(x, y, u, v, wave, nthreads=, flags=)
 {
@@ -227,7 +238,8 @@ local mira_pix2vis;
      computed as assumed by the different possible models in MiRA.
 
      Mandatory keywords `wave` and `band` specify the wavelength(s) and the spectral
-     bandwidth(s).
+     bandwidth(s). They have to be conformable with `u` and `v`; you may call
+     `mira_fix_spectral_dimensions` for that.
 
      Keywords `x` and `y` specify image coordinates. If not specified, they are computed
      from the dimensions of `img` and the value of keyword `pixelsize`.
@@ -235,6 +247,8 @@ local mira_pix2vis;
      Optional keywords `smearingfunction` and `smearingfactor` are to specify the function
      and the multiplier for the bandwidth smearing.
 
+  SEE ALSO
+     mira_fix_spectral_dimensions.
  */
 func mira_pix2vis(img, u, v, x=, y=, wave=, band=, pixelsize=, smearingfunction=, smearingfactor=)
 {
@@ -332,6 +346,9 @@ func mira_save_data_model(master, img, fh)
         if (type == OIFITS_TYPE_VIS || type == OIFITS_TYPE_VIS2) {
             eq_nocopy, u, oifits_get_ucoord(oidata, db);
             eq_nocopy, v, oifits_get_vcoord(oidata, db);
+            uv_dims = mira_common_dimensions(u, v);
+            wave = mira_fix_spectral_dimensions(wave, uv_dims);
+            band = mira_fix_spectral_dimensions(band, uv_dims);
             z = mira_pix2vis(img, u, v, wave=wave, band=band,  x=x, y=y,
                              smearingfunction=master.smearingfunction,
                              smearingfactor=master.smearingfactor);
@@ -340,6 +357,9 @@ func mira_save_data_model(master, img, fh)
             eq_nocopy, v1, oifits_get_v1coord(oidata, db);
             eq_nocopy, u2, oifits_get_u2coord(oidata, db);
             eq_nocopy, v2, oifits_get_v2coord(oidata, db);
+            uv_dims = mira_common_dimensions(u1, v1, u2, v2);
+            wave = mira_fix_spectral_dimensions(wave, uv_dims);
+            band = mira_fix_spectral_dimensions(band, uv_dims);
             z = mira_pix2vis(img, u1, v1, wave=wave, band=band, x=x, y=y,
                              smearingfunction=master.smearingfunction,
                              smearingfactor=master.smearingfactor);
@@ -371,4 +391,22 @@ func mira_save_data_model(master, img, fh)
 
     /* Save the data and their models in the output file. */
     oifits_save, oidata, fh;
+}
+
+func mira_fix_spectral_dimensions(w, uv_dims)
+/* DOCUMENT mira_fix_spectral_dimensions(w, uv_dims);
+
+     Return `w` possibly with inserted fake leading dimensions to have it conformable with
+     arrays of dimensions `uv_dims`. This is used to have `u/w` and `v/w` of dimensions
+     `uv_dims`-by-`dimsof(w)`.
+*/
+{
+    w_dims = dimsof(w);
+    if (w_dims(1) > 0 && w_dims(max:2:0) > 1) {
+        n = numberof(uv_dims);
+        while (--n > 0) {
+            w = w(-,..);
+        }
+    }
+    return w;
 }

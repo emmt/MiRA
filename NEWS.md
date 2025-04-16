@@ -4,6 +4,16 @@ This page describes the most important changes in `MiRA`. The format is based on
 Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic
 Versioning](https://semver.org/spec).
 
+## Unreleased
+
+### Fixed
+
+- When computing the model of the data saved in the output data file, the dimensions of
+  the effective wavelengths `λ` and bandwidths `Δλ` are modified to have them conformable
+  with that of the baselines coordinates `u` and `v` so that an expression like `u/λ`
+  yields an array of size `dimsof(u)`-by-`dimsof(λ)`. This solves a bug that prevented
+  saving data models (with option `--save_data_model`) when there are several wavelengths.
+
 ## Version 2.5.1 (2024-04-07)
 
 ### Fixed
