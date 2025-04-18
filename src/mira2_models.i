@@ -269,7 +269,8 @@ func mira_pix2vis(img, u, v, x=, y=, wave=, band=, pixelsize=, smearingfunction=
             smearingfunction = mira_no_smearing;
         } else if (smearingfunction == "sinc" || smearingfunction == "uniform") {
             smearingfunction = sinc;
-        } else if (smearingfunction == "gaussian" || smearingfunction == "Gaussian") {
+        } else if (smearingfunction == "gauss" || smearingfunction == "gaussian" ||
+                   smearingfunction == "Gaussian") {
             smearingfunction = mira_gaussian_smearing;
         } else {
             error, "invalid `smearingfunction`";
