@@ -332,15 +332,14 @@ func _mira_select_data(master)
 func _mira_grow_coordinates(master, u, v, wave, band)
 /* DOCUMENT idx = _mira_grow_coordinates(master, u, v, wave, band);
 
-      appends coordinates to MiRA instance `master` and return their signed
-      indices in the memorized list.  The sign of the result indicates whether
-      the baseline coordinates have been reversed while the absolute of the
-      result yields the indices of the new coordinates in the list of
-      coordinates memorized by `master`.  When all coordinates have been added,
-      `_mira_grow_coordinates` should be called to reduce the list of
+      Append coordinates to MiRA instance `master` and return their signed indices in the
+      memorized list. The sign of the result indicates whether the baseline coordinates
+      have been reversed while the absolute of the result yields the indices of the new
+      coordinates in the list of coordinates memorized by `master`. When all coordinates
+      have been added, `_mira_reduce_coordinates` should be called to reduce the list of
       coordinates.
 
-   SEE ALSO:
+   SEE ALSO: _mira_reduce_coordinates.
  */
 {
   /* Check existing coordinates. */

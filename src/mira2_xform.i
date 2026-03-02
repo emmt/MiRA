@@ -475,12 +475,11 @@ func _mira_reduce_coordinates(master, mode, debug=)
 /* DOCUMENT _mira_reduce_coordinates, master;
          or _mira_reduce_coordinates, master, mode;
 
-     Private subroutine to reduce the list of coordinates stored in MiRA
-     instance MASTER to a minimum.  MODE=1 (the default) to only consider
-     unique values of (u/wave,v/wave), MODE=2 to consider unique values of
-     (u,v,wave) and MODE=3 to consider unique values of (u,v,wave,band).  Here
-     u, v, wave and band correspond to the contents of the fields of
-     MASTER.coords.
+     Private subroutine to reduce the list of coordinates stored in MiRA instance MASTER
+     to a minimum. MODE=1 (the default) to only consider unique values of (u/wave,v/wave),
+     MODE=2 to consider unique values of (u,v,wave) and MODE=3 to consider unique values
+     of (u,v,wave,band). Here u, v, wave, and band correspond to the contents of the
+     fields of MASTER.coords.
 
 */
 {
